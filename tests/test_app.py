@@ -1,9 +1,6 @@
 import pytest
 
-from meshsee import app
 from meshsee.app import App
-
-from PySide6.QtWidgets import QApplication
 
 
 @pytest.fixture(scope="session")
