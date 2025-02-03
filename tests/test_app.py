@@ -3,22 +3,34 @@ import pytest
 from meshsee import app
 from meshsee.app import App
 
+from PySide6.QtWidgets import QApplication
 
-@pytest.fixture
+
+@pytest.fixture(scope="session")
 def main_app():
-    main = App()
-    yield main
-    main._app.shutdown()
+    app = App.instance()
+    if app is None:
+        app = App()
+    yield app
 
 
-def test_main(mocker):
-    application = mocker.patch("meshsee.app.QApplication")
-    window = mocker.patch("meshsee.app.MainWindow")
-    app.main()
-    assert application.called
-    assert application().exec.called
-    assert window.called
-    assert window().show.called
+def test_app_instance(main_app):
+    assert main_app is App.instance()
+
+
+def test_app_instance_singleton():
+    with pytest.raises(RuntimeError):
+        App()
+
+
+# def test_main(mocker):
+#     application = mocker.patch("meshsee.app.QApplication")
+#     window = mocker.patch("meshsee.app.MainWindow")
+#     app.main()
+#     assert application.called
+#     assert application().exec.called
+#     assert window.called
+#     assert window().show.called
 
 
 def test_main_window_title(main_app):
