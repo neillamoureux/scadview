@@ -1,6 +1,7 @@
 import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
 
 
 def main():
@@ -36,11 +37,15 @@ class MainWindow(QMainWindow):
         self.resize(*size)
         self._main_layout = self._create_main_layout()
 
-    def _create_main_layout(self):
+    def _create_main_layout(self) -> QVBoxLayout:
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
-        return QVBoxLayout(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        self._gl_widget = self._create_graphics_widget()
+        main_layout.addWidget(self._gl_widget)
+        return main_layout
 
-    def _add_graphics_widget(self):
+    def _create_graphics_widget(self):
         gl_widget = QWidget()
-        self.setCentralWidget(gl_widget)
+        gl_widget.setFocusPolicy(Qt.StrongFocus)
+        return gl_widget
