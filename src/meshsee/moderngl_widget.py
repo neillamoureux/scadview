@@ -118,7 +118,7 @@ class ModernglWidget(QOpenGLWidget):
         # self.camera.aspect_ratio = self._aspect_ratio
         # self.prog["m_proj"].write(self.camera.projection_matrix)
 
-    def _create_shader_program(self):
+    def _create_shader_program(self) -> moderngl.Program:
         try:
             return self._ctx.program(
                 vertex_shader=_VERTEX_SHADER,
@@ -127,45 +127,42 @@ class ModernglWidget(QOpenGLWidget):
         except Exception as e:
             print(f"Error creating shader program: {e}")
 
-    # @log_function_call(logger, logging.DEBUG)
-    def paintGL(self):  # override
-        self._ctx.enable_only(moderngl.DEPTH_TEST)
-        # self.ctx.enable_only(moderngl.BLEND)
-        self._vao.render()
-        # I don't know why calling clear after the render works
-        # Calling before obliterates the rendering
-        # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
-        self._ctx.clear(0.5, 0.3, 0.2, 1.0)
-
-    # @log_function_call(logger, logging.INFO)
-    def resizeGL(self, width, height):  # override
-        self._update_framebuffer_size(width, height, self.devicePixelRatio())
-
     def load_mesh(
         self,
         mesh: Trimesh,
     ):
-        self._mesh = mesh
-        self._vertices = self._ctx.buffer(data=mesh.triangles.astype("f4"))
-        self._normals = self._ctx.buffer(
+        self._mesh, self._vertices, self._normals = self._setup_mesh(mesh)
+        try:
+            self._vao = self._create_vao()
+        except Exception as e:
+            print(f"Error creating vertex array: {e}")
+
+        self._set_program_data()
+
+        self.update()
+
+    def _setup_mesh(self, mesh: Trimesh):
+        mesh = mesh
+        vertices = self._ctx.buffer(data=mesh.triangles.astype("f4"))
+        normals = self._ctx.buffer(
             data=np.array([[v] * 3 for v in mesh.triangles_cross])
             .astype("f4")
             .tobytes()
         )
-        # self.camera.frame_points(mesh.vertices.astype("f4"))
+        return mesh, vertices, normals
 
-        try:
-            self._vao = self._ctx.vertex_array(
-                self._prog,
-                [
-                    (self._vertices, "3f4", "in_position"),
-                    (self._normals, "3f4", "in_normal"),
-                ],
-                mode=moderngl.TRIANGLES,
-            )
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
-        m_model = Matrix44.identity(dtype="f4")
+    def _create_vao(self):
+        vao = self._ctx.vertex_array(
+            self._prog,
+            [
+                (self._vertices, "3f4", "in_position"),
+                (self._normals, "3f4", "in_normal"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+        return vao
+
+    def _set_program_data(self):
         # self.camera.position = np.array([0.0, 2.0, 2.0])
         # self.camera.look_at = np.array([0.0, 0.0, 0.0])
         # self.camera.up = np.array([0.0, 1.0, 0.0])
@@ -174,6 +171,7 @@ class ModernglWidget(QOpenGLWidget):
         # self.camera.near = 0.1
         # self.camera.far = 1000.0
 
+        m_model = Matrix44.identity(dtype="f4")
         m_camera = matrix44.create_look_at(
             np.array([0.0, 2.0, 2.0]),
             np.array([0.0, 0.0, 0.0]),
@@ -191,5 +189,16 @@ class ModernglWidget(QOpenGLWidget):
         # self.prog["m_proj"].write(self.camera.projection_matrix)
         self._prog["m_proj"].write(m_proj)
         self._prog["color"].value = 1.0, 0.0, 1.0, 1.0
+        # self.camera.frame_points(mesh.vertices.astype("f4"))
 
-        self.update()
+    def paintGL(self):  # override
+        self._ctx.enable_only(moderngl.DEPTH_TEST)
+        # self.ctx.enable_only(moderngl.BLEND)
+        self._vao.render()
+        # I don't know why calling clear after the render works
+        # Calling before obliterates the rendering
+        # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
+        self._ctx.clear(0.5, 0.3, 0.2, 1.0)
+
+    def resizeGL(self, width, height):  # override
+        self._update_framebuffer_size(width, height, self.devicePixelRatio())
