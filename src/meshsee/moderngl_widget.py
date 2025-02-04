@@ -1,6 +1,6 @@
 import moderngl
 import numpy as np
-from pyrr import matrix33, matrix44, Matrix44
+from pyrr import matrix44, Matrix44
 from PySide6 import QtGui
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from trimesh import Trimesh
