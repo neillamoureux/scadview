@@ -1,5 +1,6 @@
 import sys
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -8,7 +9,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
+
+from meshsee.moderngl_widget import ModernglWidget, prepare_surface_format
 
 
 def main():
@@ -20,12 +22,14 @@ class App:
     MAIN_WINDOW_TITLE = "Meshsee"
     MAIN_WINDOW_SIZE = (800, 600)
     BUTTON_STRIP_HEIGHT = 50
+    GL_VERSION = (3, 3)
     _instance = None
 
     def __init__(self):
         if self.__class__._instance is not None:
             raise RuntimeError("Only one instance of App is allowed")
         self.__class__._instance = self
+        prepare_surface_format(self.GL_VERSION)
         self._app = QApplication(sys.argv)
         self._main_window = MainWindow(self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE)
 
@@ -64,7 +68,7 @@ class MainWindow(QMainWindow):
         return main_layout
 
     def _create_graphics_widget(self):
-        gl_widget = QWidget()
+        gl_widget = ModernglWidget()
         gl_widget.setFocusPolicy(Qt.StrongFocus)
         return gl_widget
 
