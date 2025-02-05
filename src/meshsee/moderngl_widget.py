@@ -87,15 +87,8 @@ class ModernglWidget(QOpenGLWidget):
 
     def initializeGL(self):  # override
         self._camera = Camera()
-        # self.camera.position = np.array([0.0, 2.0, 2.0])
-        # self.camera.look_at = np.array([0.0, 0.0, 0.0])
-        # self.camera.up = np.array([0.0, 1.0, 0.0])
-        # self.camera.fovy = 22.5
         self._camera.aspect_ratio = self.width() / self.height()
-        # self.camera.near = 0.1
-        # self.camera.far = 1000.0
         # self.camera.frame_points(VERTICES)
-        # logging.info(f"Camera position: {self.camera.position}")
 
         # You cannot create the context before initializeGL is called
         self._ctx = moderngl.create_context()
@@ -112,10 +105,6 @@ class ModernglWidget(QOpenGLWidget):
         framebuffer_height = int(height * device_pixel_ratio)
         self._aspect_ratio = framebuffer_width / framebuffer_height
         if self._gl_initialized:
-            # m_proj = matrix44.create_perspective_projection(
-            #     22.5, self._aspect_ratio, 0.1, 1000.0, dtype="f4"
-            # )
-            # self._prog["m_proj"].write(m_proj)
             self._camera.aspect_ratio = self._aspect_ratio
             self._prog["m_proj"].write(self._camera.projection_matrix)
 
@@ -164,36 +153,14 @@ class ModernglWidget(QOpenGLWidget):
         return vao
 
     def _set_program_data(self):
-        # self.camera.position = np.array([0.0, 2.0, 2.0])
-        # self.camera.look_at = np.array([0.0, 0.0, 0.0])
-        # self.camera.up = np.array([0.0, 1.0, 0.0])
-        # self.camera.fovy = 22.5
-        # self.camera.aspect_ratio = self.width() / self.height()
-        # self.camera.near = 0.1
-        # self.camera.far = 1000.0
-
         m_model = Matrix44.identity(dtype="f4")
-        # m_camera = matrix44.create_look_at(
-        #     np.array([0.0, 2.0, 2.0]),
-        #     np.array([0.0, 0.0, 0.0]),
-        #     np.array([0.0, 1.0, 0.0]),
-        #     dtype="f4",
-        # )
-
-        # m_proj = matrix44.create_perspective_projection(
-        #     22.5, self.width() / self.height(), 0.1, 1000.0, dtype="f4"
-        # )
 
         self._prog["m_model"].write(m_model)
         self._prog["m_camera"].write(self._camera.view_matrix)
-        # self._prog["m_camera"].write(m_camera)
         self._prog["m_proj"].write(self._camera.projection_matrix)
-        # self._prog["m_proj"].write(m_proj)
         self._prog["color"].value = 1.0, 0.0, 1.0, 1.0
-        # self.camera.frame_points(mesh.vertices.astype("f4"))
 
     def paintGL(self):  # override
-        # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
         self._vao.render()
