@@ -172,7 +172,7 @@ class ModernglWidget(QOpenGLWidget):
         # self.camera.near = 0.1
         # self.camera.far = 1000.0
 
-        # m_model = Matrix44.identity(dtype="f4")
+        m_model = Matrix44.identity(dtype="f4")
         # m_camera = matrix44.create_look_at(
         #     np.array([0.0, 2.0, 2.0]),
         #     np.array([0.0, 0.0, 0.0]),
@@ -184,7 +184,7 @@ class ModernglWidget(QOpenGLWidget):
         #     22.5, self.width() / self.height(), 0.1, 1000.0, dtype="f4"
         # )
 
-        # self._prog["m_model"].write(m_model)
+        self._prog["m_model"].write(m_model)
         self._prog["m_camera"].write(self._camera.view_matrix)
         # self._prog["m_camera"].write(m_camera)
         self._prog["m_proj"].write(self._camera.projection_matrix)
