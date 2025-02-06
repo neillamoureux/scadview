@@ -1,6 +1,7 @@
 import moderngl
 import numpy as np
 from pyrr import matrix44, Matrix44
+from PySide6.QtCore import Qt
 from PySide6 import QtGui
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from trimesh import Trimesh
@@ -80,6 +81,8 @@ def _make_default_mesh() -> Trimesh:
 
 
 class ModernglWidget(QOpenGLWidget):
+    ORBIT_ROTATION_SPEED = 0.01
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._default_mesh = _make_default_mesh()
@@ -171,3 +174,35 @@ class ModernglWidget(QOpenGLWidget):
 
     def resizeGL(self, width, height):  # override
         self._update_framebuffer_size(width, height, self.devicePixelRatio())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._left_button_pressed = True
+        self._last_x = event.position().x()
+        self._last_y = event.position().y()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._left_button_pressed = False
+
+    def mouseMoveEvent(self, event):
+        """
+        Rotate the camera based on mouse movement.
+        """
+        # If left button is pressed, rotate the camera
+        if self._left_button_pressed:
+            x = event.position().x()
+            y = event.position().y()
+            dx = x - self._last_x
+            dy = y - self._last_y
+            self._last_x = x
+            self._last_y = y
+            angle_from_up = np.arctan2(dy, dx) + np.pi / 2.0
+            rotation_angle = np.linalg.norm([dx, dy]) * self.ORBIT_ROTATION_SPEED
+            self.orbit(angle_from_up, rotation_angle)
+
+    def orbit(self, angle_from_up, rotation_angle):
+        self._camera.orbit(angle_from_up, rotation_angle)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+        self.update()
