@@ -1,5 +1,5 @@
 import numpy as np
-from pyrr import matrix44
+from pyrr import matrix33, matrix44
 
 
 class Camera:
@@ -49,3 +49,23 @@ class Camera:
         return matrix44.create_perspective_projection(
             self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
         )
+
+    def orbit(self, angle_from_up, rotation_angle):
+        """
+        Rotate the camera around the look_at point.
+        Angles are in radians.
+        """
+        # perp_up = self.up
+        perp_up = self.perpendicular_up
+        rotated_up_mat = matrix33.create_from_axis_rotation(
+            self.direction, angle_from_up, dtype="f4"
+        )
+        rotated_up = matrix33.apply_to_vector(rotated_up_mat, self.up)
+        rotation_axis = np.cross(self.direction, rotated_up)
+        rotation = matrix33.create_from_axis_rotation(
+            rotation_axis, rotation_angle, dtype="f4"
+        )
+        new_direction = matrix33.apply_to_vector(rotation, self.direction)
+        new_up = matrix33.apply_to_vector(rotation, perp_up)
+        self.position = self.look_at - new_direction
+        self.up = new_up

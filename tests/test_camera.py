@@ -1,3 +1,6 @@
+from copy import copy
+from math import acos
+
 from pytest import approx, mark
 import numpy as np
 
@@ -148,3 +151,71 @@ def test_projection_matrix2():
 
 def test_approx():
     assert np.array([1.0, 2.0]) == approx(np.array([1.0, 2.0]))
+
+
+def test_orbit_look_at_unchanged():
+    cam = Camera()
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-1.0, -2.0, -3.0])
+    initial_look_at = copy(cam.look_at)
+    cam.orbit(np.pi / 1.2, np.pi / 3.1)
+    assert np.array_equal(cam.look_at, initial_look_at)
+
+
+def test_orbit_direction_rotated():
+    cam = Camera()
+    cam.up = np.array([1.0, 1.0, 0.0])
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-3.5, -2.5, -1.5])
+    initial_direction = copy(cam.direction)
+    cam.orbit(np.pi / 1.2, np.pi / 3.1)
+    rotation = acos(
+        np.dot(initial_direction, cam.direction)
+        / (np.linalg.norm(initial_direction) * np.linalg.norm(cam.direction))
+    )
+    assert rotation == approx(np.pi / 3.1)
+
+
+@mark.skip(reason="Is this the right test")
+def test_orbit_up_rotated():
+    cam = Camera()
+    cam.up = np.array([1.0, 1.0, 0.0])
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-3.5, -2.5, -1.5])
+    initial_perp_up = copy(cam.perpendicular_up)
+    cam.orbit(np.pi / 1.2, np.pi / 3.1)
+    rotation = acos(
+        np.dot(initial_perp_up, cam.up)
+        / (np.linalg.norm(initial_perp_up) * np.linalg.norm(cam.up))
+    )
+    assert rotation == approx(np.pi / 1.2)
+
+
+# to do for orbit
+# test position - look_at has unchanged length
+def test_orbit_position_look_at_length_unchanged():
+    cam = Camera()
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-5.0, -2.5, 1.2])
+    initial_length = np.linalg.norm(cam.look_at - cam.position)
+    cam.orbit(-np.pi / 1.2, np.pi / 3.1)
+    assert np.linalg.norm(cam.look_at - cam.position) == approx(initial_length)
+
+
+# test rotation axis and the angle of rotation between initial perp_up and final perp_up is the angle from up rotation param
+@mark.skip(reason="Is this the right test")
+def test_orbit_rotation_axis():
+    cam = Camera()
+    cam.up = np.array([1.0, 1.0, 0.0])
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-3.5, -2.5, -1.5])
+    # initial_up = copy(cam.up)
+    initial_perp_up = copy(cam.perpendicular_up)
+    initial_direction = copy(cam.direction)
+    cam.orbit(np.pi / 1.2, np.pi / 3.1)
+    rotation_axis = np.cross(initial_direction, cam.direction)
+    rotation_axis_angle = acos(
+        np.dot(initial_perp_up, rotation_axis)
+        / (np.linalg.norm(initial_perp_up) * np.linalg.norm(rotation_axis))
+    )
+    assert rotation_axis_angle == approx(np.pi / 1.2)
