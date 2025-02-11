@@ -1,10 +1,14 @@
+import os
 import sys
+import time
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QMainWindow,
+    QSplashScreen,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -31,7 +35,19 @@ class App:
         self.__class__._instance = self
         prepare_surface_format(self.GL_VERSION)
         self._app = QApplication(sys.argv)
+        self._show_splash()
         self._main_window = MainWindow(self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE)
+
+    def _show_splash(self):
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        splash_image_path = os.path.join(current_dir, "splash.png")
+        splash_pix = QPixmap(splash_image_path)
+        splash = QSplashScreen(splash_pix)
+        splash.show()
+        splash.raise_()
+        self._app.processEvents()
+        splash.showMessage("Meshee is initializing...", Qt.AlignCenter)
+        return splash
 
     def run(self):
         self._main_window.show()

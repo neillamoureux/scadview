@@ -82,6 +82,7 @@ def _make_default_mesh() -> Trimesh:
 
 class ModernglWidget(QOpenGLWidget):
     ORBIT_ROTATION_SPEED = 0.01
+    BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -101,6 +102,7 @@ class ModernglWidget(QOpenGLWidget):
 
         self._prog = self._create_shader_program()
         self.load_mesh(self._default_mesh)
+        self._ctx.clear(*self.BACKGROUND_COLOR)
         self._gl_initialized = True
 
     def _update_framebuffer_size(self, width, height, device_pixel_ratio):
@@ -166,11 +168,13 @@ class ModernglWidget(QOpenGLWidget):
     def paintGL(self):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
+        # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._vao.render()
         # I don't know why calling clear after the render works
         # Calling before obliterates the rendering
+        # Possibly because the render method swaps the frame buffer?
         # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
-        self._ctx.clear(0.5, 0.3, 0.2, 1.0)
+        self._ctx.clear(*self.BACKGROUND_COLOR)
 
     def resizeGL(self, width, height):  # override
         self._update_framebuffer_size(width, height, self.devicePixelRatio())
