@@ -104,6 +104,11 @@ def test_view_matrix2():
     assert view_matrix.dtype == np.float32
     approx(view_matrix * np.append(cam.look_at, 1.0), np.array([0.0, 0.0, 0.0, 1.0]))
     approx(view_matrix * np.append(cam.up, 1.0), np.array([0.0, 1.0, 0.0, 1.0]))
+    approx(view_matrix * np.append(cam.position, 1.0), np.array([0.0, 0.0, 0.0, 1.0]))
+    norm_direction = cam.direction / np.linalg.norm(cam.direction)
+    approx(
+        view_matrix * np.append(norm_direction, 1.0), np.array([0.0, 0.0, -1.0, 1.0])
+    )
 
 
 def test_projection_matrix():
@@ -252,3 +257,57 @@ def test_fovx_aspect_ratio_not_1():
     assert np.tan(np.radians(cam.fovy / 2.0)) * cam.aspect_ratio == approx(
         np.tan(np.radians(cam.fovx / 2.0))
     )
+
+
+def test_frame_centered():
+    cam = Camera()
+    # cam.look_at = np.array([-2.0, -2.0, -4.0])
+    # cam.up = np.array([1.0, 1.0, 0.0])
+    cam.frame(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), np.array([3.0, 2.0, 1.0]))
+    assert np.array_equal(np.array([2.5, 3.5, 4.5]), cam.look_at)
+
+
+def test_frame_direction_same():
+    cam = Camera()
+    dir = np.array([3.0, 2.0, 1.0])
+    norm_dir = dir / np.linalg.norm(dir)
+    cam.frame(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), dir)
+    assert np.allclose(norm_dir, cam.direction / np.linalg.norm(cam.direction))
+
+
+def test_frame_points_in_clip():
+    cam = Camera()
+
+    # fmt off
+    points = np.array(
+        [
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [-3.0, -2.0, 3.5],
+            [2.0, -1.0, 4.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0],
+        ]
+    )
+    # fmt on
+    cam.frame(points, np.array([3.0, 2.0, 1.0]))
+    print(f"fovx: {cam.fovx}; fovy: {cam.fovy}")
+    for point in points:
+        view_point = cam.view_matrix.dot(np.append(point, 1.0))
+        print("vpw:", view_point)
+        print("vp:", view_point[:3] / view_point[3])
+        print(
+            f"ax: {2 * np.rad2deg(np.arctan(view_point[0] / view_point[2] / view_point[3]))}"
+        )
+        print(
+            f"ay: {2 * np.rad2deg(np.arctan(view_point[1] / view_point[2] / view_point[3]))}"
+        )
+        projected_point = cam.projection_matrix.dot(
+            cam.view_matrix.dot(np.append(point, 1.0))
+        )
+        print("ppw:", projected_point)
+        print("pp:", projected_point[:3] / projected_point[3])
+        # assert -1.0 <= projected_point[0] / projected_point[3] <= 1.0
+        # assert -1.0 <= projected_point[1] / projected_point[3] <= 1.0
+    assert False
