@@ -69,3 +69,9 @@ class Camera:
         new_up = matrix33.apply_to_vector(rotation, perp_up)
         self.position = self.look_at - new_direction
         self.up = new_up
+
+    @property
+    def fovx(self):
+        return np.rad2deg(
+            2 * np.arctan(np.tan(np.radians(self.fovy) / 2) * self.aspect_ratio)
+        )

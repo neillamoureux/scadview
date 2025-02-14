@@ -232,3 +232,23 @@ def test_orbit_up_rotation_axis_angle():
         np.linalg.norm(initial_perp_up) * np.linalg.norm(rotation_axis)
     )
     assert cos_rotation_axis_angle == approx(np.cos(np.pi / 1.2 - np.pi / 2))
+
+
+def test_fovx_aspect_ratio_1():
+    cam = Camera()
+    cam.aspect_ratio = 1.0
+    cam.fovy = 37.0
+    cam.near = 2.1
+    cam.far = 55.3
+    assert cam.fovx == cam.fovy
+
+
+def test_fovx_aspect_ratio_not_1():
+    cam = Camera()
+    cam.aspect_ratio = 2.3
+    cam.fovy = 37.0
+    cam.near = 2.1
+    cam.far = 55.3
+    assert np.tan(np.radians(cam.fovy / 2.0)) * cam.aspect_ratio == approx(
+        np.tan(np.radians(cam.fovx / 2.0))
+    )
