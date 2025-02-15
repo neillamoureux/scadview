@@ -80,10 +80,21 @@ class Camera:
             2 * np.arctan(np.tan(np.radians(self.fovy) / 2) * self.aspect_ratio)
         )
 
-    def frame(self, points: np.ndarray, direction: np.ndarray):
+    def frame(
+        self,
+        points: np.ndarray,
+        direction: np.ndarray | None = None,
+        up: np.ndarray | None = None,
+    ):
         """
         Frame the points with the camera.
         """
+        if direction is None:
+            direction = self.direction
+        if up is None:
+            up = self.up
+        else:
+            self.up = up
         center = np.mean(points, axis=0)
         self.look_at = center
         self.position = center - direction

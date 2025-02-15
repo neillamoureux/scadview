@@ -290,8 +290,6 @@ def test_fovx_aspect_ratio_not_1():
 
 def test_frame_centered():
     cam = Camera()
-    # cam.look_at = np.array([-2.0, -2.0, -4.0])
-    # cam.up = np.array([1.0, 1.0, 0.0])
     cam.frame(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), np.array([3.0, 2.0, 1.0]))
     assert np.array_equal(np.array([2.5, 3.5, 4.5]), cam.look_at)
 
@@ -302,6 +300,37 @@ def test_frame_direction_same():
     norm_dir = dir / np.linalg.norm(dir)
     cam.frame(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), dir)
     assert np.allclose(norm_dir, cam.direction / np.linalg.norm(cam.direction))
+
+
+def test_frame_use_cam_direction():
+    cam = Camera()
+    cam.look_at = np.array([1.0, -2.0, 3.0])
+    cam.position = np.array([4.0, 5.0, -6.0])
+    init_direction = cam.direction
+    cam.frame(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))
+    assert init_direction / np.linalg.norm(init_direction) == approx(
+        cam.direction / np.linalg.norm(cam.direction)
+    )
+
+
+def test_frame_use_cam_up():
+    cam = Camera()
+    cam.look_at = np.array([1.0, -2.0, 3.0])
+    cam.position = np.array([4.0, 5.0, -6.0])
+    init_up = cam.up
+    cam.frame(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), np.array([3.0, 2.0, 1.0]))
+    assert init_up / np.linalg.norm(init_up) == approx(cam.up / np.linalg.norm(cam.up))
+
+
+def test_frame_override_cam_up():
+    cam = Camera()
+    cam.look_at = np.array([1.0, -2.0, 3.0])
+    cam.position = np.array([4.0, 5.0, -6.0])
+    init_up = np.array([1.0, 1.0, 1.0])
+    cam.frame(
+        np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), np.array([3.0, 2.0, 1.0]), init_up
+    )
+    assert init_up / np.linalg.norm(init_up) == approx(cam.up / np.linalg.norm(cam.up))
 
 
 def test_frame_points_in_clip():
