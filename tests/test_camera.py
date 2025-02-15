@@ -152,29 +152,35 @@ def test_projection_matrix():
     )
 
 
-@mark.skip(reason="Not sure how to test")
-def test_projection_matrix2():
+def test_projection_matrix_near_and_far():
     # Note: OpenGL is right-handed, so the z-axis is pointing out of the screen back to the viewer
     cam = Camera()
     cam.aspect_ratio = 2.0
     cam.fovy = 45.0
-    cam.near = 1.0
+    cam.near = 0.25
     cam.far = 100.0
+    cam.look_at = np.array([0.0, 0.0, 1.0])
+    cam.up = np.array([0.0, 1.0, 0.0])
+    cam.position = np.array([0.0, 0.0, 0.0])
     projection_matrix = cam.projection_matrix
     assert projection_matrix.shape == (4, 4)
-    # near should map to [0, 0, 1] in clip space, or in 4 dim [0, 0, z, z], z arbitrary
-    near_product = projection_matrix.dot(np.array([0.0, 0.0, -cam.near, 1.0]))
+    # near should map to [0, 0, 1] in clip space, or in 4 dim [0, 0, z, -z], z arbitrary
+    near_product = projection_matrix.T.dot(
+        cam.view_matrix.T.dot(np.array([0.0, 0.0, cam.near, 1.0]))
+    )
     assert near_product[0:2] == approx(np.array([0.0, 0.0]))
-    assert near_product[2] == approx(near_product[3])
-    # far should map to [0, 0, -1] in clip space, or in 4 dim [0, 0, z, -z], z arbitrary
-    far_product = projection_matrix.dot(np.array([0.0, 0.0, -cam.far, 1.0]))
+    assert near_product[2] == approx(-near_product[3])
+    # far should map to [0, 0, -1] in clip space, or in 4 dim [0, 0, z, z], z arbitrary
+    far_product = projection_matrix.T.dot(
+        cam.view_matrix.T.dot(np.array([0.0, 0.0, cam.far, 1.0]))
+    )
     assert far_product[0:2] == approx(np.array([0.0, 0.0]))
     # assert far_product[2] / far_product[3] == approx(-1.0)
-    assert far_product[2] == approx(-far_product[3])
+    assert far_product[2] == approx(far_product[3])
 
 
 # test fov by placing at corner of near plane
-def test_projection_matrix3():
+def test_projection_matrix_fov():
     # Note: OpenGL is right-handed, so the z-axis is pointing out of the screen back to the viewer
     cam = Camera()
     cam.aspect_ratio = 2.0
