@@ -173,22 +173,26 @@ def test_projection_matrix2():
     assert far_product[2] == approx(-far_product[3])
 
 
-# test fovy
-@mark.skip(reason="Not sure how to test")
+# test fov by placing at corner of near plane
 def test_projection_matrix3():
     # Note: OpenGL is right-handed, so the z-axis is pointing out of the screen back to the viewer
     cam = Camera()
     cam.aspect_ratio = 2.0
-    cam.fovy = 45.0
-    cam.near = 1.0
+    cam.fovy = 53.0
+    cam.near = 0.02
     cam.far = 100.0
+    cam.look_at = np.array([0.0, 0.0, 1.0])
+    cam.up = np.array([0.0, 1.0, 0.0])
+    cam.position = np.array([0.0, 0.0, 0.0])
     projection_matrix = cam.projection_matrix
     assert projection_matrix.shape == (4, 4)
-    #  aspect_ratio * tan(fovy/2),tan(fov/2), near should map to [1.0, 1.0, 1] in clip space, or in 4 dim [1, z, z, z], z arbitrary
     y = cam.near * np.tan(np.radians(cam.fovy) / 2)
-    x = y * cam.aspect_ratio
-    near_product = projection_matrix.dot(np.array([x, y, -cam.near, 1.0]))
-    assert near_product / near_product[3] == approx(np.array([1.0, 1.0, 1.0, 1.0]))
+    x = -y * cam.aspect_ratio
+    near_product = projection_matrix.T.dot(
+        cam.view_matrix.T.dot(np.array([x, y, cam.near, 1.0]))
+    )
+    # Not sure about the signs, esp why z = -1.
+    assert near_product[0:3] / near_product[3] == approx(np.array([1.0, 1.0, -1.0]))
 
 
 def test_orbit_look_at_unchanged():
