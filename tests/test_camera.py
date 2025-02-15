@@ -102,12 +102,31 @@ def test_view_matrix2():
     view_matrix = cam.view_matrix
     assert view_matrix.shape == (4, 4)
     assert view_matrix.dtype == np.float32
-    approx(view_matrix * np.append(cam.look_at, 1.0), np.array([0.0, 0.0, 0.0, 1.0]))
-    approx(view_matrix * np.append(cam.up, 1.0), np.array([0.0, 1.0, 0.0, 1.0]))
-    approx(view_matrix * np.append(cam.position, 1.0), np.array([0.0, 0.0, 0.0, 1.0]))
+
+    # Look at should map to [0, 0, -distance] in camera space
+    vm_dot_look_at = view_matrix.T.dot(np.append(cam.look_at, 1.0))
+    distance = np.linalg.norm(cam.look_at - cam.position)
+    assert vm_dot_look_at[0:3] / vm_dot_look_at[3] == approx(
+        np.array([0.0, 0.0, -distance]), abs=1e-6
+    )
+
+    # Perp up  starting from position should map to [0, 1, 0] in camera space
+    vm_dot_up = view_matrix.T.dot(np.append(cam.perpendicular_up + cam.position, 1.0))
+    assert vm_dot_up[0:3] / vm_dot_up[3] == approx(np.array([0.0, 1.0, 0.0]), abs=1e-6)
+
+    # Position should map to [0, 0, 0] in camera space
+    vm_dot_position = view_matrix.T.dot(np.append(cam.position, 1.0))
+    assert vm_dot_position[0:3] / vm_dot_position[3] == approx(
+        np.array([0.0, 0.0, 0.0]), abs=1e-6
+    )
+
+    # Normalized direction should map to [0, 0, -1] in camera space
     norm_direction = cam.direction / np.linalg.norm(cam.direction)
-    approx(
-        view_matrix * np.append(norm_direction, 1.0), np.array([0.0, 0.0, -1.0, 1.0])
+    vm_dot_norm_direction = view_matrix.T.dot(
+        np.append(norm_direction + cam.position, 1.0)
+    )
+    assert vm_dot_norm_direction[0:3] / vm_dot_norm_direction[3] == approx(
+        np.array([0.0, 0.0, -1.0]), abs=1e-6
     )
 
 
@@ -291,23 +310,20 @@ def test_frame_points_in_clip():
         ]
     )
     # fmt on
-    cam.frame(points, np.array([3.0, 2.0, 1.0]))
+    direction = np.array([3.0, 2.0, 1.0])
+    cam.frame(points, direction)
     print(f"fovx: {cam.fovx}; fovy: {cam.fovy}")
+
+    # cam should be pointing along direction
+    assert cam.direction / np.linalg.norm(cam.direction) == approx(
+        direction / np.linalg.norm(direction),
+    )
+
+    # each point should have x, y  in [-1, 1]
     for point in points:
-        view_point = cam.view_matrix.dot(np.append(point, 1.0))
-        print("vpw:", view_point)
-        print("vp:", view_point[:3] / view_point[3])
-        print(
-            f"ax: {2 * np.rad2deg(np.arctan(view_point[0] / view_point[2] / view_point[3]))}"
+        projected_point = cam.projection_matrix.T.dot(
+            cam.view_matrix.T.dot(np.append(point, 1.0))
         )
-        print(
-            f"ay: {2 * np.rad2deg(np.arctan(view_point[1] / view_point[2] / view_point[3]))}"
-        )
-        projected_point = cam.projection_matrix.dot(
-            cam.view_matrix.dot(np.append(point, 1.0))
-        )
-        print("ppw:", projected_point)
         print("pp:", projected_point[:3] / projected_point[3])
-        # assert -1.0 <= projected_point[0] / projected_point[3] <= 1.0
-        # assert -1.0 <= projected_point[1] / projected_point[3] <= 1.0
-    assert False
+        assert -1.0 <= projected_point[0] / projected_point[3] <= 1.0
+        assert -1.0 <= projected_point[1] / projected_point[3] <= 1.0

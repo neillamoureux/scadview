@@ -86,7 +86,7 @@ class Camera:
         """
         center = np.mean(points, axis=0)
         self.look_at = center
-        self.postition = center - direction
+        self.position = center - direction
         norm_direction = direction / np.linalg.norm(direction)
         bb = self._find_bounding_box_after_view(points)
         abs_x_max = np.max(np.abs(bb[:, 0]))
@@ -94,11 +94,9 @@ class Camera:
         max_z = np.max(
             bb[:, 2]
         )  # distance to closest plane( +z closer to camera); if positive, plane is behind camera
-        # position_on_plane_origin = self.position - norm_direction * max_z
         x_dist = abs_x_max / np.tan(np.radians(self.fovx) / 2)
         y_dist = abs_y_max / np.tan(np.radians(self.fovy) / 2)
         dist = max(x_dist, y_dist)
-        # self.position = position_on_plane_origin - dist * norm_direction
         self.position = center - direction - norm_direction * (max_z + dist)
 
     def _find_bounding_box_after_view(self, points: np.ndarray) -> np.ndarray:
@@ -108,7 +106,8 @@ class Camera:
         min = [np.Inf, np.Inf, np.Inf]
         max = [-np.Inf, -np.Inf, -np.Inf]
         for point in points:
-            view_point = self.view_matrix.dot(np.append(point, 1.0))
+            # Use transpose since the point is a row vector
+            view_point = self.view_matrix.T.dot(np.append(point, 1.0))
             view_point = view_point[:3] / view_point[3]
             for i in range(3):
                 if view_point[i] < min[i]:
