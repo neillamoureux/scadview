@@ -1,11 +1,13 @@
 from meshsee.camera import Camera
 from meshsee.gl_ui import GlUi
+from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.renderer import RendererFactory
 
 
 def main():
     renderer_factory = RendererFactory(Camera())
-    app = App(GlUi(renderer_factory))
+    gl_widget_adapter = GlWidgetAdapter(renderer_factory)
+    app = App(GlUi(gl_widget_adapter))
     app.run()
 
 

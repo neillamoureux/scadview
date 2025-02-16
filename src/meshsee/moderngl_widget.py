@@ -1,3 +1,4 @@
+from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.renderer import RendererFactory
 
 import numpy as np
@@ -6,23 +7,24 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
 class ModernglWidget(QOpenGLWidget):
-    ORBIT_ROTATION_SPEED = 0.01
+    # ORBIT_ROTATION_SPEED = 0.01
     # BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
-    def __init__(self, renderer_factory: RendererFactory, parent=None):
+    def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
         # self._camera = camera
-        self._renderer_factory = renderer_factory
+        self._gl_widget_adapter = gl_widget_adapter
         # self._default_mesh = _make_default_mesh()
         self._gl_initialized = False
 
     def initializeGL(self):  # override
         # self._camera = Camera()
         # self._camera.aspect_ratio = self.width() / self.height()
-        aspect_ratio = self.width() / self.height()
+        self._gl_widget_adapter.init_gl(self.width(), self.height())
+        # aspect_ratio = self.width() / self.height()
 
         # You cannot create the context before initializeGL is called
-        self._renderer = self._renderer_factory.make(aspect_ratio)
+        # self._renderer = self._renderer_factory.make(aspect_ratio)
         # self._ctx = moderngl.create_context()
         # self._update_framebuffer_size(
         #     self.width(), self.height(), self.devicePixelRatio()
@@ -99,7 +101,7 @@ class ModernglWidget(QOpenGLWidget):
     #     self._prog["color"].value = 1.0, 0.0, 1.0, 1.0
 
     def paintGL(self):  # override
-        self._renderer.render()
+        self._gl_widget_adapter.render()
         # self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
@@ -111,44 +113,49 @@ class ModernglWidget(QOpenGLWidget):
         # self._ctx.clear(*self.BACKGROUND_COLOR)
 
     def resizeGL(self, width, height):  # override
-        self._renderer.aspect_ratio = width / height
+        self._gl_widget_adapter.resize(width, height)
+        # self._renderer.aspect_ratio = width / height
         # self._update_framebuffer_size(width, height, self.devicePixelRatio())
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._left_button_pressed = True
-        self._last_x = event.position().x()
-        self._last_y = event.position().y()
+            self._gl_widget_adapter.start_orbit(
+                event.position().x(), event.position().y()
+            )
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._left_button_pressed = False
+            self._gl_widget_adapter.end_orbit()
 
     def mouseMoveEvent(self, event):
         """
         Rotate the camera based on mouse movement.
         """
-        # If left button is pressed, rotate the camera
-        if self._left_button_pressed:
-            x = event.position().x()
-            y = event.position().y()
-            dx = x - self._last_x
-            dy = y - self._last_y
-            self._last_x = x
-            self._last_y = y
-            angle_from_up = np.arctan2(dy, dx) + np.pi / 2.0
-            rotation_angle = np.linalg.norm([dx, dy]) * self.ORBIT_ROTATION_SPEED
-            self.orbit(angle_from_up, rotation_angle)
-
-    def orbit(self, angle_from_up, rotation_angle):
-        self._renderer.orbit(angle_from_up, rotation_angle)
-        # self._camera.orbit(angle_from_up, rotation_angle)
-        # self._prog["m_camera"].write(self._camera.view_matrix)
-        # self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._gl_widget_adapter.do_orbit(event.position().x(), event.position().y())
         self.update()
+        # # If left button is pressed, rotate the camera
+        # if self._left_button_pressed:
+        #     x = event.position().x()
+        #     y = event.position().y()
+        #     dx = x - self._last_x
+        #     dy = y - self._last_y
+        #     self._last_x = x
+        #     self._last_y = y
+        #     angle_from_up = np.arctan2(dy, dx) + np.pi / 2.0
+        #     rotation_angle = np.linalg.norm([dx, dy]) * self.ORBIT_ROTATION_SPEED
+        #     self.orbit(angle_from_up, rotation_angle)
+
+    # def orbit(self, angle_from_up, rotation_angle):
+    #     self._renderer.orbit(angle_from_up, rotation_angle)
+    #     # self._camera.orbit(angle_from_up, rotation_angle)
+    #     # self._prog["m_camera"].write(self._camera.view_matrix)
+    #     # self._prog["m_proj"].write(self._camera.projection_matrix)
+    #     self.update()
 
     def view_from_xyz(self):
-        direction = np.array([-1, -1, -1])
-        up = np.array([0, 0, 1])
-        self._renderer.frame(direction, up)
+        self._gl_widget_adapter.view_from_xyz()
         self.update()
+        # direction = np.array([-1, -1, -1])
+        # up = np.array([0, 0, 1])
+        # self._renderer.frame(direction, up)
+        # self.update()

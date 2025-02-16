@@ -10,17 +10,17 @@ from PySide6.QtWidgets import (
 from meshsee.moderngl_widget import (
     ModernglWidget,
 )
-from meshsee.renderer import RendererFactory
+from meshsee.gl_widget_adapter import GlWidgetAdapter
 
 
 class MainWindow(QMainWindow):
     BUTTON_STRIP_HEIGHT = 50
 
     def __init__(
-        self, title: str, size: tuple[int, int], renderer_factory: RendererFactory
+        self, title: str, size: tuple[int, int], gl_widget_adapter: GlWidgetAdapter
     ):
         super().__init__()
-        self._renderer_factory = renderer_factory
+        self._gl_widget_adapter = gl_widget_adapter
         self.setWindowTitle(title)
         self.resize(*size)
         self._main_layout = self._create_main_layout()
@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         return main_layout
 
     def _create_graphics_widget(self):
-        gl_widget = ModernglWidget(self._renderer_factory)
+        gl_widget = ModernglWidget(self._gl_widget_adapter)
         gl_widget.setFocusPolicy(Qt.StrongFocus)
         return gl_widget
 

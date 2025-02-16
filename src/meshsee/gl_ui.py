@@ -9,8 +9,8 @@ from PySide6.QtWidgets import (
     QSplashScreen,
 )
 
+from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.main_window import MainWindow
-from meshsee.renderer import RendererFactory
 
 
 def prepare_surface_format(gl_version: tuple[int, int]):
@@ -28,7 +28,7 @@ class GlUi:
     GL_VERSION = (3, 3)
     _instance = None
 
-    def __init__(self, renderer_factory: RendererFactory):
+    def __init__(self, gl_widget_adapter: GlWidgetAdapter):
         if self.__class__._instance is not None:
             raise RuntimeError("Only one instance of App is allowed")
         self.__class__._instance = self
@@ -36,7 +36,7 @@ class GlUi:
         self._app = QApplication(sys.argv)
         self._show_splash()
         self._main_window = MainWindow(
-            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, renderer_factory
+            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, gl_widget_adapter
         )
 
     def _show_splash(self):
