@@ -15,7 +15,11 @@ from PySide6.QtWidgets import (
 )
 
 from meshsee.camera import Camera
-from meshsee.moderngl_widget import ModernglWidget, prepare_surface_format
+from meshsee.moderngl_widget import (
+    ModernglWidget,
+    prepare_surface_format,
+    RendererFactory,
+)
 
 
 def main():
@@ -38,8 +42,9 @@ class App:
         self._app = QApplication(sys.argv)
         self._show_splash()
         self._camera = Camera()
+        renderer_factory = RendererFactory(self._camera)
         self._main_window = MainWindow(
-            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, self._camera
+            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, renderer_factory
         )
 
     def _show_splash(self):

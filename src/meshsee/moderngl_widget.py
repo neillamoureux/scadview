@@ -80,38 +80,27 @@ def _make_default_mesh() -> Trimesh:
     return box([1.0, 1.0, 1.0])
 
 
-class ModernglWidget(QOpenGLWidget):
-    ORBIT_ROTATION_SPEED = 0.01
+class Renderer:
+    # ORBIT_ROTATION_SPEED = 0.01
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
-    def __init__(self, camera: Camera, parent=None):
-        super().__init__(parent)
+    def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
+        self._ctx = context
         self._camera = camera
-        self._default_mesh = _make_default_mesh()
-        self._gl_initialized = False
-
-    def initializeGL(self):  # override
-        # self._camera = Camera()
-        self._camera.aspect_ratio = self.width() / self.height()
-
-        # You cannot create the context before initializeGL is called
-        self._ctx = moderngl.create_context()
-        self._update_framebuffer_size(
-            self.width(), self.height(), self.devicePixelRatio()
-        )
-
         self._prog = self._create_shader_program()
-        self.load_mesh(self._default_mesh)
+        self.aspect_ratio = aspect_ratio
         self._ctx.clear(*self.BACKGROUND_COLOR)
-        self._gl_initialized = True
+        self._default_mesh = _make_default_mesh()
+        self.load_mesh(self._default_mesh)
 
-    def _update_framebuffer_size(self, width, height, device_pixel_ratio):
-        framebuffer_width = int(width * device_pixel_ratio)
-        framebuffer_height = int(height * device_pixel_ratio)
-        self._aspect_ratio = framebuffer_width / framebuffer_height
-        if self._gl_initialized:
-            self._camera.aspect_ratio = self._aspect_ratio
-            self._prog["m_proj"].write(self._camera.projection_matrix)
+    @property
+    def aspect_ratio(self):
+        return self._camera.aspect_ratio
+
+    @aspect_ratio.setter
+    def aspect_ratio(self, aspect_ratio):
+        self._camera.aspect_ratio = aspect_ratio
+        self._prog["m_proj"].write(self._camera.projection_matrix)
 
     def _create_shader_program(self) -> moderngl.Program:
         try:
@@ -132,7 +121,7 @@ class ModernglWidget(QOpenGLWidget):
         except Exception as e:
             print(f"Error creating vertex array: {e}")
 
-        self._frame()
+        self.frame()
 
     def _setup_mesh(self, mesh: Trimesh):
         mesh = mesh
@@ -156,10 +145,9 @@ class ModernglWidget(QOpenGLWidget):
         )
         return vao
 
-    def _frame(self, direction=None, up=None):
+    def frame(self, direction=None, up=None):
         self._camera.frame(self._points, direction, up)
         self._set_program_data()
-        self.update()
 
     def _set_program_data(self):
         m_model = Matrix44.identity(dtype="f4")
@@ -169,7 +157,12 @@ class ModernglWidget(QOpenGLWidget):
         self._prog["m_proj"].write(self._camera.projection_matrix)
         self._prog["color"].value = 1.0, 0.0, 1.0, 1.0
 
-    def paintGL(self):  # override
+    def orbit(self, angle_from_up, rotation_angle):
+        self._camera.orbit(angle_from_up, rotation_angle)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+
+    def render(self):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
@@ -180,8 +173,123 @@ class ModernglWidget(QOpenGLWidget):
         # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
         self._ctx.clear(*self.BACKGROUND_COLOR)
 
+
+class RendererFactory:
+    def __init__(self, camera: Camera):
+        self._camera = camera
+
+    def make(self, aspect_ratio) -> Renderer:
+        return Renderer(moderngl.create_context(), self._camera, aspect_ratio)
+
+
+class ModernglWidget(QOpenGLWidget):
+    ORBIT_ROTATION_SPEED = 0.01
+    # BACKGROUND_COLOR = (0.5, 0.3, 0.2)
+
+    def __init__(self, renderer_factory: RendererFactory, parent=None):
+        super().__init__(parent)
+        # self._camera = camera
+        self._renderer_factory = renderer_factory
+        self._default_mesh = _make_default_mesh()
+        self._gl_initialized = False
+
+    def initializeGL(self):  # override
+        # self._camera = Camera()
+        # self._camera.aspect_ratio = self.width() / self.height()
+        aspect_ratio = self.width() / self.height()
+
+        # You cannot create the context before initializeGL is called
+        self._renderer = self._renderer_factory.make(aspect_ratio)
+        # self._ctx = moderngl.create_context()
+        # self._update_framebuffer_size(
+        #     self.width(), self.height(), self.devicePixelRatio()
+        # )
+
+        # self._prog = self._create_shader_program()
+        # self.load_mesh(self._default_mesh)
+        # self._ctx.clear(*self.BACKGROUND_COLOR)
+        self._gl_initialized = True
+
+    # def _update_framebuffer_size(self, width, height, device_pixel_ratio):
+    #     self._renderer.aspect_ratio = width / height
+    # framebuffer_width = int(width * device_pixel_ratio)
+    # framebuffer_height = int(height * device_pixel_ratio)
+    # self._aspect_ratio = framebuffer_width / framebuffer_height
+    # if self._gl_initialized:
+    #     self._camera.aspect_ratio = self._aspect_ratio
+    #     self._prog["m_proj"].write(self._camera.projection_matrix)
+
+    # def _create_shader_program(self) -> moderngl.Program:
+    #     try:
+    #         return self._ctx.program(
+    #             vertex_shader=_VERTEX_SHADER,
+    #             fragment_shader=_FRAGMENT_SHADER,
+    #         )
+    #     except Exception as e:
+    #         print(f"Error creating shader program: {e}")
+
+    # def load_mesh(
+    #     self,
+    #     mesh: Trimesh,
+    # ):
+    #     self._mesh, self._points, self._vertices, self._normals = self._setup_mesh(mesh)
+    #     try:
+    #         self._vao = self._create_vao()
+    #     except Exception as e:
+    #         print(f"Error creating vertex array: {e}")
+
+    #     self._frame()
+
+    # def _setup_mesh(self, mesh: Trimesh):
+    #     mesh = mesh
+    #     points = mesh.triangles.reshape(-1, 3)
+    #     vertices = self._ctx.buffer(data=mesh.triangles.astype("f4"))
+    #     normals = self._ctx.buffer(
+    #         data=np.array([[v] * 3 for v in mesh.triangles_cross])
+    #         .astype("f4")
+    #         .tobytes()
+    #     )
+    #     return mesh, points, vertices, normals
+
+    # def _create_vao(self):
+    #     vao = self._ctx.vertex_array(
+    #         self._prog,
+    #         [
+    #             (self._vertices, "3f4", "in_position"),
+    #             (self._normals, "3f4", "in_normal"),
+    #         ],
+    #         mode=moderngl.TRIANGLES,
+    #     )
+    #     return vao
+
+    # def _frame(self, direction=None, up=None):
+    #     self._camera.frame(self._points, direction, up)
+    #     self._set_program_data()
+    #     self.update()
+
+    # def _set_program_data(self):
+    #     m_model = Matrix44.identity(dtype="f4")
+
+    #     self._prog["m_model"].write(m_model)
+    #     self._prog["m_camera"].write(self._camera.view_matrix)
+    #     self._prog["m_proj"].write(self._camera.projection_matrix)
+    #     self._prog["color"].value = 1.0, 0.0, 1.0, 1.0
+
+    def paintGL(self):  # override
+        self._renderer.render()
+        # self._ctx.enable_only(moderngl.DEPTH_TEST)
+        # self.ctx.enable_only(moderngl.BLEND)
+        # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
+        # self._vao.render()
+        # I don't know why calling clear after the render works
+        # Calling before obliterates the rendering
+        # Possibly because the render method swaps the frame buffer?
+        # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
+        # self._ctx.clear(*self.BACKGROUND_COLOR)
+
     def resizeGL(self, width, height):  # override
-        self._update_framebuffer_size(width, height, self.devicePixelRatio())
+        self._renderer.aspect_ratio = width / height
+        # self._update_framebuffer_size(width, height, self.devicePixelRatio())
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -210,12 +318,13 @@ class ModernglWidget(QOpenGLWidget):
             self.orbit(angle_from_up, rotation_angle)
 
     def orbit(self, angle_from_up, rotation_angle):
-        self._camera.orbit(angle_from_up, rotation_angle)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._renderer.orbit(angle_from_up, rotation_angle)
+        # self._camera.orbit(angle_from_up, rotation_angle)
+        # self._prog["m_camera"].write(self._camera.view_matrix)
+        # self._prog["m_proj"].write(self._camera.projection_matrix)
         self.update()
 
     def view_from_xyz(self):
         direction = np.array([-1, -1, -1])
         up = np.array([0, 0, 1])
-        self._frame(direction, up)
+        self._renderer.frame(direction, up)
