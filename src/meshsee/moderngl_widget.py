@@ -160,3 +160,4 @@ class ModernglWidget(QOpenGLWidget):
         direction = np.array([-1, -1, -1])
         up = np.array([0, 0, 1])
         self._renderer.frame(direction, up)
+        self.update()
