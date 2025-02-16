@@ -41,3 +41,15 @@ class ModernglWidget(QOpenGLWidget):
     def view_from_xyz(self):
         self._gl_widget_adapter.view_from_xyz()
         self.update()
+
+    def view_from_x(self):
+        self._gl_widget_adapter.view_from_x()
+        self.update()
+
+    def view_from_y(self):
+        self._gl_widget_adapter.view_from_y()
+        self.update()
+
+    def view_from_z(self):
+        self._gl_widget_adapter.view_from_z()
+        self.update()

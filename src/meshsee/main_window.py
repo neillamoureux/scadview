@@ -79,17 +79,17 @@ class MainWindow(QMainWindow):
         view_from_xyz_btn.clicked.connect(self._gl_widget.view_from_xyz)
         camera_button_layout.addWidget(view_from_xyz_btn)
 
-        view_from_x_positive_btn = QPushButton("View from X+")
-        # view_from_x_positive_btn.clicked.connect(self.view_from_x_positive)
-        camera_button_layout.addWidget(view_from_x_positive_btn)
+        view_from_x_btn = QPushButton("View from X+")
+        view_from_x_btn.clicked.connect(self._gl_widget.view_from_x)
+        camera_button_layout.addWidget(view_from_x_btn)
 
-        view_from_y_positive_btn = QPushButton("View from Y+")
-        # view_from_y_positive_btn.clicked.connect(self.view_from_y_positive)
-        camera_button_layout.addWidget(view_from_y_positive_btn)
+        view_from_y_btn = QPushButton("View from Y+")
+        view_from_y_btn.clicked.connect(self._gl_widget.view_from_y)
+        camera_button_layout.addWidget(view_from_y_btn)
 
-        view_from_z_positive_btn = QPushButton("View from Z+")
-        # view_from_z_positive_btn.clicked.connect(self.view_from_z_positive)
-        camera_button_layout.addWidget(view_from_z_positive_btn)
+        view_from_z_btn = QPushButton("View from Z+")
+        view_from_z_btn.clicked.connect(self._gl_widget.view_from_z)
+        camera_button_layout.addWidget(view_from_z_btn)
 
         orbit_btn = QPushButton("Orbit")
         # orbit_btn.clicked.connect(self.orbit)

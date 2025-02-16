@@ -49,3 +49,18 @@ class GlWidgetAdapter:
         direction = np.array([-1, -1, -1])
         up = np.array([0, 0, 1])
         self._renderer.frame(direction, up)
+
+    def view_from_x(self):
+        direction = np.array([-1, 0, 0])
+        up = np.array([0, 0, 1])
+        self._renderer.frame(direction, up)
+
+    def view_from_y(self):
+        direction = np.array([0, -1, 0])
+        up = np.array([0, 0, 1])
+        self._renderer.frame(direction, up)
+
+    def view_from_z(self):
+        direction = np.array([0, 0, -1])
+        up = np.array([0, 1, 0])
+        self._renderer.frame(direction, up)
