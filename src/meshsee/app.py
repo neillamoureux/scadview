@@ -1,6 +1,7 @@
 import os
 import sys
 
+import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from meshsee.camera import Camera
 from meshsee.moderngl_widget import ModernglWidget, prepare_surface_format
 
 
@@ -35,7 +37,10 @@ class App:
         prepare_surface_format(self.GL_VERSION)
         self._app = QApplication(sys.argv)
         self._show_splash()
-        self._main_window = MainWindow(self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE)
+        self._camera = Camera()
+        self._main_window = MainWindow(
+            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, self._camera
+        )
 
     def _show_splash(self):
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -60,8 +65,9 @@ class App:
 class MainWindow(QMainWindow):
     BUTTON_STRIP_HEIGHT = 50
 
-    def __init__(self, title: str, size: tuple[int, int]):
+    def __init__(self, title: str, size: tuple[int, int], camera: Camera):
         super().__init__()
+        self._camera = camera
         self.setWindowTitle(title)
         self.resize(*size)
         self._main_layout = self._create_main_layout()
@@ -83,7 +89,7 @@ class MainWindow(QMainWindow):
         return main_layout
 
     def _create_graphics_widget(self):
-        gl_widget = ModernglWidget()
+        gl_widget = ModernglWidget(self._camera)
         gl_widget.setFocusPolicy(Qt.StrongFocus)
         return gl_widget
 
@@ -117,7 +123,7 @@ class MainWindow(QMainWindow):
 
         # Add buttons to the button layout
         view_from_xyz_btn = QPushButton("View from XYZ")
-        # view_from_xyz_btn.clicked.connect(self.view_from_xyz)
+        view_from_xyz_btn.clicked.connect(self._gl_widget.view_from_xyz)
         camera_button_layout.addWidget(view_from_xyz_btn)
 
         view_from_x_positive_btn = QPushButton("View from X+")

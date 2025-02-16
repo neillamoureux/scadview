@@ -1,6 +1,6 @@
 import moderngl
 import numpy as np
-from pyrr import matrix44, Matrix44
+from pyrr import Matrix44
 from PySide6.QtCore import Qt
 from PySide6 import QtGui
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -84,15 +84,15 @@ class ModernglWidget(QOpenGLWidget):
     ORBIT_ROTATION_SPEED = 0.01
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
-    def __init__(self, parent=None):
+    def __init__(self, camera: Camera, parent=None):
         super().__init__(parent)
+        self._camera = camera
         self._default_mesh = _make_default_mesh()
         self._gl_initialized = False
 
     def initializeGL(self):  # override
-        self._camera = Camera()
+        # self._camera = Camera()
         self._camera.aspect_ratio = self.width() / self.height()
-        # self.camera.frame_points(VERTICES)
 
         # You cannot create the context before initializeGL is called
         self._ctx = moderngl.create_context()
@@ -126,25 +126,24 @@ class ModernglWidget(QOpenGLWidget):
         self,
         mesh: Trimesh,
     ):
-        self._mesh, self._vertices, self._normals = self._setup_mesh(mesh)
+        self._mesh, self._points, self._vertices, self._normals = self._setup_mesh(mesh)
         try:
             self._vao = self._create_vao()
         except Exception as e:
             print(f"Error creating vertex array: {e}")
 
-        self._set_program_data()
-
-        self.update()
+        self._frame()
 
     def _setup_mesh(self, mesh: Trimesh):
         mesh = mesh
+        points = mesh.triangles.reshape(-1, 3)
         vertices = self._ctx.buffer(data=mesh.triangles.astype("f4"))
         normals = self._ctx.buffer(
             data=np.array([[v] * 3 for v in mesh.triangles_cross])
             .astype("f4")
             .tobytes()
         )
-        return mesh, vertices, normals
+        return mesh, points, vertices, normals
 
     def _create_vao(self):
         vao = self._ctx.vertex_array(
@@ -156,6 +155,11 @@ class ModernglWidget(QOpenGLWidget):
             mode=moderngl.TRIANGLES,
         )
         return vao
+
+    def _frame(self, direction=None, up=None):
+        self._camera.frame(self._points, direction, up)
+        self._set_program_data()
+        self.update()
 
     def _set_program_data(self):
         m_model = Matrix44.identity(dtype="f4")
@@ -210,3 +214,8 @@ class ModernglWidget(QOpenGLWidget):
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
         self.update()
+
+    def view_from_xyz(self):
+        direction = np.array([-1, -1, -1])
+        up = np.array([0, 0, 1])
+        self._frame(direction, up)
