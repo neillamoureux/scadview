@@ -99,7 +99,7 @@ class Camera:
         self.look_at = center
         self.position = center - direction
         norm_direction = direction / np.linalg.norm(direction)
-        bb = self._find_bounding_box_after_view(points)
+        bb = self._bounding_box_in_cam_space(points)
         abs_x_max = np.max(np.abs(bb[:, 0]))
         abs_y_max = np.max(np.abs(bb[:, 1]))
         max_z = np.max(
@@ -110,7 +110,7 @@ class Camera:
         dist = max(x_dist, y_dist)
         self.position = center - direction - norm_direction * (max_z + dist)
 
-    def _find_bounding_box_after_view(self, points: np.ndarray) -> np.ndarray:
+    def _bounding_box_in_cam_space(self, points: np.ndarray) -> np.ndarray:
         """
         Find the bounding box of the points.
         """
