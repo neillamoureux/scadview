@@ -3,6 +3,8 @@ from meshsee.gl_widget_adapter import GlWidgetAdapter
 from PySide6.QtCore import Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
+from trimesh import Trimesh
+
 
 class ModernglWidget(QOpenGLWidget):
 
@@ -52,4 +54,8 @@ class ModernglWidget(QOpenGLWidget):
 
     def view_from_z(self):
         self._gl_widget_adapter.view_from_z()
+        self.update()
+
+    def load_mesh(self, mesh: Trimesh):
+        self._gl_widget_adapter.load_mesh(mesh)
         self.update()

@@ -1,4 +1,5 @@
 from meshsee.camera import Camera
+from meshsee.controller import Controller
 from meshsee.gl_ui import GlUi
 from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.renderer import RendererFactory
@@ -7,7 +8,8 @@ from meshsee.renderer import RendererFactory
 def main():
     renderer_factory = RendererFactory(Camera())
     gl_widget_adapter = GlWidgetAdapter(renderer_factory)
-    app = App(GlUi(gl_widget_adapter))
+    controller = Controller(gl_widget_adapter)
+    app = App(GlUi(controller))
     app.run()
 
 

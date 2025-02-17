@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QMainWindow,
     QPushButton,
@@ -7,20 +8,24 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from meshsee.app import Controller
+from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.moderngl_widget import (
     ModernglWidget,
 )
-from meshsee.gl_widget_adapter import GlWidgetAdapter
 
 
 class MainWindow(QMainWindow):
     BUTTON_STRIP_HEIGHT = 50
 
     def __init__(
-        self, title: str, size: tuple[int, int], gl_widget_adapter: GlWidgetAdapter
+        self,
+        title: str,
+        size: tuple[int, int],
+        controller: Controller,
     ):
         super().__init__()
-        self._gl_widget_adapter = gl_widget_adapter
+        self._controller = controller
         self.setWindowTitle(title)
         self.resize(*size)
         self._main_layout = self._create_main_layout()
@@ -42,7 +47,7 @@ class MainWindow(QMainWindow):
         return main_layout
 
     def _create_graphics_widget(self):
-        gl_widget = ModernglWidget(self._gl_widget_adapter)
+        gl_widget = ModernglWidget(self._controller._gl_widget_adapter)
         gl_widget.setFocusPolicy(Qt.StrongFocus)
         return gl_widget
 
@@ -53,7 +58,7 @@ class MainWindow(QMainWindow):
         file_button_strip.setFixedHeight(self.BUTTON_STRIP_HEIGHT)
 
         load_file_btn = QPushButton("Load File")
-        # load_file_btn.clicked.connect(self.load_file)
+        load_file_btn.clicked.connect(self.load_file)
         file_button_layout.addWidget(load_file_btn)
 
         reload_file_btn = QPushButton("Reload File")
@@ -96,3 +101,14 @@ class MainWindow(QMainWindow):
         camera_button_layout.addWidget(orbit_btn)
 
         return camera_button_strip
+
+    def load_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open File", "", "Python Files (*.py)"
+        )
+        mesh = self._controller.load_mesh(file_path)
+        self._gl_widget.load_mesh(mesh)
+
+    def reload(self):
+        mesh = self._controller.call_create_mesh()
+        self._gl_widget.load_mesh(mesh)

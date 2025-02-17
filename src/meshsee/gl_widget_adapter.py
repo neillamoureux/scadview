@@ -64,3 +64,6 @@ class GlWidgetAdapter:
         direction = np.array([0, 0, -1])
         up = np.array([0, 1, 0])
         self._renderer.frame(direction, up)
+
+    def load_mesh(self, mesh):
+        self._renderer.load_mesh(mesh)
