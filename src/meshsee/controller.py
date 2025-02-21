@@ -15,8 +15,5 @@ class Controller:
     def gl_widget_adapter(self):
         return self._gl_widget_adapter
 
-    def load_mesh(self, module_path: str) -> Trimesh:
+    def load_mesh(self, module_path: str | None = None) -> Trimesh:
         return self._module_loader.run_function(module_path)
-
-    def reload_mesh(self):
-        return self._module_loader.run_function()

@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         file_button_layout.addWidget(load_file_btn)
 
         reload_file_btn = QPushButton("Reload File")
-        # reload_file_btn.clicked.connect(self.reload)
+        reload_file_btn.clicked.connect(self.reload)
         file_button_layout.addWidget(reload_file_btn)
 
         export_stl_btn = QPushButton("Export STL")
@@ -110,5 +110,5 @@ class MainWindow(QMainWindow):
         self._gl_widget.load_mesh(mesh)
 
     def reload(self):
-        mesh = self._controller.call_create_mesh()
+        mesh = self._controller.load_mesh()
         self._gl_widget.load_mesh(mesh)
