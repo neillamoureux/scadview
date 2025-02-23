@@ -48,17 +48,17 @@ class ModernglWidget(QOpenGLWidget):
 
     def keyPressEvent(self, event):
         key = event.key()
-        if key == Qt.Key_W:
+        if key == Qt.Key_W or key ==  Qt.Key_Up:
             self._gl_widget_adapter.move(self.MOVE_STEP)
-        elif key == Qt.Key_S:
+        elif key == Qt.Key_S or key == Qt.Key_Down:
             self._gl_widget_adapter.move(-self.MOVE_STEP)
-        elif key == Qt.Key_A:
+        elif key == Qt.Key_A or key == Qt.Key_Left:
             self._gl_widget_adapter.move_right(-self.MOVE_STEP)
-        elif key == Qt.Key_D:
+        elif key == Qt.Key_D or key == Qt.Key_Right:
             self._gl_widget_adapter.move_right(self.MOVE_STEP)
-        elif key == Qt.Key_Q:
+        elif key == Qt.Key_Q or key == Qt.Key_PageUp:
             self._gl_widget_adapter.move_up(self.MOVE_STEP)
-        elif key == Qt.Key_E:
+        elif key == Qt.Key_E or key == Qt.Key_PageDown:
             self._gl_widget_adapter.move_up(-self.MOVE_STEP)
         self.update()
 

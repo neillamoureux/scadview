@@ -66,7 +66,7 @@ void main() {
 
 
 def _make_default_mesh() -> Trimesh:
-    return box([1.0, 1.0, 1.0])
+    return box([50.0, 40.0, 30.0])
 
 
 class Renderer:
@@ -165,7 +165,7 @@ class Renderer:
         self._camera.move_right(distance)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
-        
+
     def render(self):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
