@@ -114,18 +114,10 @@ class Camera:
         """
         Find the bounding box of the points.
         """
-        min = [np.Inf, np.Inf, np.Inf]
-        max = [-np.Inf, -np.Inf, -np.Inf]
-        for point in points:
-            # Use transpose since the point is a row vector
-            view_point = self.view_matrix.T.dot(np.append(point, 1.0))
-            view_point = view_point[:3] / view_point[3]
-            for i in range(3):
-                if view_point[i] < min[i]:
-                    min[i] = view_point[i]
-                if view_point[i] > max[i]:
-                    max[i] = view_point[i]
-        return np.array([min, max])
+        points_4d = np.append(points, np.ones((points.shape[0], 1)), axis=1)
+        view_points = self.view_matrix.T.dot(points_4d.T).T
+        view_points = view_points / view_points[:, 3][:, np.newaxis]
+        return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
     
     # move the camera along the direction vector
     # without changing the look_at point
