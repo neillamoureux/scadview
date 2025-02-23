@@ -151,6 +151,21 @@ class Renderer:
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
 
+    def move(self, distance):
+        self._camera.move(distance)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+
+    def move_up(self, distance):
+        self._camera.move_up(distance)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+
+    def move_right(self, distance):
+        self._camera.move_right(distance)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+        
     def render(self):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)

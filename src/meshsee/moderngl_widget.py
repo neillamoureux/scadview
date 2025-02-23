@@ -7,6 +7,8 @@ from trimesh import Trimesh
 
 
 class ModernglWidget(QOpenGLWidget):
+    CAMERA_MOVE_FACTOR = 0.1
+    MOVE_STEP = 10.0
 
     def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
@@ -39,6 +41,27 @@ class ModernglWidget(QOpenGLWidget):
         """
         self._gl_widget_adapter.do_orbit(event.position().x(), event.position().y())
         self.update()
+    
+    def wheelEvent(self, event):
+        self._gl_widget_adapter.move(event.angleDelta().y() * self.CAMERA_MOVE_FACTOR)
+        self.update()
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_W:
+            self._gl_widget_adapter.move(self.MOVE_STEP)
+        elif key == Qt.Key_S:
+            self._gl_widget_adapter.move(-self.MOVE_STEP)
+        elif key == Qt.Key_A:
+            self._gl_widget_adapter.move_right(-self.MOVE_STEP)
+        elif key == Qt.Key_D:
+            self._gl_widget_adapter.move_right(self.MOVE_STEP)
+        elif key == Qt.Key_Q:
+            self._gl_widget_adapter.move_up(self.MOVE_STEP)
+        elif key == Qt.Key_E:
+            self._gl_widget_adapter.move_up(-self.MOVE_STEP)
+        self.update()
+
 
     def view_from_xyz(self):
         self._gl_widget_adapter.view_from_xyz()
@@ -59,3 +82,5 @@ class ModernglWidget(QOpenGLWidget):
     def load_mesh(self, mesh: Trimesh):
         self._gl_widget_adapter.load_mesh(mesh)
         self.update()
+
+    

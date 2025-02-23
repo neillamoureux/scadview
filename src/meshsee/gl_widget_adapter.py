@@ -45,6 +45,15 @@ class GlWidgetAdapter:
     def orbit(self, angle_from_up, rotation_angle):
         self._renderer.orbit(angle_from_up, rotation_angle)
 
+    def move(self, distance):
+        self._renderer.move(distance)
+
+    def move_up(self, distance):
+        self._renderer.move_up(distance)
+
+    def move_right(self, distance):
+        self._renderer.move_right(distance)
+
     def view_from_xyz(self):
         direction = np.array([-1, -1, -1])
         up = np.array([0, 0, 1])
