@@ -1,4 +1,4 @@
-from copy import copy
+from copy import copy, deepcopy
 from math import acos, cos
 
 from pytest import approx, mark
@@ -366,3 +366,56 @@ def test_frame_points_in_clip():
         print("pp:", projected_point[:3] / projected_point[3])
         assert -1.0 <= projected_point[0] / projected_point[3] <= 1.0
         assert -1.0 <= projected_point[1] / projected_point[3] <= 1.0
+
+def test_move__forward():
+    cam = Camera()
+    cam.position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -4.0, -3.0])
+    cam.look_at = deepcopy(np.array(look_at))
+    distance = np.linalg.norm(cam.direction)
+    cam.move(1.0)
+    assert np.linalg.norm(cam.direction) - distance == approx(-1.0)
+    assert np.all(cam.look_at == look_at)
+
+def test_move__back():
+    cam = Camera()
+    cam.position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -2.0, -3.0])
+    cam.look_at = deepcopy(np.array(look_at))
+    distance = np.linalg.norm(cam.direction)
+    cam.move(-1.0)
+    assert np.linalg.norm(cam.direction) - distance == approx(1.0)
+    assert np.allclose(cam.look_at, look_at)
+
+def test_move_up():
+    cam = Camera()
+    position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -2.0, -5.0])
+    cam.position = position
+    cam.look_at = look_at
+    perp_up = cam.perpendicular_up
+    direction = cam.direction
+    distance = np.linalg.norm(cam.direction)
+    cam.move_up(1.5)
+    assert np.linalg.norm(cam.direction) == approx(distance)
+    assert np.allclose(cam.direction, direction)
+    assert np.allclose(cam.position, position + perp_up * 1.5)
+    assert np.allclose(cam.look_at, look_at + perp_up * 1.5)
+    assert np.allclose(cam.perpendicular_up, perp_up)
+
+def test_move_right():
+    cam = Camera()
+    position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -2.0, -5.0])
+    cam.position = position
+    cam.look_at = look_at
+    perp_up = cam.perpendicular_up
+    direction = cam.direction
+    distance = np.linalg.norm(cam.direction)
+    cam.move_right(1.5)
+    right = np.cross(cam.direction/np.linalg.norm(cam.direction), cam.up)
+    assert np.linalg.norm(cam.direction) == approx(distance)
+    assert np.allclose(cam.direction, direction)
+    assert np.allclose(cam.position, position + right * 1.5)
+    assert np.allclose(cam.look_at, look_at + right * 1.5)
+    assert np.allclose(cam.perpendicular_up, perp_up)

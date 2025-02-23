@@ -126,3 +126,21 @@ class Camera:
                 if view_point[i] > max[i]:
                     max[i] = view_point[i]
         return np.array([min, max])
+    
+    # move the camera along the direction vector
+    # without changing the look_at point
+    def move(self, distance):
+        self.position = self.position + self.direction * distance / np.linalg.norm(self.direction)
+
+    # move the camera along the up vector
+    def move_up(self, distance):
+        displacement = self.perpendicular_up * distance
+        self.position = self.position + displacement
+        self.look_at = self.look_at + displacement
+
+    # move the camera along the right vector
+    def move_right(self, distance):
+        right = np.cross(self.direction/np.linalg.norm(self.direction), self.up)
+        self.position = self.position + right * distance
+        self.look_at = self.look_at + right * distance
+
