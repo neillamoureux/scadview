@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QSplashScreen,
 )
 
-from meshsee.app import Controller
+from meshsee.controller import Controller
 
 # from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.main_window import MainWindow

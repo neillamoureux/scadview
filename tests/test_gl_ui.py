@@ -1,7 +1,9 @@
 import pytest
 
 from meshsee.camera import Camera
+from meshsee.controller import Controller
 from meshsee.gl_ui import GlUi
+from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.renderer import RendererFactory
 
 
@@ -9,7 +11,10 @@ from meshsee.renderer import RendererFactory
 def main_ui():
     ui = GlUi.instance()
     if ui is None:
-        ui = GlUi(RendererFactory(Camera()))
+        renderer_factory = RendererFactory(Camera())
+        gl_widget_adapter = GlWidgetAdapter(renderer_factory)
+        controller = Controller(gl_widget_adapter)
+        ui = GlUi(controller)
     yield ui
 
 

@@ -8,8 +8,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from meshsee.app import Controller
-from meshsee.gl_widget_adapter import GlWidgetAdapter
+from meshsee.controller import Controller
 from meshsee.moderngl_widget import (
     ModernglWidget,
 )
