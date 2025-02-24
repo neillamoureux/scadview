@@ -64,10 +64,16 @@ void main() {
 }
 """
 
+AXIS_LENGTH = 200.0
+AXIS_WIDTH = 0.1
 
 def _make_default_mesh() -> Trimesh:
     return box([50.0, 40.0, 30.0])
 
+def _make_axes() -> Trimesh:
+    return (box([AXIS_LENGTH, AXIS_WIDTH, AXIS_WIDTH])
+        .union(box([AXIS_WIDTH, AXIS_LENGTH, AXIS_WIDTH]))
+        .union(box([AXIS_WIDTH, AXIS_WIDTH, AXIS_LENGTH])))
 
 class Renderer:
     # ORBIT_ROTATION_SPEED = 0.01
@@ -81,6 +87,8 @@ class Renderer:
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
         self.load_mesh(self._default_mesh)
+        self._axes = _make_axes()
+        self._load_axes(self._axes)
 
     @property
     def aspect_ratio(self):
@@ -112,6 +120,16 @@ class Renderer:
 
         self.frame()
 
+    def _load_axes(
+        self,
+        axes: Trimesh,
+    ):
+        self._axes_mesh, self._axes_points, self._axes_vertices, self._axes_normals = self._setup_mesh(axes)
+        try:
+            self._axes_vao = self._create_axes_vao()
+        except Exception as e:
+            print(f"Error creating vertex array: {e}")
+
     def _setup_mesh(self, mesh: Trimesh):
         mesh = mesh
         points = mesh.triangles.reshape(-1, 3)
@@ -129,6 +147,17 @@ class Renderer:
             [
                 (self._vertices, "3f4", "in_position"),
                 (self._normals, "3f4", "in_normal"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+        return vao
+
+    def _create_axes_vao(self):
+        vao = self._ctx.vertex_array(
+            self._prog,
+            [
+                (self._axes_vertices, "3f4", "in_position"),
+                (self._axes_normals, "3f4", "in_normal"),
             ],
             mode=moderngl.TRIANGLES,
         )
@@ -170,12 +199,13 @@ class Renderer:
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
+        self._axes_vao.render()
         self._vao.render()
         # I don't know why calling clear after the render works
         # Calling before obliterates the rendering
         # Possibly because the render method swaps the frame buffer?
         # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
-        self._ctx.clear(*self.BACKGROUND_COLOR)
+        # self._ctx.clear(*self.BACKGROUND_COLOR)
 
 
 class RendererFactory:
