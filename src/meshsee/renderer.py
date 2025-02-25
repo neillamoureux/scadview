@@ -195,6 +195,19 @@ class Renderer:
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
 
+    def move_along(self, vector):
+        self._camera.move_along(vector)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+
+    def move_to_screen(self, ndx:float, ndy:float, distance: float):
+        """
+        Move the camera to the normalized screen position (ndx, ndy) and move it by distance.
+        """
+        self._camera.move_to_screen(ndx, ndy, distance)
+        self._prog["m_camera"].write(self._camera.view_matrix)
+        self._prog["m_proj"].write(self._camera.projection_matrix)
+
     def render(self):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)

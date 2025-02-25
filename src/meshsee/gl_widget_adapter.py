@@ -12,16 +12,20 @@ class GlWidgetAdapter:
         self._orbiting = False
 
     def init_gl(self, width: int, height: int):
-        aspect_ratio = width / height
+        self.resize(width, height)
         # You cannot create the context before initializeGL is called
-        self._renderer = self._renderer_factory.make(aspect_ratio)
+        self._renderer = self._renderer_factory.make(width/height)
         self._gl_initialized = True
+
 
     def render(self):  # override
         self._renderer.render()
 
     def resize(self, width, height):  # override
-        self._renderer.aspect_ratio = width / height
+        self._width = width
+        self._height = height
+        if self._gl_initialized:
+            self._renderer.aspect_ratio = width / height
 
     def start_orbit(self, x: int, y: int):
         self._orbiting = True
@@ -53,6 +57,14 @@ class GlWidgetAdapter:
 
     def move_right(self, distance):
         self._renderer.move_right(distance)
+
+    def move_along(self, vector):
+        self._renderer.move_along(vector)
+
+    def move_to_screen(self, x: int, y: int, distance: float):
+        ndx = x / self._width * 2 - 1
+        ndy = 1 - y / self._height * 2
+        self._renderer.move_to_screen(ndx, ndy, distance)
 
     def view_from_xyz(self):
         direction = np.array([-1, -1, -1])

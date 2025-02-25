@@ -43,7 +43,9 @@ class ModernglWidget(QOpenGLWidget):
         self.update()
     
     def wheelEvent(self, event):
-        self._gl_widget_adapter.move(event.angleDelta().y() * self.CAMERA_MOVE_FACTOR)
+        distance = event.angleDelta().y() * self.CAMERA_MOVE_FACTOR
+        self._gl_widget_adapter.move_to_screen(event.position().x(), event.position().y(), distance)
+        # self._gl_widget_adapter.move(event.angleDelta().y() * self.CAMERA_MOVE_FACTOR)
         self.update()
 
     def keyPressEvent(self, event):

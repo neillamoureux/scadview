@@ -418,3 +418,43 @@ def test_move_right():
     assert np.allclose(cam.position, position + right * 1.5)
     assert np.allclose(cam.look_at, look_at + right * 1.5)
     assert np.allclose(cam.perpendicular_up, perp_up)
+
+def test_move_along():
+    cam = Camera()
+    position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -2.0, -5.0])
+    vector = np.array([-2.0, 3.0, 4.0])
+    cam.position = position
+    cam.look_at = look_at
+    perp_up = cam.perpendicular_up
+    cam.move_along(vector)
+    assert np.allclose(cam.position, position + vector)
+    assert np.allclose(cam.look_at, look_at + vector)
+    assert np.allclose(cam.perpendicular_up, perp_up)
+
+def test_move_to_screen():
+    cam = Camera()
+    position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -2.0, -5.0])
+    cam.position = position
+    cam.look_at = look_at
+    orig_view = cam.view_matrix
+    orig_proj = cam.projection_matrix
+    perp_up = cam.perpendicular_up
+    distance = 1.5
+    ndx = 0.6
+    ndy = -0.7
+    cam.move_to_screen(ndx, ndy, distance)
+    displacement = cam.position - position
+    assert np.linalg.norm(displacement) == approx(distance)
+    assert np.allclose(cam.direction, look_at - position)
+    assert np.allclose(cam.perpendicular_up, perp_up)
+    # TODO: check that the new position transformed with the original
+    # view and projection are at ndx, ndy
+    position_screen_coords = orig_proj.T.dot(
+        orig_view.T.dot(np.append(cam.position, 1.0))
+    )
+    assert position_screen_coords[0] / position_screen_coords[3] == approx(ndx)
+    assert position_screen_coords[1] / position_screen_coords[3] == approx(ndy)
+
+

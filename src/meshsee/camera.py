@@ -138,3 +138,18 @@ class Camera:
         self.position = self.position + right * distance
         self.look_at = self.look_at + right * distance
 
+    def move_along(self, vector):
+        self.position = self.position + vector
+        self.look_at = self.look_at + vector
+    
+    def move_to_screen(self, ndx:float, ndy:float, distance: float):
+        """
+        Move the camera to the normalized screen coordinates ndx, ndy
+        """
+        eye_pos_on_far = np.linalg.inv(self.projection_matrix.T).dot(
+            np.array([ndx, ndy, 1.0, 1.0])
+        )
+        pos_on_far = np.linalg.inv(self.view_matrix.T).dot(eye_pos_on_far)
+        ray_vector = pos_on_far[:3] / pos_on_far[3] - self.position
+        ray_vector = ray_vector / np.linalg.norm(ray_vector) * distance
+        self.move_along(ray_vector)
