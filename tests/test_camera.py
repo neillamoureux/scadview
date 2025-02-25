@@ -368,24 +368,23 @@ def test_frame_points_in_clip():
         assert -1.0 <= projected_point[1] / projected_point[3] <= 1.0
 
 def test_move__forward():
+    check_move(1.3)
+
+def check_move(move_by):
+    __tracebackhide__ = True
     cam = Camera()
     cam.position = np.array([1.0, 2.0, 3.0])
-    look_at = np.array([-1.0, -4.0, -3.0])
-    cam.look_at = deepcopy(np.array(look_at))
+    # look_at = np.array([-1.0, -4.0, -3.0])
+    position_orig = deepcopy(cam.position)
     distance = np.linalg.norm(cam.direction)
-    cam.move(1.0)
-    assert np.linalg.norm(cam.direction) - distance == approx(-1.0)
-    assert np.all(cam.look_at == look_at)
+    cam.move(move_by)
+    assert np.linalg.norm(cam.direction) == approx(distance)
+    assert np.linalg.norm(cam.position - position_orig) == approx(abs(move_by))
+    assert np.allclose(position_orig + cam.direction  * move_by / np.linalg.norm(cam.direction), cam.position)
+
 
 def test_move__back():
-    cam = Camera()
-    cam.position = np.array([1.0, 2.0, 3.0])
-    look_at = np.array([-1.0, -2.0, -3.0])
-    cam.look_at = deepcopy(np.array(look_at))
-    distance = np.linalg.norm(cam.direction)
-    cam.move(-1.0)
-    assert np.linalg.norm(cam.direction) - distance == approx(1.0)
-    assert np.allclose(cam.look_at, look_at)
+    check_move(-2.5)
 
 def test_move_up():
     cam = Camera()

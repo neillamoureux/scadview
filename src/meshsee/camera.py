@@ -122,7 +122,9 @@ class Camera:
     # move the camera along the direction vector
     # without changing the look_at point
     def move(self, distance):
-        self.position = self.position + self.direction * distance / np.linalg.norm(self.direction)
+        vector = self.direction * distance / np.linalg.norm(self.direction)
+        self.position = self.position + vector
+        self.look_at = self.look_at + vector
 
     # move the camera along the up vector
     def move_up(self, distance):
