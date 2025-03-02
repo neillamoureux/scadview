@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Signal, QObject, Qt, QRunnable, QThreadPool
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from trimesh import Trimesh
 
 from meshsee.controller import Controller
 from meshsee.moderngl_widget import (
@@ -28,6 +30,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(title)
         self.resize(*size)
         self._main_layout = self._create_main_layout()
+        self._mesh_loading_worker = None
 
     def _create_main_layout(self) -> QVBoxLayout:
         central_widget = QWidget(self)
@@ -105,9 +108,38 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open File", "", "Python Files (*.py)"
         )
-        mesh = self._controller.load_mesh(file_path)
-        self._gl_widget.load_mesh(mesh)
+        self._load_mesh(file_path)
 
     def reload(self):
-        mesh = self._controller.load_mesh()
-        self._gl_widget.load_mesh(mesh)
+        self._load_mesh(None)
+
+    def _load_mesh(self, file_path: str | None):
+        if self._mesh_loading_worker is not None:
+            self._mesh_loading_worker.stop()
+        self._mesh_loading_worker = LoadMeshRunnable(self._controller, file_path, self._gl_widget)
+        self._mesh_loading_worker.signals.mesh_update.connect(self._gl_widget.load_mesh)
+        QThreadPool.globalInstance().start(self._mesh_loading_worker)
+
+class MeshUpdateSignals(QObject):
+    mesh_update = Signal(Trimesh)
+
+class LoadMeshRunnable(QRunnable):
+    def __init__(self, controller: Controller, file_path: str, gl_widget: ModernglWidget):
+        super().__init__()
+        self._controller = controller
+        self._file_path = file_path
+        self._gl_widget = gl_widget
+        self.signals = MeshUpdateSignals()
+        self._stop_requested = False
+
+    def run(self):
+        if self._stop_requested:
+            return
+        for mesh in self._controller.load_mesh(self._file_path):
+            # self._gl_widget.load_mesh(mesh)
+            if self._stop_requested:
+                return
+            self.signals.mesh_update.emit(mesh)
+
+    def stop(self):
+        self._stop_requested = True

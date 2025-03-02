@@ -35,7 +35,8 @@ class ModuleLoader:
             func = getattr(module, self._function_name)
 
             try:
-                return func()
+                for mesh in func():
+                    yield mesh
             except Exception as e:
                 print(f"Error while executing function: {e}")
         except Exception as e:

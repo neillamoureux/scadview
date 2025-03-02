@@ -84,5 +84,4 @@ class ModernglWidget(QOpenGLWidget):
     def load_mesh(self, mesh: Trimesh):
         self._gl_widget_adapter.load_mesh(mesh)
         self.update()
-
-    
+        

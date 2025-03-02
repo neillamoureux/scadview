@@ -16,4 +16,5 @@ class Controller:
         return self._gl_widget_adapter
 
     def load_mesh(self, module_path: str | None = None) -> Trimesh:
-        return self._module_loader.run_function(module_path)
+        for mesh in self._module_loader.run_function(module_path):
+            yield mesh
