@@ -88,3 +88,6 @@ class GlWidgetAdapter:
 
     def load_mesh(self, mesh):
         self._renderer.load_mesh(mesh)
+
+    def frame(self, direction=None, up=None):
+        self._renderer.frame(direction, up)

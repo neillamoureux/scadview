@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.resize(*size)
         self._main_layout = self._create_main_layout()
         self._mesh_loading_worker = None
+        self._first_mesh = False
 
     def _create_main_layout(self) -> QVBoxLayout:
         central_widget = QWidget(self)
@@ -117,8 +118,18 @@ class MainWindow(QMainWindow):
         if self._mesh_loading_worker is not None:
             self._mesh_loading_worker.stop()
         self._mesh_loading_worker = LoadMeshRunnable(self._controller, file_path, self._gl_widget)
-        self._mesh_loading_worker.signals.mesh_update.connect(self._gl_widget.load_mesh)
+        self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
+        
+    def _update_mesh(self, mesh: Trimesh):
+        if mesh is None:
+            self._first_mesh = True
+            return
+        self._gl_widget.load_mesh(mesh)
+        if self._first_mesh:
+            self._gl_widget.frame()
+            self._first_mesh = False
+
 
 class MeshUpdateSignals(QObject):
     mesh_update = Signal(Trimesh)
@@ -133,10 +144,11 @@ class LoadMeshRunnable(QRunnable):
         self._stop_requested = False
 
     def run(self):
+        if self._file_path is not None:
+            self.signals.mesh_update.emit(None) # signals a new laod
         if self._stop_requested:
             return
         for mesh in self._controller.load_mesh(self._file_path):
-            # self._gl_widget.load_mesh(mesh)
             if self._stop_requested:
                 return
             self.signals.mesh_update.emit(mesh)

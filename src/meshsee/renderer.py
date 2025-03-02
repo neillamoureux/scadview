@@ -87,6 +87,7 @@ class Renderer:
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
         self.load_mesh(self._default_mesh)
+        self.frame()
         self._axes = _make_axes()
         self._load_axes(self._axes)
 
@@ -118,7 +119,7 @@ class Renderer:
         except Exception as e:
             print(f"Error creating vertex array: {e}")
 
-        self.frame()
+        # self.frame()
 
     def _load_axes(
         self,
