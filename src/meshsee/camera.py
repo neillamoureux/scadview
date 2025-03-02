@@ -11,8 +11,11 @@ class Camera:
     LOOK_AT_INIT = np.array([0.0, 0.0, 0.0], dtype="f4")
     Z_DIR = np.array([0.0, 0.0, 1.0], dtype="f4")
     FOVY_INIT = 22.5
-    NEAR_INIT = 0.1
-    FAR_INIT = 1000.0
+    FAR_NEAR_RATIO = 1000.0
+    FAR_MULTIPLIER = 2.0
+    NEAR_INIT = 1.0
+    FAR_INIT = NEAR_INIT * FAR_NEAR_RATIO
+
 
     def __init__(self):
         self.position = self.POSITION_INIT
@@ -109,6 +112,9 @@ class Camera:
         y_dist = abs_y_max / np.tan(np.radians(self.fovy) / 2)
         dist = max(x_dist, y_dist)
         self.position = center - direction - norm_direction * (max_z + dist)
+        new_bb = self._bounding_box_in_cam_space(points)
+        self.far = -np.min(new_bb[:, 2]) * self.FAR_MULTIPLIER
+        self.near = self.far / self.FAR_NEAR_RATIO
 
     def _bounding_box_in_cam_space(self, points: np.ndarray) -> np.ndarray:
         """
