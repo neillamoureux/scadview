@@ -333,11 +333,22 @@ def test_frame_override_cam_up():
     assert init_up / np.linalg.norm(init_up) == approx(cam.up / np.linalg.norm(cam.up))
 
 
-def test_frame_points_in_clip():
+def test_frame_points_in_clip_1():
+    check_frame_points_in_clip(1.0)
+
+def test_frame_points_in_clip_point_1():
+    check_frame_points_in_clip(0.1)
+
+def test_frame_points_in_clip_point_10000():
+    check_frame_points_in_clip(10000)
+
+
+def check_frame_points_in_clip(multiplier):
+    __tracebackhide__ = True
     cam = Camera()
 
     # fmt off
-    points = np.array(
+    points = multiplier * np.array(
         [
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
@@ -358,7 +369,7 @@ def test_frame_points_in_clip():
         direction / np.linalg.norm(direction),
     )
 
-    # each point should have x, y  in [-1, 1]
+    # each point should have x, y, z  in [-1, 1]
     for point in points:
         projected_point = cam.projection_matrix.T.dot(
             cam.view_matrix.T.dot(np.append(point, 1.0))
@@ -366,6 +377,9 @@ def test_frame_points_in_clip():
         print("pp:", projected_point[:3] / projected_point[3])
         assert -1.0 <= projected_point[0] / projected_point[3] <= 1.0
         assert -1.0 <= projected_point[1] / projected_point[3] <= 1.0
+        assert -1.0 <= projected_point[2] / projected_point[3] <= 1.0
+
+
 
 def test_move__forward():
     check_move(1.3)
