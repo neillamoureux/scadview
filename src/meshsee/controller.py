@@ -1,3 +1,5 @@
+from time import time
+
 from trimesh import Trimesh
 
 from meshsee.gl_widget_adapter import GlWidgetAdapter
@@ -16,5 +18,8 @@ class Controller:
         return self._gl_widget_adapter
 
     def load_mesh(self, module_path: str | None = None) -> Trimesh:
+        t0 = time()
         for mesh in self._module_loader.run_function(module_path):
             yield mesh
+        t1 = time()
+        print(f"Took {(t1-t0)*1000:.1f}ms")
