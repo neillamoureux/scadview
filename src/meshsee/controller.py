@@ -1,3 +1,4 @@
+from typing import Generator
 from time import time
 
 from trimesh import Trimesh
@@ -17,7 +18,7 @@ class Controller:
     def gl_widget_adapter(self):
         return self._gl_widget_adapter
 
-    def load_mesh(self, module_path: str | None = None) -> Trimesh:
+    def load_mesh(self, module_path: str | None = None) -> Generator[Trimesh, None, None]:
         t0 = time()
         for mesh in self._module_loader.run_function(module_path):
             yield mesh
