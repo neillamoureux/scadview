@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 
 from trimesh import Trimesh
 
-from meshsee.controller import Controller
+from meshsee.controller import Controller, export_formats
 from meshsee.moderngl_widget import (
     ModernglWidget,
 )
@@ -29,6 +29,7 @@ class MainWindow(QMainWindow):
         self._controller = controller
         self.setWindowTitle(title)
         self.resize(*size)
+        self._export_btn = None
         self._main_layout = self._create_main_layout()
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
@@ -61,17 +62,18 @@ class MainWindow(QMainWindow):
         file_button_strip.setLayout(file_button_layout)
         file_button_strip.setFixedHeight(self.BUTTON_STRIP_HEIGHT)
 
-        load_file_btn = QPushButton("Load File")
+        load_file_btn = QPushButton("Load .py")
         load_file_btn.clicked.connect(self.load_file)
         file_button_layout.addWidget(load_file_btn)
 
-        reload_file_btn = QPushButton("Reload File")
+        reload_file_btn = QPushButton("Reload .py")
         reload_file_btn.clicked.connect(self.reload)
         file_button_layout.addWidget(reload_file_btn)
 
-        export_stl_btn = QPushButton("Export STL")
-        # export_stl_btn.clicked.connect(self.export_stl)
-        file_button_layout.addWidget(export_stl_btn)
+        self._export_btn = QPushButton("Export")
+        self._export_btn.setDisabled(True)
+        self._export_btn.clicked.connect(self.export)
+        file_button_layout.addWidget(self._export_btn)
 
         return file_button_strip
 
@@ -122,10 +124,7 @@ class MainWindow(QMainWindow):
         else:
             self._next_mesh_loading_worker = worker
             self._mesh_loading_worker.stop()
-        # self._next_mesh_loading_worker = LoadMeshRunnable(self._controller, file_path, self._gl_widget)
 
-        # QThreadPool.globalInstance().start(self._mesh_loading_worker)
-        
     def _start_worker(self, worker):
         self._mesh_loading_worker = worker
         self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
@@ -134,6 +133,7 @@ class MainWindow(QMainWindow):
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
 
     def _start_next_worker(self):
+        self._export_btn.setEnabled(True)
         self._mesh_loading_worker = None
         if self._next_mesh_loading_worker is not None:
             self._start_worker(self._next_mesh_loading_worker)
@@ -143,10 +143,16 @@ class MainWindow(QMainWindow):
         self._first_mesh = True
 
     def _update_mesh(self, mesh: Trimesh):
-        self._gl_widget.load_mesh(mesh) 
+        self._gl_widget.load_mesh(mesh)
         if self._first_mesh:
             self._gl_widget.frame()
             self._first_mesh = False
+
+    def export(self):
+        filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
+        file_path, _ = QFileDialog.getSaveFileName(self, "Export File", filter=filt)
+        if file_path:
+            self._controller.export(file_path)
 
 
 class MeshUpdateSignals(QObject):
@@ -154,8 +160,11 @@ class MeshUpdateSignals(QObject):
     load_start = Signal()
     stopped = Signal()
 
+
 class LoadMeshRunnable(QRunnable):
-    def __init__(self, controller: Controller, file_path: str, gl_widget: ModernglWidget):
+    def __init__(
+        self, controller: Controller, file_path: str, gl_widget: ModernglWidget
+    ):
         super().__init__()
         self._controller = controller
         self._file_path = file_path
@@ -166,7 +175,7 @@ class LoadMeshRunnable(QRunnable):
 
     def run(self):
         if self._file_path is not None:
-            self.signals.load_start.emit() 
+            self.signals.load_start.emit()
         if self._stop_requested:
             self.signal_stop()
             return
@@ -179,7 +188,7 @@ class LoadMeshRunnable(QRunnable):
 
     def stop(self):
         self._stop_requested = True
-        if self._stopped: # Signal stop immediately if already stopped
+        if self._stopped:  # Signal stop immediately if already stopped
             self.signal_stop()
 
     def signal_stop(self):
