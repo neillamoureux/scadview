@@ -20,7 +20,6 @@ class Controller:
 
     def load_mesh(self, module_path: str | None = None) -> Generator[Trimesh, None, None]:
         t0 = time()
-        for mesh in self._module_loader.run_function(module_path):
-            yield mesh
+        yield from self._module_loader.run_function(module_path)
         t1 = time()
         print(f"Took {(t1-t0)*1000:.1f}ms")
