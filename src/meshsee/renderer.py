@@ -51,29 +51,53 @@ in vec3 normal;
 
 vec4 gridColor;
 
+float on_grid(float pos, float spacing, float frac_width) {
+    // return 1.0 if pos is between spacing * n - spacing * frac_width and spacing * n + spacing * frac_width
+    return step(pos / spacing - floor(pos/spacing), frac_width)
+    + step(1.0 - frac_width, pos / spacing - floor(pos/spacing));
+}
+
 void main() {
     float l = dot(normalize(-pos), normalize(normal)) + 0.4;
     fragColor = color * (0.25 + abs(l) * 0.75);
-    vec4 gridColor = vec4(
-        1.0 - step(0.1, fract(1.0 * w_pos.x + 0.05)),
-        1.0 - step(0.1, fract(1.0 * w_pos.y + 0.05)),
-        1.0 - step(0.1, fract(1.0 * w_pos.z + 0.05)),
-        1.0
+    vec4 gridColor1 = vec4(
+        on_grid(w_pos.x, 0.1, 0.05),
+        on_grid(w_pos.y, 0.1, 0.05),
+        on_grid(w_pos.z, 0.1, 0.05),
+        0.0
     );
-    fragColor = mix(fragColor, gridColor, 0.3);
+    vec4 gridColor2 = vec4(
+        on_grid(w_pos.x, 1.0, 0.05),
+        on_grid(w_pos.y, 1.0, 0.05),
+        on_grid(w_pos.z, 1.0, 0.05),
+        0.0
+    );
+    vec4 gridColor3 = vec4(
+        on_grid(w_pos.x, 10.0, 0.05),
+        on_grid(w_pos.y, 10.0, 0.05),
+        on_grid(w_pos.z, 10.0, 0.05),
+        0.0
+    );
+    gridColor = (gridColor1 + gridColor2 + gridColor3)/2.0;
+    fragColor = mix(fragColor, gridColor, 0.5);
 }
 """
 
 AXIS_LENGTH = 200.0
 AXIS_WIDTH = 0.1
 
+
 def _make_default_mesh() -> Trimesh:
     return box([50.0, 40.0, 30.0])
 
+
 def _make_axes() -> Trimesh:
-    return (box([AXIS_LENGTH, AXIS_WIDTH, AXIS_WIDTH])
+    return (
+        box([AXIS_LENGTH, AXIS_WIDTH, AXIS_WIDTH])
         .union(box([AXIS_WIDTH, AXIS_LENGTH, AXIS_WIDTH]))
-        .union(box([AXIS_WIDTH, AXIS_WIDTH, AXIS_LENGTH])))
+        .union(box([AXIS_WIDTH, AXIS_WIDTH, AXIS_LENGTH]))
+    )
+
 
 class Renderer:
     # ORBIT_ROTATION_SPEED = 0.01
@@ -125,7 +149,9 @@ class Renderer:
         self,
         axes: Trimesh,
     ):
-        self._axes_mesh, self._axes_points, self._axes_vertices, self._axes_normals = self._setup_mesh(axes)
+        self._axes_mesh, self._axes_points, self._axes_vertices, self._axes_normals = (
+            self._setup_mesh(axes)
+        )
         try:
             self._axes_vao = self._create_axes_vao()
         except Exception as e:
@@ -201,7 +227,7 @@ class Renderer:
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
 
-    def move_to_screen(self, ndx:float, ndy:float, distance: float):
+    def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
         Move the camera to the normalized screen position (ndx, ndy) and move it by distance.
         """
