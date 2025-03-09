@@ -58,33 +58,41 @@ float on_grid(float pos, float spacing, float frac_width) {
 }
 
 void main() {
+
     float l = dot(normalize(-pos), normalize(normal)) + 0.4;
-    fragColor = color * (0.25 + abs(l) * 0.75);
     vec4 gridColor1 = vec4(
         on_grid(w_pos.x, 0.1, 0.05),
         on_grid(w_pos.y, 0.1, 0.05),
         on_grid(w_pos.z, 0.1, 0.05),
-        0.0
+        1.0
     );
     vec4 gridColor2 = vec4(
         on_grid(w_pos.x, 1.0, 0.05),
         on_grid(w_pos.y, 1.0, 0.05),
         on_grid(w_pos.z, 1.0, 0.05),
-        0.0
+        1.0
     );
     vec4 gridColor3 = vec4(
         on_grid(w_pos.x, 10.0, 0.05),
         on_grid(w_pos.y, 10.0, 0.05),
         on_grid(w_pos.z, 10.0, 0.05),
-        0.0
+        1.0
     );
-    gridColor = (gridColor1 + gridColor2 + gridColor3)/2.0;
-    fragColor = mix(fragColor, gridColor, 0.5);
+    if (gridColor1 == vec4(0.0, 0.0, 0.0, 1.0) 
+    && gridColor2 == vec4(0.0, 0.0, 0.0, 1.0) 
+    && gridColor3 == vec4(0.0, 0.0, 0.0, 1.0)) {
+        fragColor = color;
+    } else {
+        fragColor = (gridColor1 + gridColor2 + gridColor3) / 3.0;
+    }
+
+    fragColor = fragColor * (0.25 + abs(l) * 0.75);
 }
 """
 
 AXIS_LENGTH = 200.0
 AXIS_WIDTH = 0.1
+MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
 
 
 def _make_default_mesh() -> Trimesh:
@@ -200,7 +208,7 @@ class Renderer:
         self._prog["m_model"].write(m_model)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._prog["color"].value = 1.0, 0.0, 1.0, 1.0
+        self._prog["color"].value = MESH_COLOR
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
