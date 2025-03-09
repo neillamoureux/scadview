@@ -1,3 +1,5 @@
+from time import time
+
 from PySide6.QtCore import Signal, QObject, Qt, QRunnable, QThreadPool
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -18,6 +20,7 @@ from meshsee.moderngl_widget import (
 
 class MainWindow(QMainWindow):
     BUTTON_STRIP_HEIGHT = 50
+    UPDATE_MESH_INTERVAL_MS = 100
 
     def __init__(
         self,
@@ -34,6 +37,8 @@ class MainWindow(QMainWindow):
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
         self._first_mesh = False
+        self._last_mesh_update = time()
+        self._latest_unloaded_mesh = None
 
     def _create_main_layout(self) -> QVBoxLayout:
         central_widget = QWidget(self)
@@ -138,15 +143,31 @@ class MainWindow(QMainWindow):
         if self._next_mesh_loading_worker is not None:
             self._start_worker(self._next_mesh_loading_worker)
             self._next_mesh_loading_worker = None
+        else:
+            if self._latest_unloaded_mesh is not None:
+                self._update_mesh(self._latest_unloaded_mesh, force=True)
 
     def _start_load(self):
         self._first_mesh = True
 
-    def _update_mesh(self, mesh: Trimesh):
-        self._gl_widget.load_mesh(mesh)
+    def _update_mesh(self, mesh: Trimesh, force=False):
+        self._latest_unloaded_mesh = None
         if self._first_mesh:
+            self._gl_widget.load_mesh(mesh)
+            self._last_mesh_update = time()
             self._gl_widget.frame()
             self._first_mesh = False
+            return
+        if force:
+            self._gl_widget.load_mesh(mesh)
+            self._last_mesh_update = time()
+            return
+        if time() - self._last_mesh_update > self.UPDATE_MESH_INTERVAL_MS / 1000:
+            self._latest_unloaded_mesh = None
+            self._gl_widget.load_mesh(mesh)
+            self._last_mesh_update = time()
+        else:
+            self._latest_unloaded_mesh = mesh
 
     def export(self):
         filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
