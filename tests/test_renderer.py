@@ -4,21 +4,29 @@ from pyrr import Matrix44
 import numpy as np
 
 from meshsee.camera import Camera
-from meshsee.renderer import Renderer
+from meshsee.renderer import Renderer, _make_default_mesh
 
 
-def test_init():
+@patch("meshsee.renderer._make_axes")
+@patch("meshsee.renderer._make_default_mesh")
+def test_init(make_default_mesh, make_axes):
     context = MagicMock()
     camera = Camera()
     aspect_ratio = 1.6
     Renderer.frame = Mock()
     Renderer.load_mesh = Mock()
+    Renderer._load_axes = Mock()
+    make_default_mesh.return_value = "default mesh"
+    make_axes.return_value = "axes"
     renderer = Renderer(context, camera, aspect_ratio)
     assert renderer.aspect_ratio == aspect_ratio
     context.clear.assert_called_with(*Renderer.BACKGROUND_COLOR)
     context.program.assert_called()
     renderer.frame.assert_called_once()
+    assert renderer._default_mesh == "default mesh"
     renderer.load_mesh.assert_called_with(renderer._default_mesh)
+    assert renderer._axes == "axes"
+    renderer._load_axes.assert_called_with(renderer._axes)
 
 
 def test_aspect_ratio():
