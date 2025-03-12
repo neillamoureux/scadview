@@ -1,3 +1,4 @@
+from importlib.resources import as_file, files
 import os
 import sys
 
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
     QSplashScreen,
 )
 
+import meshsee
 from meshsee.controller import Controller
 
 # from meshsee.gl_widget_adapter import GlWidgetAdapter
@@ -42,15 +44,15 @@ class GlUi:
         )
 
     def _show_splash(self):
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        splash_image_path = os.path.join(current_dir, "splash.png")
-        splash_pix = QPixmap(splash_image_path)
-        splash = QSplashScreen(splash_pix)
-        splash.show()
-        splash.raise_()
-        self._app.processEvents()
-        splash.showMessage("Meshee is initializing...", Qt.AlignCenter)
-        return splash
+        splash_image = files(meshsee).joinpath("splash.png")
+        with as_file(splash_image) as splash_f:
+            splash_pix = QPixmap(splash_f)
+            splash = QSplashScreen(splash_pix)
+            splash.show()
+            splash.raise_()
+            self._app.processEvents()
+            splash.showMessage("Meshsee is initializing...", Qt.AlignCenter)
+            return splash
 
     def run(self):
         self._main_window.show()
