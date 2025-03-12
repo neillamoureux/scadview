@@ -4,7 +4,7 @@ from pyrr import Matrix44
 import numpy as np
 
 from meshsee.camera import Camera
-from meshsee.renderer import Renderer, _make_default_mesh
+from meshsee.renderer import Renderer
 
 
 @patch("meshsee.renderer._make_axes")
@@ -13,8 +13,11 @@ def test_init(make_default_mesh, make_axes):
     context = MagicMock()
     camera = Camera()
     aspect_ratio = 1.6
+    orig_frame = Renderer.frame
     Renderer.frame = Mock()
+    orig_load_mesh = Renderer.load_mesh
     Renderer.load_mesh = Mock()
+    orig_load_axes = Renderer._load_axes
     Renderer._load_axes = Mock()
     make_default_mesh.return_value = "default mesh"
     make_axes.return_value = "axes"
@@ -27,6 +30,9 @@ def test_init(make_default_mesh, make_axes):
     renderer.load_mesh.assert_called_with(renderer._default_mesh)
     assert renderer._axes == "axes"
     renderer._load_axes.assert_called_with(renderer._axes)
+    Renderer.frame = orig_frame
+    Renderer.load_mesh = orig_load_mesh
+    Renderer._load_axes = orig_load_axes
 
 
 def test_aspect_ratio():
@@ -55,3 +61,22 @@ def test_aspect_ratio():
     # m_model_write.assert_called_with(Matrix44.identity(dtype="f4"))
     # color_write.assert_called_with(Renderer.BACKGROUND_COLOR)
     # assert shader_vars["m_proj"] == camera.projection_matrix
+
+
+def test_frame():
+    context = MagicMock()
+    camera = Mock()
+    aspect_ratio = 1.6
+    renderer = Renderer(context, camera, aspect_ratio)
+    # renderer._prog = MagicMock()
+    # renderer._vao = MagicMock()
+    # renderer._axes_vao = MagicMock()
+    # renderer._mesh = MagicMock()
+    # renderer._axes_mesh = MagicMock()
+    renderer.frame()
+    camera.frame.assert_called()
+    # renderer._prog.use.assert_called()
+    # renderer._vao.render.assert_called()
+    # renderer._axes_vao.render.assert_called()
+    # renderer._mesh.render.assert_called()
+    # renderer._axes_mesh.render.assert_called()

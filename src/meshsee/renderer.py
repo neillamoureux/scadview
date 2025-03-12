@@ -1,3 +1,5 @@
+from importlib.resources import as_file, files
+
 import moderngl
 import numpy as np
 from pyrr import Matrix44
@@ -5,90 +7,8 @@ from trimesh import Trimesh
 from trimesh.creation import box
 
 from meshsee.camera import Camera
+import meshsee.shaders
 
-
-# Place vertex straight in the window, no transformation
-_VERTEX_SHADER = """
-#version 330
-
-in vec3 in_position;
-//in vec3 in_color;
-in vec3 in_normal;
-
-uniform mat4 m_model;
-uniform mat4 m_camera;
-uniform mat4 m_proj;
-
-out vec3 pos;
-out vec3 normal;
-out vec3 w_pos;
-//out vec3 color;
-
-void main() {
-    mat4 m_view = m_camera * m_model;
-    vec4 world_pos = m_model * vec4(in_position, 1.0);
-    w_pos = world_pos.xyz / world_pos.w;
-    vec4 p = m_view * vec4(in_position, 1.0);
-    gl_Position =  m_proj * p;
-    mat3 m_normal = inverse(transpose(mat3(m_view)));
-    normal = m_normal * normalize(in_normal);
-    pos = p.xyz/ p.w;
-    //color = in_color;
-}
-
-"""
-
-# Paint the triangle in magenta
-_FRAGMENT_SHADER = """
-#version 330
-out vec4 fragColor;
-uniform vec4 color;
-
-in vec3 pos;
-in vec3 w_pos;
-//in vec3 color;
-in vec3 normal;
-
-vec4 gridColor;
-
-float on_grid(float pos, float spacing, float frac_width) {
-    // return 1.0 if pos is between spacing * n - spacing * frac_width and spacing * n + spacing * frac_width
-    return step(pos / spacing - floor(pos/spacing), frac_width)
-    + step(1.0 - frac_width, pos / spacing - floor(pos/spacing));
-}
-
-void main() {
-
-    float l = dot(normalize(-pos), normalize(normal)) + 0.4;
-    vec4 gridColor1 = vec4(
-        on_grid(w_pos.x, 0.1, 0.05),
-        on_grid(w_pos.y, 0.1, 0.05),
-        on_grid(w_pos.z, 0.1, 0.05),
-        1.0
-    );
-    vec4 gridColor2 = vec4(
-        on_grid(w_pos.x, 1.0, 0.05),
-        on_grid(w_pos.y, 1.0, 0.05),
-        on_grid(w_pos.z, 1.0, 0.05),
-        1.0
-    );
-    vec4 gridColor3 = vec4(
-        on_grid(w_pos.x, 10.0, 0.05),
-        on_grid(w_pos.y, 10.0, 0.05),
-        on_grid(w_pos.z, 10.0, 0.05),
-        1.0
-    );
-    if (gridColor1 == vec4(0.0, 0.0, 0.0, 1.0) 
-    && gridColor2 == vec4(0.0, 0.0, 0.0, 1.0) 
-    && gridColor3 == vec4(0.0, 0.0, 0.0, 1.0)) {
-        fragColor = color;
-    } else {
-        fragColor = (gridColor1 + gridColor2 + gridColor3) / 3.0;
-    }
-
-    fragColor = fragColor * (0.25 + abs(l) * 0.75);
-}
-"""
 
 AXIS_LENGTH = 200.0
 AXIS_WIDTH = 0.1
@@ -133,13 +53,19 @@ class Renderer:
         self._prog["m_proj"].write(self._camera.projection_matrix)
 
     def _create_shader_program(self) -> moderngl.Program:
-        try:
-            return self._ctx.program(
-                vertex_shader=_VERTEX_SHADER,
-                fragment_shader=_FRAGMENT_SHADER,
-            )
-        except Exception as e:
-            print(f"Error creating shader program: {e}")
+        vertex_shader_source = files(meshsee.shaders).joinpath("vertex.glsl")
+        fragment_shader_source = files(meshsee.shaders).joinpath("fragment.glsl")
+        with (
+            as_file(vertex_shader_source) as vs_f,
+            as_file(fragment_shader_source) as fs_f,
+        ):
+            try:
+                return self._ctx.program(
+                    vertex_shader=vs_f.read_text(),
+                    fragment_shader=fs_f.read_text(),
+                )
+            except Exception as e:
+                print(f"Error creating shader program: {e}")
 
     def load_mesh(
         self,
