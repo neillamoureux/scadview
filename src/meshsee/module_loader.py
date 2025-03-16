@@ -1,6 +1,22 @@
+from types import GeneratorType
+from typing import Any, Generator
+
 import importlib
 import os
 import sys
+
+
+def yield_if_return(result: Any) -> Generator[Any, None, None]:
+    """
+    # If the result is a generator (i.e. the function yielded values),
+    # yield from it so you process each yielded value.
+    """
+    if isinstance(result, GeneratorType):
+        yield from result
+    else:
+        # Otherwise, treat the result
+        # as a single value.
+        yield result
 
 
 class ModuleLoader:
@@ -35,8 +51,9 @@ class ModuleLoader:
             func = getattr(module, self._function_name)
 
             try:
-                yield from func()
+                yield from yield_if_return(func())
             except Exception as e:
                 print(f"Error while executing function: {e}")
         except Exception as e:
             print(f"Error while loading function: {e}")
+            raise e
