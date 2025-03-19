@@ -6,6 +6,7 @@ in vec3 pos;
 in vec3 w_pos;
 //in vec3 color;
 in vec3 normal;
+//in bool show_grid;
 
 vec4 gridColor;
 
@@ -15,34 +16,33 @@ float on_grid(float pos, float spacing, float frac_width) {
     + step(1.0 - frac_width, pos / spacing - floor(pos/spacing));
 }
 
-void main() {
+vec4 grid_color(vec3 pos, float spacing, float frac_width) {
+    return vec4(
+        on_grid(pos.x, spacing, frac_width),
+        on_grid(pos.y, spacing, frac_width),
+        on_grid(pos.z, spacing, frac_width),
+        1.0
+    );
+}
 
-    float l = dot(normalize(-pos), normalize(normal)) + 0.4;
-    vec4 gridColor1 = vec4(
-        on_grid(w_pos.x, 0.1, 0.05),
-        on_grid(w_pos.y, 0.1, 0.05),
-        on_grid(w_pos.z, 0.1, 0.05),
-        1.0
-    );
-    vec4 gridColor2 = vec4(
-        on_grid(w_pos.x, 1.0, 0.05),
-        on_grid(w_pos.y, 1.0, 0.05),
-        on_grid(w_pos.z, 1.0, 0.05),
-        1.0
-    );
-    vec4 gridColor3 = vec4(
-        on_grid(w_pos.x, 10.0, 0.05),
-        on_grid(w_pos.y, 10.0, 0.05),
-        on_grid(w_pos.z, 10.0, 0.05),
-        1.0
-    );
-    if (gridColor1 == vec4(0.0, 0.0, 0.0, 1.0) 
-    && gridColor2 == vec4(0.0, 0.0, 0.0, 1.0) 
-    && gridColor3 == vec4(0.0, 0.0, 0.0, 1.0)) {
+vec4 combined_grid_color(vec3 pos, int levels, float[5] spacings, float frac_width) {
+    vec4 combined_color = vec4(0.0, 0.0, 0.0, 0.0);
+    for (int i = 0; i < levels; i++) {
+        combined_color += grid_color(pos, spacings[i], frac_width);
+    }
+    return combined_color / levels;
+}
+
+void main() {
+    float l = dot(normalize(-pos), normalize(normal)) 
+    + 0.4;
+    vec4 grid = combined_grid_color(w_pos, 3, float[5](0.1, 1.0, 10.0, 0.0, 0.0), 0.05);
+    if (grid == vec4(0.0, 0.0, 0.0, 1.0)) {
         fragColor = color;
     } else {
-        fragColor = (gridColor1 + gridColor2 + gridColor3) / 3.0;
+        fragColor = grid;
     }
 
     fragColor = fragColor * (0.25 + abs(l) * 0.75);
 }
+
