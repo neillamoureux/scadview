@@ -1,12 +1,12 @@
 #version 330
 out vec4 fragColor;
 uniform vec4 color;
+uniform bool show_grid;
 
 in vec3 pos;
 in vec3 w_pos;
 //in vec3 color;
 in vec3 normal;
-//in bool show_grid;
 
 vec4 gridColor;
 
@@ -36,11 +36,15 @@ vec4 combined_grid_color(vec3 pos, int levels, float[5] spacings, float frac_wid
 void main() {
     float l = dot(normalize(-pos), normalize(normal)) 
     + 0.4;
-    vec4 grid = combined_grid_color(w_pos, 3, float[5](0.1, 1.0, 10.0, 0.0, 0.0), 0.05);
-    if (grid == vec4(0.0, 0.0, 0.0, 1.0)) {
-        fragColor = color;
+    if (show_grid) {
+        vec4 grid = combined_grid_color(w_pos, 3, float[5](0.1, 1.0, 10.0, 0.0, 0.0), 0.05);
+        if (grid == vec4(0.0, 0.0, 0.0, 1.0)) {
+            fragColor = color;
+        } else {
+            fragColor = grid;
+        }
     } else {
-        fragColor = grid;
+        fragColor = color;
     }
 
     fragColor = fragColor * (0.25 + abs(l) * 0.75);
