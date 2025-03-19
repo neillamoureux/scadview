@@ -41,16 +41,18 @@ class ModernglWidget(QOpenGLWidget):
         """
         self._gl_widget_adapter.do_orbit(event.position().x(), event.position().y())
         self.update()
-    
+
     def wheelEvent(self, event):
         distance = event.angleDelta().y() * self.CAMERA_MOVE_FACTOR
-        self._gl_widget_adapter.move_to_screen(event.position().x(), event.position().y(), distance)
+        self._gl_widget_adapter.move_to_screen(
+            event.position().x(), event.position().y(), distance
+        )
         # self._gl_widget_adapter.move(event.angleDelta().y() * self.CAMERA_MOVE_FACTOR)
         self.update()
 
     def keyPressEvent(self, event):
         key = event.key()
-        if key == Qt.Key_W or key ==  Qt.Key_Up:
+        if key == Qt.Key_W or key == Qt.Key_Up:
             self._gl_widget_adapter.move(self.MOVE_STEP)
         elif key == Qt.Key_S or key == Qt.Key_Down:
             self._gl_widget_adapter.move(-self.MOVE_STEP)
@@ -63,7 +65,6 @@ class ModernglWidget(QOpenGLWidget):
         elif key == Qt.Key_E or key == Qt.Key_PageDown:
             self._gl_widget_adapter.move_up(-self.MOVE_STEP)
         self.update()
-
 
     def view_from_xyz(self):
         self._gl_widget_adapter.view_from_xyz()
@@ -88,4 +89,11 @@ class ModernglWidget(QOpenGLWidget):
     def frame(self, direction=None, up=None):
         self._gl_widget_adapter.frame(direction, up)
         self.update()
-        
+
+    @property
+    def show_grid(self):
+        return self._gl_widget_adapter.show_grid
+
+    def toggle_grid(self):
+        self._gl_widget_adapter.toggle_grid()
+        self.update()

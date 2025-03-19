@@ -10,16 +10,27 @@ class GlWidgetAdapter:
         self._renderer_factory = renderer_factory
         self._gl_initialized = False
         self._orbiting = False
+        self.show_grid = True
+
+    @property
+    def show_grid(self):
+        return self._show_grid
+
+    @show_grid.setter
+    def show_grid(self, show_grid: bool):
+        self._show_grid = show_grid
+
+    def toggle_grid(self):
+        self.show_grid = not self.show_grid
 
     def init_gl(self, width: int, height: int):
         self.resize(width, height)
         # You cannot create the context before initializeGL is called
-        self._renderer = self._renderer_factory.make(width/height)
+        self._renderer = self._renderer_factory.make(width / height)
         self._gl_initialized = True
 
-
     def render(self):  # override
-        self._renderer.render()
+        self._renderer.render(self.show_grid)
 
     def resize(self, width, height):  # override
         self._width = width

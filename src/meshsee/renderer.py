@@ -169,11 +169,13 @@ class Renderer:
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
 
-    def render(self):  # override
+    def render(self, show_grid: bool):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
+        self._prog["show_grid"] = True
         self._axes_vao.render()
+        self._prog["show_grid"] = show_grid
         self._vao.render()
         # I don't know why calling clear after the render works
         # Calling before obliterates the rendering

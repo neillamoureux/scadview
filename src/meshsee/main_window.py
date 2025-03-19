@@ -107,9 +107,11 @@ class MainWindow(QMainWindow):
         view_from_z_btn.clicked.connect(self._gl_widget.view_from_z)
         camera_button_layout.addWidget(view_from_z_btn)
 
-        orbit_btn = QPushButton("Orbit")
-        # orbit_btn.clicked.connect(self.orbit)
-        camera_button_layout.addWidget(orbit_btn)
+        grid_btn = QPushButton("Grid")
+        grid_btn.setCheckable(True)
+        grid_btn.setChecked(self._gl_widget.show_grid)
+        grid_btn.clicked.connect(self._gl_widget.toggle_grid)
+        camera_button_layout.addWidget(grid_btn)
 
         return camera_button_strip
 
