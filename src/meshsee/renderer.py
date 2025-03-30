@@ -27,6 +27,36 @@ def _make_axes() -> Trimesh:
     )
 
 
+class RenderBuffers:
+    def __init__(self, ctx: moderngl.Context, prog: moderngl.Program, mesh: Trimesh):
+        self.mesh = mesh
+        self.points = mesh.triangles.reshape(-1, 3)
+        self.vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
+        self.normals = ctx.buffer(
+            data=np.array([[v] * 3 for v in mesh.triangles_cross])
+            .astype("f4")
+            .tobytes()
+        )
+        try:
+            self.vao = self._create_vao(ctx, prog)
+        except Exception as e:
+            print(f"Error creating vertex array: {e}")
+
+    def _create_vao(self, ctx: moderngl.Context, prog: moderngl.Program):
+        vao = ctx.vertex_array(
+            prog,
+            [
+                (self.vertices, "3f4", "in_position"),
+                (self.normals, "3f4", "in_normal"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+        return vao
+
+    def render(self):
+        self.vao.render()
+
+
 class Renderer:
     # ORBIT_ROTATION_SPEED = 0.01
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
@@ -38,10 +68,12 @@ class Renderer:
         self.aspect_ratio = aspect_ratio
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
-        self.load_mesh(self._default_mesh)
+        self._render_mesh = RenderBuffers(self._ctx, self._prog, self._default_mesh)
+        # self.load_mesh(self._default_mesh)
         self.frame()
         self._axes = _make_axes()
-        self._load_axes(self._axes)
+        self._axes_render_mesh = RenderBuffers(self._ctx, self._prog, self._axes)
+        # self._load_axes(self._axes)
 
     @property
     def aspect_ratio(self):
@@ -71,61 +103,10 @@ class Renderer:
         self,
         mesh: Trimesh,
     ):
-        self._mesh, self._points, self._vertices, self._normals = self._setup_mesh(mesh)
-        try:
-            self._vao = self._create_vao()
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
-
-        # self.frame()
-
-    def _load_axes(
-        self,
-        axes: Trimesh,
-    ):
-        self._axes_mesh, self._axes_points, self._axes_vertices, self._axes_normals = (
-            self._setup_mesh(axes)
-        )
-        try:
-            self._axes_vao = self._create_axes_vao()
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
-
-    def _setup_mesh(self, mesh: Trimesh):
-        mesh = mesh
-        points = mesh.triangles.reshape(-1, 3)
-        vertices = self._ctx.buffer(data=mesh.triangles.astype("f4"))
-        normals = self._ctx.buffer(
-            data=np.array([[v] * 3 for v in mesh.triangles_cross])
-            .astype("f4")
-            .tobytes()
-        )
-        return mesh, points, vertices, normals
-
-    def _create_vao(self):
-        vao = self._ctx.vertex_array(
-            self._prog,
-            [
-                (self._vertices, "3f4", "in_position"),
-                (self._normals, "3f4", "in_normal"),
-            ],
-            mode=moderngl.TRIANGLES,
-        )
-        return vao
-
-    def _create_axes_vao(self):
-        vao = self._ctx.vertex_array(
-            self._prog,
-            [
-                (self._axes_vertices, "3f4", "in_position"),
-                (self._axes_normals, "3f4", "in_normal"),
-            ],
-            mode=moderngl.TRIANGLES,
-        )
-        return vao
+        self._render_mesh = RenderBuffers(self._ctx, self._prog, mesh)
 
     def frame(self, direction=None, up=None):
-        self._camera.frame(self._points, direction, up)
+        self._camera.frame(self._render_mesh.points, direction, up)
         self._set_program_data()
 
     def _set_program_data(self):
@@ -174,9 +155,9 @@ class Renderer:
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._prog["show_grid"] = True
-        self._axes_vao.render()
+        self._axes_render_mesh.render()
         self._prog["show_grid"] = show_grid
-        self._vao.render()
+        self._render_mesh.render()
         # I don't know why calling clear after the render works
         # Calling before obliterates the rendering
         # Possibly because the render method swaps the frame buffer?
