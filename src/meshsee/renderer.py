@@ -13,6 +13,10 @@ import meshsee.shaders
 AXIS_LENGTH = 200.0
 AXIS_WIDTH = 0.1
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
+LABEL_WIDTH = 3.0
+LABEL_HEIGHT = 1.0
+NUMBER_HEIGHT = 1.0
+NUMBER_WIDTH = 0.5
 
 
 def _make_default_mesh() -> Trimesh:
@@ -25,6 +29,33 @@ def _make_axes() -> Trimesh:
         .union(box([AXIS_WIDTH, AXIS_LENGTH, AXIS_WIDTH]))
         .union(box([AXIS_WIDTH, AXIS_WIDTH, AXIS_LENGTH]))
     )
+
+
+def _make_axis_label() -> Trimesh:
+    vertices = np.array(
+        [
+            [0, 0, 0],
+            [LABEL_WIDTH, 0, 0],
+            [LABEL_WIDTH, LABEL_HEIGHT, 0],
+            [0, LABEL_HEIGHT, 0],
+        ]
+    )
+    faces = [[0, 1, 2, 3]]
+    return Trimesh(vertices=vertices, faces=faces)
+
+
+def _make_number_2() -> np.ndarray:
+    vertices = np.array(
+        [
+            [NUMBER_HEIGHT, 0, 0],
+            [NUMBER_HEIGHT, NUMBER_WIDTH, 0],
+            [NUMBER_HEIGHT / 2.0, NUMBER_WIDTH, 0],
+            [NUMBER_HEIGHT / 2.0, 0, 0],
+            [0, 0, 0],
+            [0, NUMBER_WIDTH, 0],
+        ]
+    )
+    return vertices
 
 
 class RenderBuffers:
@@ -57,6 +88,32 @@ class RenderBuffers:
         self.vao.render()
 
 
+class RendererBuffersLineStrip:
+    def __init__(
+        self, ctx: moderngl.Context, prog: moderngl.Program, points: np.ndarray
+    ):
+        self._ctx = ctx
+        self.vertices = ctx.buffer(data=points.astype("f4").tobytes())
+        try:
+            self.vao = self._create_vao(ctx, prog)
+        except Exception as e:
+            print(f"Error creating vertex array: {e}")
+
+    def _create_vao(self, ctx: moderngl.Context, prog: moderngl.Program):
+        vao = ctx.vertex_array(
+            prog,
+            [
+                (self.vertices, "3f4", "in_position"),
+            ],
+            mode=moderngl.LINE_STRIP,
+        )
+        return vao
+
+    def render(self):
+        self._ctx.line_width = 10.0
+        self.vao.render()
+
+
 class Renderer:
     # ORBIT_ROTATION_SPEED = 0.01
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
@@ -65,6 +122,7 @@ class Renderer:
         self._ctx = context
         self._camera = camera
         self._prog = self._create_shader_program()
+        self._num_prog = self._create_num_shader_program()
         self.aspect_ratio = aspect_ratio
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
@@ -73,6 +131,10 @@ class Renderer:
         self.frame()
         self._axes = _make_axes()
         self._axes_render_mesh = RenderBuffers(self._ctx, self._prog, self._axes)
+        self._label_mesh = RenderBuffers(self._ctx, self._prog, _make_axis_label())
+        self._number_2 = RendererBuffersLineStrip(
+            self._ctx, self._num_prog, _make_number_2()
+        )
         # self._load_axes(self._axes)
 
     @property
@@ -83,10 +145,26 @@ class Renderer:
     def aspect_ratio(self, aspect_ratio):
         self._camera.aspect_ratio = aspect_ratio
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def _create_shader_program(self) -> moderngl.Program:
         vertex_shader_source = files(meshsee.shaders).joinpath("vertex.glsl")
         fragment_shader_source = files(meshsee.shaders).joinpath("fragment.glsl")
+        with (
+            as_file(vertex_shader_source) as vs_f,
+            as_file(fragment_shader_source) as fs_f,
+        ):
+            try:
+                return self._ctx.program(
+                    vertex_shader=vs_f.read_text(),
+                    fragment_shader=fs_f.read_text(),
+                )
+            except Exception as e:
+                print(f"Error creating shader program: {e}")
+
+    def _create_num_shader_program(self) -> moderngl.Program:
+        vertex_shader_source = files(meshsee.shaders).joinpath("vertex_num.glsl")
+        fragment_shader_source = files(meshsee.shaders).joinpath("fragment_num.glsl")
         with (
             as_file(vertex_shader_source) as vs_f,
             as_file(fragment_shader_source) as fs_f,
@@ -116,31 +194,44 @@ class Renderer:
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
         self._prog["color"].value = MESH_COLOR
+        self._num_prog["m_model"].write(m_model)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def move(self, distance):
         self._camera.move(distance)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def move_up(self, distance):
         self._camera.move_up(distance)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def move_right(self, distance):
         self._camera.move_right(distance)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def move_along(self, vector):
         self._camera.move_along(vector)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
@@ -149,6 +240,8 @@ class Renderer:
         self._camera.move_to_screen(ndx, ndy, distance)
         self._prog["m_camera"].write(self._camera.view_matrix)
         self._prog["m_proj"].write(self._camera.projection_matrix)
+        self._num_prog["m_camera"].write(self._camera.view_matrix)
+        self._num_prog["m_proj"].write(self._camera.projection_matrix)
 
     def render(self, show_grid: bool):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
@@ -156,8 +249,13 @@ class Renderer:
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._prog["show_grid"] = True
         self._axes_render_mesh.render()
-        self._prog["show_grid"] = show_grid
-        self._render_mesh.render()
+        # self._prog["show_grid"] = show_grid
+        # self._render_mesh.render()
+
+        self._prog["show_grid"] = False
+        self._label_mesh.render()
+
+        self._number_2.render()
         # I don't know why calling clear after the render works
         # Calling before obliterates the rendering
         # Possibly because the render method swaps the frame buffer?
