@@ -94,6 +94,7 @@ class RenderBuffers:
 class RenderBuffersLabel(RenderBuffers):
     def __init__(self, ctx: moderngl.Context, prog: moderngl.Program, mesh: Trimesh):
         self.mesh = mesh
+        self.ctx = ctx
         self.points = mesh.triangles.reshape(-1, 3)
         self.vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
         label_atlas = LabelAtlas(ctx)
@@ -141,7 +142,11 @@ class RenderBuffersLabel(RenderBuffers):
 
     def render(self):
         self.sampler.use(location=0)
+        self.ctx.enable(moderngl.BLEND)
+        # Use the standard alpha blend function
+        self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.vao.render()
+        self.ctx.disable(moderngl.BLEND)
 
 
 class RenderBuffersLineStrip:
