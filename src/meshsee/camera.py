@@ -16,7 +16,6 @@ class Camera:
     NEAR_INIT = 1.0
     FAR_INIT = NEAR_INIT * FAR_NEAR_RATIO
 
-
     def __init__(self):
         self.position = self.POSITION_INIT
         self.look_at = np.array([0.0, 0.0, 0.0], dtype="f4")
@@ -124,7 +123,7 @@ class Camera:
         view_points = self.view_matrix.T.dot(points_4d.T).T
         view_points = view_points / view_points[:, 3][:, np.newaxis]
         return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
-    
+
     # move the camera along the direction vector
     # without changing the look_at point
     def move(self, distance):
@@ -140,15 +139,15 @@ class Camera:
 
     # move the camera along the right vector
     def move_right(self, distance):
-        right = np.cross(self.direction/np.linalg.norm(self.direction), self.up)
+        right = np.cross(self.direction / np.linalg.norm(self.direction), self.up)
         self.position = self.position + right * distance
         self.look_at = self.look_at + right * distance
 
     def move_along(self, vector):
         self.position = self.position + vector
         self.look_at = self.look_at + vector
-    
-    def move_to_screen(self, ndx:float, ndy:float, distance: float):
+
+    def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
         Move the camera to the normalized screen coordinates ndx, ndy
         """

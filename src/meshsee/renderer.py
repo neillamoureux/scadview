@@ -21,7 +21,8 @@ NUMBER_WIDTH = 5.0
 
 
 def _make_default_mesh() -> Trimesh:
-    return box([50.0, 40.0, 30.0])
+    # return box([50.0, 40.0, 30.0])
+    return box([100, 20, 10]).apply_translation([50, 10, 5])
 
 
 def _make_axes() -> Trimesh:
@@ -92,30 +93,33 @@ class RenderBuffers:
 
 
 class RenderBuffersLabel(RenderBuffers):
-    def __init__(self, ctx: moderngl.Context, prog: moderngl.Program, mesh: Trimesh):
-        self.mesh = mesh
+    def __init__(self, ctx: moderngl.Context, prog: moderngl.Program):
         self.ctx = ctx
-        self.points = mesh.triangles.reshape(-1, 3)
-        self.vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
+        # fmt: off
+        vertices = [
+            0.0, 0.0, 0.0, 
+            0.0, 0.0, NUMBER_HEIGHT, 
+            NUMBER_WIDTH, 0.0, 0.0,
+            NUMBER_WIDTH, 0.0, NUMBER_HEIGHT,
+        ]
+        # fmt: on
+        # self.mesh = mesh
+        # self.points = mesh.triangles.reshape(-1, 3)
+        # self.vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
+        self.vertices = ctx.buffer(data=np.array(vertices, dtype="f4").tobytes())
         label_atlas = LabelAtlas(ctx)
         uvs = label_atlas.uv("3").astype("f4")
+        # fmt: off
         uvarr = np.array(
             [
-                uvs[0],
-                uvs[1],
-                uvs[2],
-                uvs[1],
-                uvs[0],
-                uvs[3],
-                uvs[2],
-                uvs[1],
-                uvs[2],
-                uvs[3],
-                uvs[0],
-                uvs[3],
+                uvs[0], uvs[1],
+                uvs[0], uvs[3],
+                uvs[2], uvs[0],
+                uvs[2], uvs[3],
             ],
             dtype="f4",
         )
+        # fmt: on
         self.uv = ctx.buffer(data=uvarr.tobytes())
         # self.texture = label_atlas.texture
         self.sampler = label_atlas.sampler
@@ -145,7 +149,8 @@ class RenderBuffersLabel(RenderBuffers):
         self.ctx.enable(moderngl.BLEND)
         # Use the standard alpha blend function
         self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-        self.vao.render()
+        self.vao.render(moderngl.TRIANGLE_STRIP)
+        # self.vao.render()
         self.ctx.disable(moderngl.BLEND)
 
 
@@ -192,9 +197,10 @@ class Renderer:
         self.frame()
         self._axes = _make_axes()
         self._axes_render_mesh = RenderBuffers(self._ctx, self._prog, self._axes)
-        self._label_mesh = RenderBuffersLabel(
-            self._ctx, self._num_prog, _make_axis_label()
-        )
+        self._label_mesh = RenderBuffersLabel(self._ctx, self._num_prog)
+        # self._label_mesh = RenderBuffersLabel(
+        #     self._ctx, self._num_prog, _make_axis_label()
+        # )
         # self._label_atlas = LabelAtlas(self._ctx)
         # self._number_2 = RendererBuffersLineStrip(
         #     self._ctx, self._num_prog, _make_number_2()
@@ -315,8 +321,8 @@ class Renderer:
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._prog["show_grid"] = True
         self._axes_render_mesh.render()
-        # self._prog["show_grid"] = show_grid
-        # self._render_mesh.render()
+        self._prog["show_grid"] = show_grid
+        self._render_mesh.render()
 
         self._prog["show_grid"] = False
         self._label_mesh.render()
