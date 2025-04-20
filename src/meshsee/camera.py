@@ -1,5 +1,5 @@
 import numpy as np
-from pyrr import matrix33, matrix44
+from pyrr import matrix33, matrix44, Matrix44
 
 
 def point_center(points: np.ndarray) -> np.ndarray:
@@ -120,7 +120,7 @@ class Camera:
         Find the bounding box of the points.
         """
         points_4d = np.append(points, np.ones((points.shape[0], 1)), axis=1)
-        view_points = self.view_matrix.T.dot(points_4d.T).T
+        view_points = points_4d.dot(self.view_matrix)
         view_points = view_points / view_points[:, 3][:, np.newaxis]
         return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
 
