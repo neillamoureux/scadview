@@ -16,8 +16,8 @@ AXIS_WIDTH = 0.1
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
 LABEL_WIDTH = 30.0
 LABEL_HEIGHT = 10.0
-NUMBER_HEIGHT = 10.0
-NUMBER_WIDTH = 5.0
+NUMBER_HEIGHT = 1.0
+NUMBER_WIDTH = 0.5
 
 
 def _make_default_mesh() -> Trimesh:
@@ -94,31 +94,38 @@ class RenderBuffers:
 
 class RenderBuffersLabel(RenderBuffers):
 
-    def __init__(self, ctx: moderngl.Context, prog: moderngl.Program):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        prog: moderngl.Program,
+        label_atlas: LabelAtlas,
+        number: int,
+    ):
         self.ctx = ctx
-        self.number = -56
+        self.number = number
         text = str(self.number)
         base_vertices = np.array(
             [
-                [NUMBER_WIDTH, 0.0, NUMBER_HEIGHT],  # top left
+                [NUMBER_WIDTH, NUMBER_HEIGHT, 0.0],  # top left
                 [NUMBER_WIDTH, 0.0, 0.0],  # bottom left
-                [0.0, 0.0, NUMBER_HEIGHT],  # top right
+                [0.0, NUMBER_HEIGHT, 0.0],  # top right
                 [0.0, 0.0, 0.0],  # bottom right
             ],
             dtype="f4",
         )
-        label_atlas = LabelAtlas(ctx)
 
         vertices = np.empty(base_vertices.shape, dtype="f4")
         uvs = np.empty((0, 2), dtype="f4")
+        center = len(text) * NUMBER_WIDTH / -2.0 + self.number
         for i, c in enumerate(text):
-            offset = NUMBER_WIDTH * i
+            offset = NUMBER_WIDTH * i + center
             vertices = np.concatenate(
                 [
                     (base_vertices + np.array([offset, 0.0, 0.0], dtype="f4")),
-                    base_vertices,
+                    vertices,
                 ],
                 axis=0,
+                dtype="f4",
             )
             c_uvs = label_atlas.uv(c).astype("f4")
 
@@ -126,19 +133,20 @@ class RenderBuffersLabel(RenderBuffers):
                 [
                     np.array(
                         [
-                            [c_uvs[0], c_uvs[1]],  # top left
-                            [c_uvs[0], c_uvs[3]],  # bottom left
                             [c_uvs[2], c_uvs[1]],  # top right
                             [c_uvs[2], c_uvs[3]],  # bottom right
+                            [c_uvs[0], c_uvs[1]],  # top left
+                            [c_uvs[0], c_uvs[3]],  # bottom left
                         ],
                         dtype="f4",
                     ),
                     uvs,
                 ],
+                axis=0,
                 dtype="f4",
             )
 
-        self.vertices = ctx.buffer(data=np.array(vertices, dtype="f4").tobytes())
+        self.vertices = ctx.buffer(data=vertices.tobytes())
         self.uv = ctx.buffer(data=uvs.tobytes())
         self.sampler = label_atlas.sampler
         try:
@@ -214,7 +222,12 @@ class Renderer:
         self.frame()
         self._axes = _make_axes()
         self._axes_render_mesh = RenderBuffers(self._ctx, self._prog, self._axes)
-        self._label_mesh = RenderBuffersLabel(self._ctx, self._num_prog)
+        self._label_atlas = LabelAtlas(self._ctx)
+        self._label_meshes = []
+        for i in range(-100, 101, 10):
+            self._label_meshes.append(
+                RenderBuffersLabel(self._ctx, self._num_prog, self._label_atlas, i)
+            )
         # self._label_mesh = RenderBuffersLabel(
         #     self._ctx, self._num_prog, _make_axis_label()
         # )
@@ -342,7 +355,8 @@ class Renderer:
         # self._render_mesh.render()
 
         self._prog["show_grid"] = False
-        self._label_mesh.render()
+        for l in self._label_meshes:
+            l.render()
 
         # self._number_2.render()
         # I don't know why calling clear after the render works
