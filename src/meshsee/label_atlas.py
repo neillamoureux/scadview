@@ -7,7 +7,7 @@ import os
 
 LABEL_CHARS = "0123456789-"
 MINUS_INDEX = LABEL_CHARS.index("-")
-FONT_SIZE = 24
+FONT_SIZE = 100  # defines the resolution of the font
 FONT_FILE = "DejaVuSansMono.ttf"
 RELATIVE_PATH_TO_FONT = "."
 
@@ -29,7 +29,6 @@ def _get_font_size(font: ImageFont) -> tuple:
 class LabelAtlas:
     def __init__(self, ctx: moderngl.Context):
         self._create_label_atlas()
-        print(self._width, self._height, len(self._bytes))
         self._texture = ctx.texture(
             (self._width, self._height),
             1,
@@ -66,6 +65,9 @@ class LabelAtlas:
         }
         self._bytes = self._image.tobytes()
 
+    def _save_atlas(self) -> None:
+        self._image.save("label_atlas.png")
+
     def _calc_atlas_size(self) -> tuple[int, int]:
         cols = len(LABEL_CHARS)
         self._width = cols * self._cell_width
@@ -73,7 +75,6 @@ class LabelAtlas:
 
     def _draw_chars(self, chars: str, font: ImageFont) -> None:
         # Create a new image for the atlas
-        BLACK = 128
 
         # Create a new image for the atlas
         self._image = Image.new("L", (self._width, self._height))

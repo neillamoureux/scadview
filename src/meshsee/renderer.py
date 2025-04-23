@@ -93,35 +93,53 @@ class RenderBuffers:
 
 
 class RenderBuffersLabel(RenderBuffers):
+
     def __init__(self, ctx: moderngl.Context, prog: moderngl.Program):
         self.ctx = ctx
-        # fmt: off
-        vertices = [
-            0.0, 0.0, 0.0, 
-            0.0, 0.0, NUMBER_HEIGHT, 
-            NUMBER_WIDTH, 0.0, 0.0,
-            NUMBER_WIDTH, 0.0, NUMBER_HEIGHT,
-        ]
-        # fmt: on
-        # self.mesh = mesh
-        # self.points = mesh.triangles.reshape(-1, 3)
-        # self.vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
-        self.vertices = ctx.buffer(data=np.array(vertices, dtype="f4").tobytes())
-        label_atlas = LabelAtlas(ctx)
-        uvs = label_atlas.uv("3").astype("f4")
-        # fmt: off
-        uvarr = np.array(
+        self.number = 56
+        text = str(self.number)
+        base_vertices = np.array(
             [
-                uvs[0], uvs[1],
-                uvs[0], uvs[3],
-                uvs[2], uvs[0],
-                uvs[2], uvs[3],
+                [NUMBER_WIDTH, 0.0, NUMBER_HEIGHT],  # top left
+                [NUMBER_WIDTH, 0.0, 0.0],  # bottom left
+                [0.0, 0.0, NUMBER_HEIGHT],  # top right
+                [0.0, 0.0, 0.0],  # bottom right
             ],
             dtype="f4",
         )
-        # fmt: on
-        self.uv = ctx.buffer(data=uvarr.tobytes())
-        # self.texture = label_atlas.texture
+        label_atlas = LabelAtlas(ctx)
+
+        vertices = np.empty(base_vertices.shape, dtype="f4")
+        uvs = np.empty((0, 2), dtype="f4")
+        for i, c in enumerate(text):
+            offset = NUMBER_WIDTH * i
+            vertices = np.concatenate(
+                [
+                    (base_vertices + np.array([offset, 0.0, 0.0], dtype="f4")),
+                    base_vertices,
+                ],
+                axis=0,
+            )
+            c_uvs = label_atlas.uv(c).astype("f4")
+
+            uvs = np.concatenate(
+                [
+                    np.array(
+                        [
+                            [c_uvs[0], c_uvs[1]],  # top left
+                            [c_uvs[0], c_uvs[3]],  # bottom left
+                            [c_uvs[2], c_uvs[1]],  # top right
+                            [c_uvs[2], c_uvs[3]],  # bottom right
+                        ],
+                        dtype="f4",
+                    ),
+                    uvs,
+                ],
+                dtype="f4",
+            )
+
+        self.vertices = ctx.buffer(data=np.array(vertices, dtype="f4").tobytes())
+        self.uv = ctx.buffer(data=uvs.tobytes())
         self.sampler = label_atlas.sampler
         try:
             self.vao = self._create_vao(ctx, prog)
@@ -129,7 +147,6 @@ class RenderBuffersLabel(RenderBuffers):
             print(f"Error creating vertex array: {e}")
 
         prog["atlas"].value = 0
-        # self.texture.use(location=0)
         self.sampler.use(location=0)
         self._prog = prog
 
@@ -321,8 +338,8 @@ class Renderer:
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._prog["show_grid"] = True
         self._axes_render_mesh.render()
-        self._prog["show_grid"] = show_grid
-        self._render_mesh.render()
+        # self._prog["show_grid"] = show_grid
+        # self._render_mesh.render()
 
         self._prog["show_grid"] = False
         self._label_mesh.render()
