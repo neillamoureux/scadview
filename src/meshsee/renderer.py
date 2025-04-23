@@ -96,7 +96,7 @@ class RenderBuffersLabel(RenderBuffers):
 
     def __init__(self, ctx: moderngl.Context, prog: moderngl.Program):
         self.ctx = ctx
-        self.number = 56
+        self.number = -56
         text = str(self.number)
         base_vertices = np.array(
             [
