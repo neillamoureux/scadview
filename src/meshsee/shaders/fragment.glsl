@@ -5,6 +5,7 @@ uniform bool show_grid;
 
 in vec3 pos;
 in vec3 w_pos;
+in vec3 w_normal;
 //in vec3 color;
 in vec3 normal;
 
@@ -17,10 +18,11 @@ float on_grid(float pos, float spacing, float frac_width) {
 }
 
 vec4 grid_color(vec3 pos, float spacing, float frac_width) {
+    vec3 n = normalize(w_normal);
     return vec4(
-        on_grid(pos.x, spacing, frac_width),
-        on_grid(pos.y, spacing, frac_width),
-        on_grid(pos.z, spacing, frac_width),
+        on_grid(pos.x, spacing, frac_width) * sqrt(dot(n.yz, n.yz)),
+        on_grid(pos.y, spacing, frac_width) * sqrt(dot(n.xz, n.xz)),
+        on_grid(pos.z, spacing, frac_width) * sqrt(dot(n.xy, n.xy)),
         1.0
     );
 }

@@ -10,13 +10,15 @@ uniform mat4 m_proj;
 
 out vec3 pos;
 out vec3 normal;
+out vec3 w_normal;
 out vec3 w_pos;
 //out vec3 color;
 
 void main() {
-    mat4 m_view = m_camera * m_model;
     vec4 world_pos = m_model * vec4(in_position, 1.0);
     w_pos = world_pos.xyz / world_pos.w;
+    w_normal = inverse(transpose(mat3(m_model))) * normalize(in_normal);
+    mat4 m_view = m_camera * m_model;
     vec4 p = m_view * vec4(in_position, 1.0);
     gl_Position =  m_proj * p;
     mat3 m_normal = inverse(transpose(mat3(m_view)));
