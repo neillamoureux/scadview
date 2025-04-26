@@ -12,7 +12,8 @@ import meshsee.shaders
 
 
 AXIS_LENGTH = 200.0
-AXIS_WIDTH = 0.1
+AXIS_WIDTH = 0.01
+AXIS_DEPTH = 1.0
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
 LABEL_WIDTH = 30.0
 LABEL_HEIGHT = 10.0
@@ -27,9 +28,12 @@ def _make_default_mesh() -> Trimesh:
 
 def _make_axes() -> Trimesh:
     return (
-        box([AXIS_LENGTH, AXIS_WIDTH, AXIS_WIDTH])
-        .union(box([AXIS_WIDTH, AXIS_LENGTH, AXIS_WIDTH]))
-        .union(box([AXIS_WIDTH, AXIS_WIDTH, AXIS_LENGTH]))
+        box([AXIS_LENGTH, AXIS_DEPTH, AXIS_WIDTH])
+        .union(box([AXIS_LENGTH, AXIS_WIDTH, AXIS_DEPTH]))
+        .union(box([AXIS_WIDTH, AXIS_LENGTH, AXIS_DEPTH]))
+        .union(box([AXIS_DEPTH, AXIS_LENGTH, AXIS_WIDTH]))
+        .union(box([AXIS_DEPTH, AXIS_WIDTH, AXIS_LENGTH]))
+        .union(box([AXIS_WIDTH, AXIS_DEPTH, AXIS_LENGTH]))
     )
 
 
@@ -99,9 +103,11 @@ class RenderBuffersLabel(RenderBuffers):
         ctx: moderngl.Context,
         prog: moderngl.Program,
         label_atlas: LabelAtlas,
+        camera: Camera,
         number: int,
     ):
         self.ctx = ctx
+        self.camera = camera
         self.number = number
         text = str(self.number)
         base_vertices = np.array(
@@ -170,6 +176,11 @@ class RenderBuffersLabel(RenderBuffers):
         return vao
 
     def render(self):
+        scale = 1.0
+        m_scale = np.identity(4, dtype="f4")
+        m_scale[0, 0] = scale
+        m_scale[1, 1] = scale
+        self._prog["m_scale"].write(m_scale)
         self.sampler.use(location=0)
         self.ctx.enable(moderngl.BLEND)
         # Use the standard alpha blend function
@@ -226,7 +237,9 @@ class Renderer:
         self._label_meshes = []
         for i in range(-100, 101, 10):
             self._label_meshes.append(
-                RenderBuffersLabel(self._ctx, self._num_prog, self._label_atlas, i)
+                RenderBuffersLabel(
+                    self._ctx, self._num_prog, self._label_atlas, self._camera, i
+                )
             )
         # self._label_mesh = RenderBuffersLabel(
         #     self._ctx, self._num_prog, _make_axis_label()
@@ -351,10 +364,10 @@ class Renderer:
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._prog["show_grid"] = True
         self._axes_render_mesh.render()
-        # self._prog["show_grid"] = show_grid
-        # self._render_mesh.render()
+        self._prog["show_grid"] = show_grid
+        self._render_mesh.render()
 
-        self._prog["show_grid"] = False
+        # self._prog["show_grid"] = False
         for l in self._label_meshes:
             l.render()
 
