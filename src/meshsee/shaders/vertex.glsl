@@ -17,12 +17,11 @@ out vec3 w_pos;
 void main() {
     vec4 world_pos = m_model * vec4(in_position, 1.0);
     w_pos = world_pos.xyz / world_pos.w;
-    w_normal = inverse(transpose(mat3(m_model))) * normalize(in_normal);
+    w_normal = normalize(inverse(transpose(mat3(m_model))) * in_normal);
     mat4 m_view = m_camera * m_model;
     vec4 p = m_view * vec4(in_position, 1.0);
     gl_Position =  m_proj * p;
     mat3 m_normal = inverse(transpose(mat3(m_view)));
-    normal = m_normal * normalize(in_normal);
+    normal = normalize(m_normal * in_normal);
     pos = p.xyz/ p.w;
-    //color = in_color;
 }
