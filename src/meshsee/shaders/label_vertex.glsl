@@ -13,7 +13,7 @@ uniform mat4 m_scale;
 out vec2 v_uv;                          // Pass texture coordinate to fragment shader
 
 void main() {
-    mat4 m_view = m_scale * m_camera * m_model;
+    mat4 m_view = m_camera * m_scale * m_model;
     vec4 p = m_view * vec4(in_position, 1.0);
     gl_Position =  m_proj * p;
     v_uv = in_uv;

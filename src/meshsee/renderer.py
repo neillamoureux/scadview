@@ -13,7 +13,7 @@ import meshsee.shaders
 
 AXIS_LENGTH = 200.0
 AXIS_WIDTH = 0.01
-AXIS_DEPTH = 1.0
+AXIS_DEPTH = 0.1
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
 LABEL_WIDTH = 30.0
 LABEL_HEIGHT = 10.0
@@ -176,17 +176,36 @@ class RenderBuffersLabel(RenderBuffers):
         return vao
 
     def render(self):
-        scale = 1.0
-        m_scale = np.identity(4, dtype="f4")
-        m_scale[0, 0] = scale
-        m_scale[1, 1] = scale
+        scale = max(self.camera.position) * 0.03
+        translate_to_origin = Matrix44.from_translation(
+            [-self.number, 0.0, 0.0], dtype="f4"
+        )
+        translate_from_origin = Matrix44.from_translation(
+            [self.number, 0.0, 0.0], dtype="f4"
+        )
+        m_mag = np.identity(4, dtype="f4")
+        m_mag[0, 0] = scale
+        m_mag[1, 1] = scale
+        m_scale = translate_from_origin * m_mag * translate_to_origin
         self._prog["m_scale"].write(m_scale)
         self.sampler.use(location=0)
         self.ctx.enable(moderngl.BLEND)
         # Use the standard alpha blend function
         self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.vao.render(moderngl.TRIANGLE_STRIP)
-        # self.vao.render()
+
+        rotation = Matrix44.from_eulers([0.0, 3.14159 / 2.0, 0.0], dtype="f4")
+        m_scale = rotation * translate_from_origin * m_mag * translate_to_origin
+        self._prog["m_scale"].write(m_scale)
+        self.vao.render(moderngl.TRIANGLE_STRIP)
+
+        rotation_2 = Matrix44.from_eulers([3.14159 / 2.0, 0.0, 0.0], dtype="f4")
+        m_scale = (
+            rotation_2 * rotation * translate_from_origin * m_mag * translate_to_origin
+        )
+        self._prog["m_scale"].write(m_scale)
+        self.vao.render(moderngl.TRIANGLE_STRIP)
+
         self.ctx.disable(moderngl.BLEND)
 
 
