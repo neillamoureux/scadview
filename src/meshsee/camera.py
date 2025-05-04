@@ -11,7 +11,7 @@ class Camera:
     LOOK_AT_INIT = np.array([0.0, 0.0, 0.0], dtype="f4")
     Z_DIR = np.array([0.0, 0.0, 1.0], dtype="f4")
     FOVY_INIT = 22.5
-    FAR_NEAR_RATIO = 1000.0
+    FAR_NEAR_RATIO = 2000.0
     FAR_MULTIPLIER = 2.0
     NEAR_INIT = 1.0
     FAR_INIT = NEAR_INIT * FAR_NEAR_RATIO
@@ -123,6 +123,62 @@ class Camera:
         view_points = points_4d.dot(self.view_matrix)
         view_points = view_points / view_points[:, 3][:, np.newaxis]
         return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
+
+    def _frustum_planes(self):
+        """
+        Compute the frustum planes as a shape (6,4) matrix
+        Each row (a, b, c, d) where (a, b, c) is the normal vector of the plane
+        pointing into the frustum.
+        and d is such that (a, b, c) dot (x, y, z) + d = 0
+        """
+        view_matrix = self.view_matrix
+        projection_matrix = self.projection_matrix
+        # frustum_matrix = np.dot(view_matrix, projection_matrix)
+        frustum_matrix = view_matrix @ projection_matrix
+
+        planes = np.zeros((6, 4), dtype="f4")
+        # Left
+        planes[0] = frustum_matrix[3] + frustum_matrix[0]
+        # Right
+        planes[1] = frustum_matrix[3] - frustum_matrix[0]
+        # Bottom
+        planes[2] = frustum_matrix[3] + frustum_matrix[1]
+        # Top
+        planes[3] = frustum_matrix[3] - frustum_matrix[1]
+        # Near
+        planes[4] = frustum_matrix[3] + frustum_matrix[2]
+        # Far
+        planes[5] = frustum_matrix[3] - frustum_matrix[2]
+
+        # Normalize the normal vector and adjust d
+        for i in range(6):
+            planes[i] = planes[i] / np.linalg.norm(planes[i][:3])
+            print("plane", i, "normal", planes[i][:3], "d", planes[i][3])
+
+        return planes
+
+    def axis_visible_range(self, axis: int):
+        """
+        Compute the visible range of the axis in world space.
+        The result is a tuple (min, max) where min and max are the
+        minimum and maximum coordinates of the axis that are visible in the frustum.
+        """
+        planes = self._frustum_planes()
+        min_val = np.inf
+        max_val = -np.inf
+        # planes are in the form (a, b, c, d) where (a, b, c) is the normal vector
+        # of the plane and d is such that (a, b, c) dot (x, y, z) + d = 0
+        # For the x axis, (a, b, c) dot (x, 0, 0 ) = -d
+        # ax = -d
+        # x = -d / a
+
+        for plane in planes:
+            if plane[axis] > 0:
+                min_val = min(min_val, -plane[3] / plane[axis])
+            else:
+                max_val = max(max_val, -plane[3] / plane[axis])
+        print("axis", axis, "min", min_val, "max", max_val)
+        return min_val, max_val
 
     # move the camera along the direction vector
     # without changing the look_at point

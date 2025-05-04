@@ -11,7 +11,7 @@ from meshsee.label_atlas import LabelAtlas
 import meshsee.shaders
 
 
-AXIS_LENGTH = 200.0
+AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
 AXIS_DEPTH = 0.1
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
@@ -176,7 +176,18 @@ class RenderBuffersLabel(RenderBuffers):
         return vao
 
     def render(self):
-        scale = max(self.camera.position) * 0.03
+        # get space of each axis, and scale based on the max span
+        span = max(
+            [
+                self.camera.axis_visible_range(i)[1]
+                - self.camera.axis_visible_range(i)[0]
+                for i in range(3)
+            ]
+        )
+
+        scale = span / 20.0
+        print(f"scale: {scale}")
+        # scale = max(abs(self.camera.position)) * 0.03
         translate_to_origin = Matrix44.from_translation(
             [-self.number, 0.0, 0.0], dtype="f4"
         )
