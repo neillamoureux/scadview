@@ -91,6 +91,10 @@ class MainWindow(QMainWindow):
         )  # Set fixed height for the button strip
 
         # Add buttons to the button layout
+        frame_btn = QPushButton("Frame")
+        frame_btn.clicked.connect(self._gl_widget.frame)
+        camera_button_layout.addWidget(frame_btn)
+
         view_from_xyz_btn = QPushButton("View from XYZ")
         view_from_xyz_btn.clicked.connect(self._gl_widget.view_from_xyz)
         camera_button_layout.addWidget(view_from_xyz_btn)
