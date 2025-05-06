@@ -82,12 +82,12 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.view_from_z()
         self.update()
 
-    def load_mesh(self, mesh: Trimesh):
-        self._gl_widget_adapter.load_mesh(mesh)
+    def frame(self):
+        self._gl_widget_adapter.frame()
         self.update()
 
-    def frame(self, direction=None, up=None):
-        self._gl_widget_adapter.frame(direction, up)
+    def load_mesh(self, mesh: Trimesh):
+        self._gl_widget_adapter.load_mesh(mesh)
         self.update()
 
     @property
