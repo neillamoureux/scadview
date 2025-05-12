@@ -4,7 +4,61 @@ from math import acos, cos
 from pytest import approx, mark
 import numpy as np
 
-from meshsee.camera import Camera
+from meshsee.camera import Camera, intersection
+
+
+def test_intersection():
+    range1 = (0, 1)
+    range2 = (0.5, 1.5)
+    actual = intersection(range1, range2)
+    expected = (0.5, 1)
+    assert actual == expected
+    range2 = (0, 1)
+    actual = intersection(range1, range2)
+    expected = (0, 1)
+    assert actual == expected
+    range2 = (1, 2)
+    actual = intersection(range1, range2)
+    expected = (1, 1)
+    assert actual == expected
+    range2 = (2, 3)
+    actual = intersection(range1, range2)
+    expected = None
+    assert actual == expected
+    range2 = (0.5, 0.5)
+    actual = intersection(range1, range2)
+    expected = (0.5, 0.5)
+    assert actual == expected
+    range2 = (-0.5, 0.5)
+    actual = intersection(range1, range2)
+    expected = (0, 0.5)
+    assert actual == expected
+    range2 = (-0.5, -0.1)
+    actual = intersection(range1, range2)
+    expected = None
+    assert actual == expected
+
+
+def test_intersection_inf():
+    range1 = (0, np.inf)
+    range2 = (-np.inf, 0.5)
+    actual = intersection(range1, range2)
+    expected = (0, 0.5)
+    assert actual == expected
+    range2 = (0.5, np.inf)
+    actual = intersection(range1, range2)
+    expected = (0.5, np.inf)
+    assert actual == expected
+
+
+def test_intersection_none():
+    range1 = (0, 1)
+    range2 = None
+    actual = intersection(range1, range2)
+    expected = None
+    assert actual == expected
+    actual = intersection(range2, range1)
+    assert actual == expected
 
 
 def test_init():
@@ -336,8 +390,10 @@ def test_frame_override_cam_up():
 def test_frame_points_in_clip_1():
     check_frame_points_in_clip(1.0)
 
+
 def test_frame_points_in_clip_point_1():
     check_frame_points_in_clip(0.1)
+
 
 def test_frame_points_in_clip_point_10000():
     check_frame_points_in_clip(10000)
@@ -380,9 +436,9 @@ def check_frame_points_in_clip(multiplier):
         assert -1.0 <= projected_point[2] / projected_point[3] <= 1.0
 
 
-
 def test_move__forward():
     check_move(1.3)
+
 
 def check_move(move_by):
     __tracebackhide__ = True
@@ -394,11 +450,15 @@ def check_move(move_by):
     cam.move(move_by)
     assert np.linalg.norm(cam.direction) == approx(distance)
     assert np.linalg.norm(cam.position - position_orig) == approx(abs(move_by))
-    assert np.allclose(position_orig + cam.direction  * move_by / np.linalg.norm(cam.direction), cam.position)
+    assert np.allclose(
+        position_orig + cam.direction * move_by / np.linalg.norm(cam.direction),
+        cam.position,
+    )
 
 
 def test_move__back():
     check_move(-2.5)
+
 
 def test_move_up():
     cam = Camera()
@@ -416,6 +476,7 @@ def test_move_up():
     assert np.allclose(cam.look_at, look_at + perp_up * 1.5)
     assert np.allclose(cam.perpendicular_up, perp_up)
 
+
 def test_move_right():
     cam = Camera()
     position = np.array([1.0, 2.0, 3.0])
@@ -426,12 +487,13 @@ def test_move_right():
     direction = cam.direction
     distance = np.linalg.norm(cam.direction)
     cam.move_right(1.5)
-    right = np.cross(cam.direction/np.linalg.norm(cam.direction), cam.up)
+    right = np.cross(cam.direction / np.linalg.norm(cam.direction), cam.up)
     assert np.linalg.norm(cam.direction) == approx(distance)
     assert np.allclose(cam.direction, direction)
     assert np.allclose(cam.position, position + right * 1.5)
     assert np.allclose(cam.look_at, look_at + right * 1.5)
     assert np.allclose(cam.perpendicular_up, perp_up)
+
 
 def test_move_along():
     cam = Camera()
@@ -445,6 +507,7 @@ def test_move_along():
     assert np.allclose(cam.position, position + vector)
     assert np.allclose(cam.look_at, look_at + vector)
     assert np.allclose(cam.perpendicular_up, perp_up)
+
 
 def test_move_to_screen():
     cam = Camera()
@@ -470,5 +533,3 @@ def test_move_to_screen():
     )
     assert position_screen_coords[0] / position_screen_coords[3] == approx(ndx)
     assert position_screen_coords[1] / position_screen_coords[3] == approx(ndy)
-
-

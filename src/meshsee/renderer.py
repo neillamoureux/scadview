@@ -1,4 +1,5 @@
 from importlib.resources import as_file, files
+from math import log10, pi, floor
 
 import moderngl
 import numpy as np
@@ -19,11 +20,12 @@ LABEL_WIDTH = 30.0
 LABEL_HEIGHT = 10.0
 NUMBER_HEIGHT = 1.0
 NUMBER_WIDTH = 0.5
+MAX_LABEL_FRAC_OF_AXIS = 0.2
+PER_NUMBER_FRAC_OF_AXIS = 0.04
 
 
 def _make_default_mesh() -> Trimesh:
-    # return box([50.0, 40.0, 30.0])
-    return box([100, 20, 10]).apply_translation([50, 10, 5])
+    return box([50.0, 40.0, 30.0])
 
 
 def _make_axes() -> Trimesh:
@@ -176,18 +178,14 @@ class RenderBuffersLabel(RenderBuffers):
         return vao
 
     def render(self):
-        # get space of each axis, and scale based on the max span
-        span = max(
-            [
-                self.camera.axis_visible_range(i)[1]
-                - self.camera.axis_visible_range(i)[0]
-                for i in range(3)
-            ]
-        )
 
-        scale = span / 20.0
-        print(f"scale: {scale}")
-        # scale = max(abs(self.camera.position)) * 0.03
+        ranges = [self.camera.axis_visible_range(i) for i in range(3)]
+        ranges = list(filter(lambda x: x is not None, ranges))
+        if len(ranges) == 0:
+            return
+        spans = [ranges[i][1] - ranges[i][0] for i in range(3)]
+        scale = max(spans) * PER_NUMBER_FRAC_OF_AXIS
+
         translate_to_origin = Matrix44.from_translation(
             [-self.number, 0.0, 0.0], dtype="f4"
         )
@@ -205,15 +203,17 @@ class RenderBuffersLabel(RenderBuffers):
         self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
-        rotation = Matrix44.from_eulers([0.0, 3.14159 / 2.0, 0.0], dtype="f4")
+        # y axis
+        rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
         m_scale = rotation * translate_from_origin * m_mag * translate_to_origin
         self._prog["m_scale"].write(m_scale)
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
-        rotation_2 = Matrix44.from_eulers([3.14159 / 2.0, 0.0, 0.0], dtype="f4")
-        m_scale = (
-            rotation_2 * rotation * translate_from_origin * m_mag * translate_to_origin
-        )
+        # z axis
+        rotation_z = Matrix44.from_z_rotation(
+            pi, dtype="f4"
+        ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
+        m_scale = rotation_z * translate_from_origin * m_mag * translate_to_origin
         self._prog["m_scale"].write(m_scale)
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
@@ -306,8 +306,6 @@ class Renderer:
                 print(f"Error creating shader program: {e}")
 
     def _create_num_shader_program(self) -> moderngl.Program:
-        # vertex_shader_source = files(meshsee.shaders).joinpath("vertex_num.glsl")
-        # fragment_shader_source = files(meshsee.shaders).joinpath("fragment_num.glsl")
         vertex_shader_source = files(meshsee.shaders).joinpath("label_vertex.glsl")
         fragment_shader_source = files(meshsee.shaders).joinpath("label_fragment.glsl")
         with (

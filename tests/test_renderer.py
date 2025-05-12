@@ -38,14 +38,12 @@ from meshsee.renderer import Renderer
 def test_aspect_ratio():
     context = MagicMock()
     m_proj = Mock()
-    m_camera = Mock()
-    m_model_write = Mock()
-    color_write = Mock()
     shader_vars = {
         "m_proj": m_proj,
-        "m_camera": m_camera,
-        "m_model": m_model_write,
-        "color": color_write,
+        "m_camera": Mock(),
+        "m_model": Mock(),
+        "color": Mock(),
+        "atlas": Mock(),
     }
     context.program = Mock(return_value=shader_vars)
     camera = Camera()

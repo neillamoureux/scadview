@@ -6,6 +6,21 @@ def point_center(points: np.ndarray) -> np.ndarray:
     return np.mean(points, axis=0)
 
 
+def intersection(range1: tuple[float], range2: tuple[float]) -> tuple[float] | None:
+    """
+    Compute the intersection of two ranges.
+    The result is a tuple (min, max) where min and max are the
+    minimum and maximum coordinates of the intersection.
+    Returns None if no intersection exists.
+    """
+    if range1 is None or range2 is None:
+        return None
+    result = (max(range1[0], range2[0]), min(range1[1], range2[1]))
+    if result[0] > result[1]:
+        return None
+    return result
+
+
 class Camera:
     POSITION_INIT = np.array([2.0, 2.0, 2.0], dtype="f4")
     LOOK_AT_INIT = np.array([0.0, 0.0, 0.0], dtype="f4")
@@ -133,8 +148,7 @@ class Camera:
         """
         view_matrix = self.view_matrix
         projection_matrix = self.projection_matrix
-        # frustum_matrix = np.dot(view_matrix, projection_matrix)
-        frustum_matrix = view_matrix @ projection_matrix
+        frustum_matrix = projection_matrix.T @ view_matrix.T
 
         planes = np.zeros((6, 4), dtype="f4")
         # Left
@@ -153,7 +167,6 @@ class Camera:
         # Normalize the normal vector and adjust d
         for i in range(6):
             planes[i] = planes[i] / np.linalg.norm(planes[i][:3])
-            print("plane", i, "normal", planes[i][:3], "d", planes[i][3])
 
         return planes
 
@@ -164,21 +177,24 @@ class Camera:
         minimum and maximum coordinates of the axis that are visible in the frustum.
         """
         planes = self._frustum_planes()
-        min_val = np.inf
-        max_val = -np.inf
+        range = (-np.inf, np.inf)
         # planes are in the form (a, b, c, d) where (a, b, c) is the normal vector
         # of the plane and d is such that (a, b, c) dot (x, y, z) + d = 0
         # For the x axis, (a, b, c) dot (x, 0, 0 ) = -d
         # ax = -d
         # x = -d / a
+        # The normals point inward, so (a, b, c) dot (x, y, z) + d > 0 means the point is
+        # on the visible side of the plane
+        # so if x = inf, a * inf + d > 0 if a > 0, otherwise < 0
 
         for plane in planes:
+            intersects_at = -plane[3] / plane[axis]
             if plane[axis] > 0:
-                min_val = min(min_val, -plane[3] / plane[axis])
+                plane_range = (intersects_at, np.inf)
             else:
-                max_val = max(max_val, -plane[3] / plane[axis])
-        print("axis", axis, "min", min_val, "max", max_val)
-        return min_val, max_val
+                plane_range = (-np.inf, intersects_at)
+            range = intersection(range, plane_range)
+        return range
 
     # move the camera along the direction vector
     # without changing the look_at point
