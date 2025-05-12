@@ -1,5 +1,5 @@
 from importlib.resources import as_file, files
-from math import log10, pi, floor
+from math import pi
 
 import moderngl
 import numpy as np
@@ -110,8 +110,9 @@ class RenderBuffersLabel(RenderBuffers):
     ):
         self.ctx = ctx
         self.camera = camera
-        self.number = number
-        text = str(self.number)
+        self._number = number
+        self.scale = 1.0
+        text = str(self._number)
         base_vertices = np.array(
             [
                 [NUMBER_WIDTH, NUMBER_HEIGHT, 0.0],  # top left
@@ -124,7 +125,7 @@ class RenderBuffersLabel(RenderBuffers):
 
         vertices = np.empty(base_vertices.shape, dtype="f4")
         uvs = np.empty((0, 2), dtype="f4")
-        center = len(text) * NUMBER_WIDTH / -2.0 + self.number
+        center = len(text) * NUMBER_WIDTH / -2.0 + self._number
         for i, c in enumerate(text):
             offset = NUMBER_WIDTH * i + center
             vertices = np.concatenate(
@@ -165,6 +166,12 @@ class RenderBuffersLabel(RenderBuffers):
         prog["atlas"].value = 0
         self.sampler.use(location=0)
         self._prog = prog
+        self._translate_to_origin = Matrix44.from_translation(
+            [-self._number, 0.0, 0.0], dtype="f4"
+        )
+        self._translate_from_origin = Matrix44.from_translation(
+            [self._number, 0.0, 0.0], dtype="f4"
+        )
 
     def _create_vao(self, ctx: moderngl.Context, prog: moderngl.Program):
         vao = ctx.vertex_array(
@@ -178,24 +185,10 @@ class RenderBuffersLabel(RenderBuffers):
         return vao
 
     def render(self):
-
-        ranges = [self.camera.axis_visible_range(i) for i in range(3)]
-        ranges = list(filter(lambda x: x is not None, ranges))
-        if len(ranges) == 0:
-            return
-        spans = [ranges[i][1] - ranges[i][0] for i in range(3)]
-        scale = max(spans) * PER_NUMBER_FRAC_OF_AXIS
-
-        translate_to_origin = Matrix44.from_translation(
-            [-self.number, 0.0, 0.0], dtype="f4"
-        )
-        translate_from_origin = Matrix44.from_translation(
-            [self.number, 0.0, 0.0], dtype="f4"
-        )
         m_mag = np.identity(4, dtype="f4")
-        m_mag[0, 0] = scale
-        m_mag[1, 1] = scale
-        m_scale = translate_from_origin * m_mag * translate_to_origin
+        m_mag[0, 0] = self.scale
+        m_mag[1, 1] = self.scale
+        m_scale = self._translate_from_origin * m_mag * self._translate_to_origin
         self._prog["m_scale"].write(m_scale)
         self.sampler.use(location=0)
         self.ctx.enable(moderngl.BLEND)
@@ -205,7 +198,9 @@ class RenderBuffersLabel(RenderBuffers):
 
         # y axis
         rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-        m_scale = rotation * translate_from_origin * m_mag * translate_to_origin
+        m_scale = (
+            rotation * self._translate_from_origin * m_mag * self._translate_to_origin
+        )
         self._prog["m_scale"].write(m_scale)
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
@@ -213,7 +208,9 @@ class RenderBuffersLabel(RenderBuffers):
         rotation_z = Matrix44.from_z_rotation(
             pi, dtype="f4"
         ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-        m_scale = rotation_z * translate_from_origin * m_mag * translate_to_origin
+        m_scale = (
+            rotation_z * self._translate_from_origin * m_mag * self._translate_to_origin
+        )
         self._prog["m_scale"].write(m_scale)
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
@@ -259,26 +256,11 @@ class Renderer:
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
         self._render_mesh = RenderBuffers(self._ctx, self._prog, self._default_mesh)
-        # self.load_mesh(self._default_mesh)
         self.frame()
         self._axes = _make_axes()
         self._axes_render_mesh = RenderBuffers(self._ctx, self._prog, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
-        self._label_meshes = []
-        for i in range(-100, 101, 10):
-            self._label_meshes.append(
-                RenderBuffersLabel(
-                    self._ctx, self._num_prog, self._label_atlas, self._camera, i
-                )
-            )
-        # self._label_mesh = RenderBuffersLabel(
-        #     self._ctx, self._num_prog, _make_axis_label()
-        # )
-        # self._label_atlas = LabelAtlas(self._ctx)
-        # self._number_2 = RendererBuffersLineStrip(
-        #     self._ctx, self._num_prog, _make_number_2()
-        # )
-        # self._load_axes(self._axes)
+        self._label_meshes = {}
 
     @property
     def aspect_ratio(self):
@@ -394,17 +376,24 @@ class Renderer:
         self._axes_render_mesh.render()
         self._prog["show_grid"] = show_grid
         self._render_mesh.render()
+        self._render_labels()
 
-        # self._prog["show_grid"] = False
-        for l in self._label_meshes:
+    def _render_labels(self):
+        ranges = [self._camera.axis_visible_range(i) for i in range(3)]
+        ranges = list(filter(lambda x: x is not None, ranges))
+        if len(ranges) == 0:
+            return
+        spans = [range[1] - range[0] for range in ranges]
+        scale = max(spans) * PER_NUMBER_FRAC_OF_AXIS
+
+        for i in range(-100, 101, 10):
+            if i not in self._label_meshes.keys():
+                self._label_meshes[i] = RenderBuffersLabel(
+                    self._ctx, self._num_prog, self._label_atlas, self._camera, i
+                )
+        for l in self._label_meshes.values():
+            l.scale = scale
             l.render()
-
-        # self._number_2.render()
-        # I don't know why calling clear after the render works
-        # Calling before obliterates the rendering
-        # Possibly because the render method swaps the frame buffer?
-        # It still produces GL_INVALID_FRAMEBUFFER_OPERATION
-        # self._ctx.clear(*self.BACKGROUND_COLOR)
 
 
 class RendererFactory:
