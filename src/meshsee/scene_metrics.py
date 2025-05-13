@@ -29,6 +29,15 @@ def label_step(span: float, max_labels: int) -> float:
     return 10 ** (floor(log_lower_bound) + LABEL_TWOS_BREAK)
 
 
+def label_round(value: float, step: float) -> float:
+    """
+    Round the value to the nearest multiple of the step size.
+    """
+    if step <= 0:
+        raise ValueError("Step size must be greater than 0")
+    return round(value / step) * step
+
+
 class SceneMetrics:
     def __init__(self, camera: Camera):
         self.camera = camera

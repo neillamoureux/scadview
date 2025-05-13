@@ -1,7 +1,7 @@
 import pytest
 from pytest import approx
 
-from meshsee.scene_metrics import label_step
+from meshsee.scene_metrics import label_round, label_step
 
 
 @pytest.mark.parametrize(
@@ -27,3 +27,20 @@ def test_label_step_fives(span, max_labels, expected):
 def test_label_step_value_errors(span, max_labels):
     with pytest.raises(ValueError):
         label_step(span, max_labels)
+
+
+@pytest.mark.parametrize(
+    "value, step, expected",
+    [
+        (10.001, 2.0, 10.0),
+        (0.00101, 0.0002, 0.001),
+        (-10.001, 2.0, -10.0),
+    ],
+)
+def test_label_round(value, step, expected):
+    assert label_round(value, step) == approx(expected)
+
+
+def test_label_round_value_error():
+    with pytest.raises(ValueError):
+        label_round(10.0, -0.1)
