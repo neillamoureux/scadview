@@ -21,12 +21,12 @@ def label_step(span: float, max_labels: int) -> float:
     lower_bound = span / max_labels
     log_lower_bound = log10(lower_bound)
     if log_lower_bound == ceil(log_lower_bound):
-        return 10**log_lower_bound
+        return lower_bound
     if log_lower_bound > floor(log_lower_bound) + LABEL_FIVES_BREAK:
         return 10 ** (floor(log_lower_bound) + 1)
     if log_lower_bound > floor(log_lower_bound) + LABEL_TWOS_BREAK:
-        return 10 ** (floor(log_lower_bound) + LABEL_FIVES_BREAK)
-    return 10 ** (floor(log_lower_bound) + LABEL_TWOS_BREAK)
+        return 5 * 10 ** (floor(log_lower_bound))
+    return 2 * 10 ** (floor(log_lower_bound))
 
 
 def label_round(value: float, step: float) -> float:
@@ -79,7 +79,7 @@ def labels_to_show(min_value: float, max_value: float, step: float) -> list[str]
     label_max = floor(max_value / step) * step
     i = 0
     while label_min + i * step <= label_max:
-        labels.append(label_format(label_min + i * step, step))
+        labels.append(label_format(label_round(label_min + i * step, step), step))
         i += 1
     return labels
 
