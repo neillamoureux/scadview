@@ -9,18 +9,20 @@ from trimesh.creation import box
 
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
+from meshsee.scene_metrics import label_char_width, label_step, labels_to_show
 import meshsee.shaders
 
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
-AXIS_DEPTH = 0.1
+AXIS_DEPTH = 0.01
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
 LABEL_WIDTH = 30.0
 LABEL_HEIGHT = 10.0
 NUMBER_HEIGHT = 1.0
 NUMBER_WIDTH = 0.5
-MAX_LABEL_FRAC_OF_AXIS = 0.2
+MAX_LABEL_FRAC_OF_STEP = 0.5
+MAX_LABELS_PER_AXIS = 20
 PER_NUMBER_FRAC_OF_AXIS = 0.04
 
 
@@ -106,13 +108,13 @@ class RenderBuffersLabel(RenderBuffers):
         prog: moderngl.Program,
         label_atlas: LabelAtlas,
         camera: Camera,
-        number: int,
+        label: str,
     ):
         self.ctx = ctx
         self.camera = camera
-        self._number = number
-        self.scale = 1.0
-        text = str(self._number)
+        self._number = float(label)
+        self.char_width = NUMBER_WIDTH
+        self.axis = 0
         base_vertices = np.array(
             [
                 [NUMBER_WIDTH, NUMBER_HEIGHT, 0.0],  # top left
@@ -125,8 +127,8 @@ class RenderBuffersLabel(RenderBuffers):
 
         vertices = np.empty(base_vertices.shape, dtype="f4")
         uvs = np.empty((0, 2), dtype="f4")
-        center = len(text) * NUMBER_WIDTH / -2.0 + self._number
-        for i, c in enumerate(text):
+        center = len(label) * NUMBER_WIDTH / -2.0 + self._number
+        for i, c in enumerate(label):
             offset = NUMBER_WIDTH * i + center
             vertices = np.concatenate(
                 [
@@ -186,33 +188,58 @@ class RenderBuffersLabel(RenderBuffers):
 
     def render(self):
         m_mag = np.identity(4, dtype="f4")
-        m_mag[0, 0] = self.scale
-        m_mag[1, 1] = self.scale
+        scale = self.char_width / NUMBER_WIDTH
+        m_mag[0, 0] = scale
+        m_mag[1, 1] = scale
         m_scale = self._translate_from_origin * m_mag * self._translate_to_origin
         self._prog["m_scale"].write(m_scale)
         self.sampler.use(location=0)
         self.ctx.enable(moderngl.BLEND)
         # Use the standard alpha blend function
         self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-        self.vao.render(moderngl.TRIANGLE_STRIP)
 
-        # y axis
-        rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-        m_scale = (
-            rotation * self._translate_from_origin * m_mag * self._translate_to_origin
-        )
+        # x axis
+        if self.axis == 0:
+            m_scale = self._translate_from_origin * m_mag * self._translate_to_origin
+        if self.axis == 1:
+            rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
+            m_scale = (
+                rotation
+                * self._translate_from_origin
+                * m_mag
+                * self._translate_to_origin
+            )
+        if self.axis == 2:
+            rotation_z = Matrix44.from_z_rotation(
+                pi, dtype="f4"
+            ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
+            m_scale = (
+                rotation_z
+                * self._translate_from_origin
+                * m_mag
+                * self._translate_to_origin
+            )
+
         self._prog["m_scale"].write(m_scale)
         self.vao.render(moderngl.TRIANGLE_STRIP)
 
-        # z axis
-        rotation_z = Matrix44.from_z_rotation(
-            pi, dtype="f4"
-        ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-        m_scale = (
-            rotation_z * self._translate_from_origin * m_mag * self._translate_to_origin
-        )
-        self._prog["m_scale"].write(m_scale)
-        self.vao.render(moderngl.TRIANGLE_STRIP)
+        # # y axis
+        # rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
+        # m_scale = (
+        #     rotation * self._translate_from_origin * m_mag * self._translate_to_origin
+        # )
+        # self._prog["m_scale"].write(m_scale)
+        # self.vao.render(moderngl.TRIANGLE_STRIP)
+
+        # # z axis
+        # rotation_z = Matrix44.from_z_rotation(
+        #     pi, dtype="f4"
+        # ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
+        # m_scale = (
+        #     rotation_z * self._translate_from_origin * m_mag * self._translate_to_origin
+        # )
+        # self._prog["m_scale"].write(m_scale)
+        # self.vao.render(moderngl.TRIANGLE_STRIP)
 
         self.ctx.disable(moderngl.BLEND)
 
@@ -379,21 +406,47 @@ class Renderer:
         self._render_labels()
 
     def _render_labels(self):
-        ranges = [self._camera.axis_visible_range(i) for i in range(3)]
-        ranges = list(filter(lambda x: x is not None, ranges))
-        if len(ranges) == 0:
+        axis_ranges = [(i, self._camera.axis_visible_range(i)) for i in range(3)]
+        visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
+        if len(visible_ranges) == 0:
             return
-        spans = [range[1] - range[0] for range in ranges]
-        scale = max(spans) * PER_NUMBER_FRAC_OF_AXIS
+        spans = [range[1][1] - range[1][0] for range in visible_ranges]
+        max_span = max(spans)
+        step = label_step(max_span, MAX_LABELS_PER_AXIS)
+        min_value = min([visible_range[1][0] for visible_range in visible_ranges])
+        max_value = max([visible_range[1][1] for visible_range in visible_ranges])
+        char_width = label_char_width(
+            min_value, max_value, step, MAX_LABEL_FRAC_OF_STEP
+        )
+        for visible in visible_ranges:
+            axis = visible[0]
+            min_value = visible[1][0]
+            max_value = visible[1][1]
+            show = labels_to_show(min_value, max_value, step)
+            for label in show:
+                if label not in self._label_meshes.keys():
+                    self._label_meshes[label] = RenderBuffersLabel(
+                        self._ctx,
+                        self._num_prog,
+                        self._label_atlas,
+                        self._camera,
+                        label,
+                    )
+                l = self._label_meshes[label]
+                l.char_width = char_width
+                l.axis = axis
+                l.render()
 
-        for i in range(-100, 101, 10):
-            if i not in self._label_meshes.keys():
-                self._label_meshes[i] = RenderBuffersLabel(
-                    self._ctx, self._num_prog, self._label_atlas, self._camera, i
-                )
-        for l in self._label_meshes.values():
-            l.scale = scale
-            l.render()
+        # scale = max(spans) * PER_NUMBER_FRAC_OF_AXIS
+
+        # for i in range(-100, 101, 10):
+        #     if i not in self._label_meshes.keys():
+        #         self._label_meshes[i] = RenderBuffersLabel(
+        #             self._ctx, self._num_prog, self._label_atlas, self._camera, i
+        #         )
+        # for l in self._label_meshes.values():
+        #     l.scale = scale
+        #     l.render()
 
 
 class RendererFactory:

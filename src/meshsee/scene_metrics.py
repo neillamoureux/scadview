@@ -38,6 +38,52 @@ def label_round(value: float, step: float) -> float:
     return round(value / step) * step
 
 
+def label_decimals(step: float) -> int:
+    return int(-floor(log10(step))) if step < 1 else 0
+
+
+def label_format(value: float, step: float) -> str:
+    """
+    Format the value as a string with the appropriate number of decimals.
+    The number of decimals is calculated based on the step size.
+    """
+    decimals = label_decimals(step)
+    if decimals == 0:
+        return str(int(value))
+    return f"{value:.{decimals}f}"
+
+
+def label_char_width(
+    min_value: float, max_value: float, step: float, fraction: float
+) -> float:
+    """
+    Calculate the width of the label in world dimension.
+    The width is calculated based on the number of characters in the label.
+    """
+    label_min = ceil(min_value / step) * step
+    label_max = floor(max_value / step) * step
+    label_min_len = len(label_format(label_min, step))
+    label_max_lem = len(label_format(label_max, step))
+    label_len = max(label_min_len, label_max_lem)
+    return fraction * step / label_len
+
+
+def labels_to_show(min_value: float, max_value: float, step: float) -> list[str]:
+    """
+    Generate a list of labels to show on the axis.
+    The labels are generated based on the range and the step size.
+    """
+
+    labels = []
+    label_min = ceil(min_value / step) * step
+    label_max = floor(max_value / step) * step
+    i = 0
+    while label_min + i * step <= label_max:
+        labels.append(label_format(label_min + i * step, step))
+        i += 1
+    return labels
+
+
 class SceneMetrics:
     def __init__(self, camera: Camera):
         self.camera = camera

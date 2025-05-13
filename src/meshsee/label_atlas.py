@@ -5,8 +5,9 @@ import numpy as np
 
 import os
 
-LABEL_CHARS = "0123456789-"
-MINUS_INDEX = LABEL_CHARS.index("-")
+LABEL_CHARS = "0123456789-."
+# MINUS_INDEX = LABEL_CHARS.index("-")
+# DOT_INDEX = LABEL_CHARS.index(".")
 FONT_SIZE = 100  # defines the resolution of the font
 FONT_FILE = "DejaVuSansMono.ttf"
 RELATIVE_PATH_TO_FONT = "."
