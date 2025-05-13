@@ -94,7 +94,7 @@ def test_label_char_width(min_value, max_value, step, fraction, expected):
 @pytest.mark.parametrize(
     "min_value, max_value, step, expected",
     [
-        (-20.0, 20.0, 10.0, ["-20", "-10", "0", "10", "20"]),
+        (-20.0, 20.0, 10.0, ["-20", "-10", "10", "20"]),
     ],
 )
 def test_labels_to_show(min_value, max_value, step, expected):

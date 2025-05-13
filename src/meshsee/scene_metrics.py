@@ -78,8 +78,12 @@ def labels_to_show(min_value: float, max_value: float, step: float) -> list[str]
     label_min = ceil(min_value / step) * step
     label_max = floor(max_value / step) * step
     i = 0
-    while label_min + i * step <= label_max:
-        labels.append(label_format(label_round(label_min + i * step, step), step))
+    while True:
+        label_value = label_min + i * step
+        if label_value > label_max:
+            break
+        if label_value != 0:
+            labels.append(label_format(label_round(label_min + i * step, step), step))
         i += 1
     return labels
 
