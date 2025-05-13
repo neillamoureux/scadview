@@ -115,6 +115,7 @@ class RenderBuffersLabel(RenderBuffers):
         self._number = float(label)
         self.char_width = NUMBER_WIDTH
         self.axis = 0
+        self.shift_up = AXIS_WIDTH
         base_vertices = np.array(
             [
                 [NUMBER_WIDTH, NUMBER_HEIGHT, 0.0],  # top left
@@ -191,8 +192,11 @@ class RenderBuffersLabel(RenderBuffers):
         scale = self.char_width / NUMBER_WIDTH
         m_mag[0, 0] = scale
         m_mag[1, 1] = scale
-        m_scale = self._translate_from_origin * m_mag * self._translate_to_origin
-        self._prog["m_scale"].write(m_scale)
+        m_shift_up = Matrix44.from_translation([0.0, self.shift_up, 0.0], dtype="f4")
+        # m_scale = (
+        #     m_shift_up * self._translate_from_origin * m_mag * self._translate_to_origin
+        # )
+        # self._prog["m_scale"].write(m_scale)
         self.sampler.use(location=0)
         self.ctx.enable(moderngl.BLEND)
         # Use the standard alpha blend function
@@ -200,11 +204,17 @@ class RenderBuffersLabel(RenderBuffers):
 
         # x axis
         if self.axis == 0:
-            m_scale = self._translate_from_origin * m_mag * self._translate_to_origin
+            m_scale = (
+                m_shift_up
+                * self._translate_from_origin
+                * m_mag
+                * self._translate_to_origin
+            )
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
             m_scale = (
                 rotation
+                * m_shift_up
                 * self._translate_from_origin
                 * m_mag
                 * self._translate_to_origin
@@ -215,6 +225,7 @@ class RenderBuffersLabel(RenderBuffers):
             ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
             m_scale = (
                 rotation_z
+                * m_shift_up
                 * self._translate_from_origin
                 * m_mag
                 * self._translate_to_origin
