@@ -4,6 +4,7 @@ from math import pi
 import moderngl
 import numpy as np
 from pyrr import Matrix44
+from trimesh import Trimesh
 
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
@@ -21,6 +22,40 @@ class Renderee(ABC):
 
 
 AXIS_WIDTH = 0.01
+
+
+class TrimeshRenderee(Renderee):
+    def __init__(self, ctx: moderngl.Context, program: moderngl.Program, mesh: Trimesh):
+        super().__init__(ctx, program)
+        # self._mesh = mesh
+        self._points = mesh.triangles.reshape(-1, 3)
+        self._vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
+        self._normals = ctx.buffer(
+            data=np.array([[v] * 3 for v in mesh.triangles_cross])
+            .astype("f4")
+            .tobytes()
+        )
+        try:
+            self._vao = self._create_vao()
+        except Exception as e:
+            print(f"Error creating vertex array: {e}")
+
+    @property
+    def points(self) -> np.ndarray:
+        return self._points
+
+    def _create_vao(self) -> moderngl.VertexArray:
+        return self._ctx.vertex_array(
+            self._program,
+            [
+                (self._vertices, "3f4", "in_position"),
+                (self._normals, "3f4", "in_normal"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+
+    def render(self):
+        self._vao.render()
 
 
 class LabelRenderee(Renderee):

@@ -10,7 +10,7 @@ from trimesh.creation import box
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
-from meshsee.render.renderee import LabelRenderee
+from meshsee.render.renderee import LabelRenderee, TrimeshRenderee
 import meshsee.shaders
 
 
@@ -38,36 +38,6 @@ def _make_axes() -> Trimesh:
     )
 
 
-class RenderBuffers:
-    def __init__(self, ctx: moderngl.Context, prog: moderngl.Program, mesh: Trimesh):
-        self.mesh = mesh
-        self.points = mesh.triangles.reshape(-1, 3)
-        self.vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
-        self.normals = ctx.buffer(
-            data=np.array([[v] * 3 for v in mesh.triangles_cross])
-            .astype("f4")
-            .tobytes()
-        )
-        try:
-            self.vao = self._create_vao(ctx, prog)
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
-
-    def _create_vao(self, ctx: moderngl.Context, prog: moderngl.Program):
-        vao = ctx.vertex_array(
-            prog,
-            [
-                (self.vertices, "3f4", "in_position"),
-                (self.normals, "3f4", "in_normal"),
-            ],
-            mode=moderngl.TRIANGLES,
-        )
-        return vao
-
-    def render(self):
-        self.vao.render()
-
-
 class Renderer:
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
@@ -79,12 +49,12 @@ class Renderer:
         self.aspect_ratio = aspect_ratio
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
-        self._render_mesh = RenderBuffers(self._ctx, self._prog, self._default_mesh)
+        self._main_renderee = TrimeshRenderee(self._ctx, self._prog, self._default_mesh)
         self.frame()
         self._axes = _make_axes()
-        self._axes_render_mesh = RenderBuffers(self._ctx, self._prog, self._axes)
+        self._axes_renderee = TrimeshRenderee(self._ctx, self._prog, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
-        self._label_meshes = {}
+        self._label_renderees = {}
 
     @property
     def aspect_ratio(self):
@@ -130,10 +100,10 @@ class Renderer:
         self,
         mesh: Trimesh,
     ):
-        self._render_mesh = RenderBuffers(self._ctx, self._prog, mesh)
+        self._main_renderee = TrimeshRenderee(self._ctx, self._prog, mesh)
 
     def frame(self, direction=None, up=None):
-        self._camera.frame(self._render_mesh.points, direction, up)
+        self._camera.frame(self._main_renderee.points, direction, up)
         self._set_program_data()
 
     def _set_program_data(self):
@@ -197,9 +167,9 @@ class Renderer:
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._prog["show_grid"] = True
-        self._axes_render_mesh.render()
+        self._axes_renderee.render()
         self._prog["show_grid"] = show_grid
-        self._render_mesh.render()
+        self._main_renderee.render()
         self._render_labels()
 
     def _render_labels(self):
@@ -221,15 +191,15 @@ class Renderer:
             max_value = visible[1][1]
             show = labels_to_show(min_value, max_value, step)
             for label in show:
-                if label not in self._label_meshes.keys():
-                    self._label_meshes[label] = LabelRenderee(
+                if label not in self._label_renderees.keys():
+                    self._label_renderees[label] = LabelRenderee(
                         self._ctx,
                         self._num_prog,
                         self._label_atlas,
                         self._camera,
                         label,
                     )
-                l = self._label_meshes[label]
+                l = self._label_renderees[label]
                 l.char_width = char_width
                 l.axis = axis
                 l.render()
