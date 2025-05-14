@@ -1,8 +1,6 @@
 from importlib.resources import as_file, files
-from math import pi
 
 import moderngl
-import numpy as np
 from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import box
