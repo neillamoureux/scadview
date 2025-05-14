@@ -9,7 +9,7 @@ from trimesh.creation import box
 
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
-from meshsee.scene_metrics import label_char_width, label_step, labels_to_show
+from meshsee.label_metrics import label_char_width, label_step, labels_to_show
 import meshsee.shaders
 
 
