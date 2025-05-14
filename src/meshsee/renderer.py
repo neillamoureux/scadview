@@ -10,6 +10,7 @@ from trimesh.creation import box
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
+from meshsee.render.renderee import LabelRenderee
 import meshsee.shaders
 
 
@@ -17,10 +18,6 @@ AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
 AXIS_DEPTH = 0.01
 MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
-LABEL_WIDTH = 30.0
-LABEL_HEIGHT = 10.0
-NUMBER_HEIGHT = 1.0
-NUMBER_WIDTH = 0.5
 MAX_LABEL_FRAC_OF_STEP = 0.5
 MAX_LABELS_PER_AXIS = 20
 PER_NUMBER_FRAC_OF_AXIS = 0.04
@@ -39,35 +36,6 @@ def _make_axes() -> Trimesh:
         .union(box([AXIS_DEPTH, AXIS_WIDTH, AXIS_LENGTH]))
         .union(box([AXIS_WIDTH, AXIS_DEPTH, AXIS_LENGTH]))
     )
-
-
-def _make_axis_label() -> Trimesh:
-    vertices = np.array(
-        [
-            [0, 0, 0],
-            [LABEL_WIDTH, 0, 0],
-            [0, LABEL_HEIGHT, 0],
-            [LABEL_WIDTH, 0, 0],
-            [LABEL_WIDTH, LABEL_HEIGHT, 0],
-            [0, LABEL_HEIGHT, 0],
-        ]
-    )
-    faces = [[0, 1, 2], [3, 4, 5]]
-    return Trimesh(vertices=vertices, faces=faces)
-
-
-def _make_number_2() -> np.ndarray:
-    vertices = np.array(
-        [
-            [NUMBER_HEIGHT, 0, 0],
-            [NUMBER_HEIGHT, NUMBER_WIDTH, 0],
-            [NUMBER_HEIGHT / 2.0, NUMBER_WIDTH, 0],
-            [NUMBER_HEIGHT / 2.0, 0, 0],
-            [0, 0, 0],
-            [0, NUMBER_WIDTH, 0],
-        ]
-    )
-    return vertices
 
 
 class RenderBuffers:
@@ -100,189 +68,7 @@ class RenderBuffers:
         self.vao.render()
 
 
-class RenderBuffersLabel(RenderBuffers):
-
-    def __init__(
-        self,
-        ctx: moderngl.Context,
-        prog: moderngl.Program,
-        label_atlas: LabelAtlas,
-        camera: Camera,
-        label: str,
-    ):
-        self.ctx = ctx
-        self.camera = camera
-        self._number = float(label)
-        self.char_width = NUMBER_WIDTH
-        self.axis = 0
-        self.shift_up = AXIS_WIDTH
-        base_vertices = np.array(
-            [
-                [NUMBER_WIDTH, NUMBER_HEIGHT, 0.0],  # top left
-                [NUMBER_WIDTH, 0.0, 0.0],  # bottom left
-                [0.0, NUMBER_HEIGHT, 0.0],  # top right
-                [0.0, 0.0, 0.0],  # bottom right
-            ],
-            dtype="f4",
-        )
-
-        vertices = np.empty(base_vertices.shape, dtype="f4")
-        uvs = np.empty((0, 2), dtype="f4")
-        center = len(label) * NUMBER_WIDTH / -2.0 + self._number
-        for i, c in enumerate(label):
-            offset = NUMBER_WIDTH * i + center
-            vertices = np.concatenate(
-                [
-                    (base_vertices + np.array([offset, 0.0, 0.0], dtype="f4")),
-                    vertices,
-                ],
-                axis=0,
-                dtype="f4",
-            )
-            c_uvs = label_atlas.uv(c).astype("f4")
-
-            uvs = np.concatenate(
-                [
-                    np.array(
-                        [
-                            [c_uvs[2], c_uvs[1]],  # top right
-                            [c_uvs[2], c_uvs[3]],  # bottom right
-                            [c_uvs[0], c_uvs[1]],  # top left
-                            [c_uvs[0], c_uvs[3]],  # bottom left
-                        ],
-                        dtype="f4",
-                    ),
-                    uvs,
-                ],
-                axis=0,
-                dtype="f4",
-            )
-
-        self.vertices = ctx.buffer(data=vertices.tobytes())
-        self.uv = ctx.buffer(data=uvs.tobytes())
-        self.sampler = label_atlas.sampler
-        try:
-            self.vao = self._create_vao(ctx, prog)
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
-
-        prog["atlas"].value = 0
-        self.sampler.use(location=0)
-        self._prog = prog
-        self._translate_to_origin = Matrix44.from_translation(
-            [-self._number, 0.0, 0.0], dtype="f4"
-        )
-        self._translate_from_origin = Matrix44.from_translation(
-            [self._number, 0.0, 0.0], dtype="f4"
-        )
-
-    def _create_vao(self, ctx: moderngl.Context, prog: moderngl.Program):
-        vao = ctx.vertex_array(
-            prog,
-            [
-                (self.vertices, "3f4", "in_position"),
-                (self.uv, "2f4", "in_uv"),
-            ],
-            mode=moderngl.TRIANGLES,
-        )
-        return vao
-
-    def render(self):
-        m_mag = np.identity(4, dtype="f4")
-        scale = self.char_width / NUMBER_WIDTH
-        m_mag[0, 0] = scale
-        m_mag[1, 1] = scale
-        m_shift_up = Matrix44.from_translation([0.0, self.shift_up, 0.0], dtype="f4")
-        # m_scale = (
-        #     m_shift_up * self._translate_from_origin * m_mag * self._translate_to_origin
-        # )
-        # self._prog["m_scale"].write(m_scale)
-        self.sampler.use(location=0)
-        self.ctx.enable(moderngl.BLEND)
-        # Use the standard alpha blend function
-        self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-
-        # x axis
-        if self.axis == 0:
-            m_scale = (
-                m_shift_up
-                * self._translate_from_origin
-                * m_mag
-                * self._translate_to_origin
-            )
-        if self.axis == 1:
-            rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            m_scale = (
-                rotation
-                * m_shift_up
-                * self._translate_from_origin
-                * m_mag
-                * self._translate_to_origin
-            )
-        if self.axis == 2:
-            rotation_z = Matrix44.from_z_rotation(
-                pi, dtype="f4"
-            ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-            m_scale = (
-                rotation_z
-                * m_shift_up
-                * self._translate_from_origin
-                * m_mag
-                * self._translate_to_origin
-            )
-
-        self._prog["m_scale"].write(m_scale)
-        self.vao.render(moderngl.TRIANGLE_STRIP)
-
-        # # y axis
-        # rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-        # m_scale = (
-        #     rotation * self._translate_from_origin * m_mag * self._translate_to_origin
-        # )
-        # self._prog["m_scale"].write(m_scale)
-        # self.vao.render(moderngl.TRIANGLE_STRIP)
-
-        # # z axis
-        # rotation_z = Matrix44.from_z_rotation(
-        #     pi, dtype="f4"
-        # ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-        # m_scale = (
-        #     rotation_z * self._translate_from_origin * m_mag * self._translate_to_origin
-        # )
-        # self._prog["m_scale"].write(m_scale)
-        # self.vao.render(moderngl.TRIANGLE_STRIP)
-
-        self.ctx.disable(moderngl.BLEND)
-
-
-class RenderBuffersLineStrip:
-    def __init__(
-        self, ctx: moderngl.Context, prog: moderngl.Program, points: np.ndarray
-    ):
-        self._ctx = ctx
-        self.vertices = ctx.buffer(data=points.astype("f4").tobytes())
-        try:
-            self.vao = self._create_vao(ctx, prog)
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
-
-    def _create_vao(self, ctx: moderngl.Context, prog: moderngl.Program):
-        vao = ctx.vertex_array(
-            prog,
-            [
-                (self.vertices, "3f4", "in_position"),
-            ],
-            mode=moderngl.LINE_STRIP,
-        )
-        return vao
-
-    def render(self):
-        self._ctx.line_width = 10.0
-        self.vao.render()
-
-
 class Renderer:
-    # ORBIT_ROTATION_SPEED = 0.01
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
@@ -436,7 +222,7 @@ class Renderer:
             show = labels_to_show(min_value, max_value, step)
             for label in show:
                 if label not in self._label_meshes.keys():
-                    self._label_meshes[label] = RenderBuffersLabel(
+                    self._label_meshes[label] = LabelRenderee(
                         self._ctx,
                         self._num_prog,
                         self._label_atlas,
@@ -447,17 +233,6 @@ class Renderer:
                 l.char_width = char_width
                 l.axis = axis
                 l.render()
-
-        # scale = max(spans) * PER_NUMBER_FRAC_OF_AXIS
-
-        # for i in range(-100, 101, 10):
-        #     if i not in self._label_meshes.keys():
-        #         self._label_meshes[i] = RenderBuffersLabel(
-        #             self._ctx, self._num_prog, self._label_atlas, self._camera, i
-        #         )
-        # for l in self._label_meshes.values():
-        #     l.scale = scale
-        #     l.render()
 
 
 class RendererFactory:
