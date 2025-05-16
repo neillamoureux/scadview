@@ -70,6 +70,7 @@ class Renderer:
         self._axes_renderee = TrimeshRenderee(self._ctx, self._prog, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_renderees = {}
+        self._camera.on_program_value_change.subscribe(self._update_program_value)
 
     @property
     def aspect_ratio(self):
@@ -81,13 +82,19 @@ class Renderer:
         self._program_vars[ProgramValues.PROJECTION_MATRIX] = (
             self._camera.projection_matrix
         )
-        self._update_programs_vars([ProgramValues.PROJECTION_MATRIX])
+        self._update_program_vars([ProgramValues.PROJECTION_MATRIX])
 
-    def _update_programs_vars(self, vars: list[ProgramValues]):
+    def _update_program_value(self, t: ProgramValues, value: Any):
+        self._update_program_vars([t])
+        for pu in self._program_updaters:
+            pu.update_program_var(t, value)
+
+    def _update_program_vars(self, vars: list[ProgramValues]):
+        value = None
         for var in vars:
-            if var == ProgramValues.CAMERA_MATRIX:
-                value = self._camera.view_matrix
-            elif var == ProgramValues.MESH_COLOR:
+            # if var == ProgramValues.CAMERA_MATRIX:
+            #     value = self._camera.view_matrix
+            if var == ProgramValues.MESH_COLOR:
                 value = MESH_COLOR
             elif var == ProgramValues.MODEL_MATRIX:
                 value = self._m_model
@@ -97,10 +104,13 @@ class Renderer:
                 value = self._m_scale
             elif var == ProgramValues.SHOW_GRID:
                 value = self._show_grid
-            self._program_vars[var] = value
 
-        for pu in self._program_updaters:
-            pu.update_program_vars(vars, self._program_vars)
+            if var == ProgramValues.CAMERA_MATRIX:
+                continue
+            if value is not None:
+                self._program_vars[var] = value
+                for pu in self._program_updaters:
+                    pu.update_program_var(var, value)
 
     def _create_shader_program(self) -> moderngl.Program:
         program_vars = {
@@ -158,7 +168,7 @@ class Renderer:
         self._set_program_data()
 
     def _set_program_data(self):
-        self._update_programs_vars(
+        self._update_program_vars(
             [
                 ProgramValues.MODEL_MATRIX,
                 ProgramValues.CAMERA_MATRIX,
@@ -169,31 +179,31 @@ class Renderer:
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
-        self._update_programs_vars(
+        self._update_program_vars(
             [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
         )
 
     def move(self, distance):
         self._camera.move(distance)
-        self._update_programs_vars(
+        self._update_program_vars(
             [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
         )
 
     def move_up(self, distance):
         self._camera.move_up(distance)
-        self._update_programs_vars(
+        self._update_program_vars(
             [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
         )
 
     def move_right(self, distance):
         self._camera.move_right(distance)
-        self._update_programs_vars(
+        self._update_program_vars(
             [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
         )
 
     def move_along(self, vector):
         self._camera.move_along(vector)
-        self._update_programs_vars(
+        self._update_program_vars(
             [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
         )
 
@@ -202,7 +212,7 @@ class Renderer:
         Move the camera to the normalized screen position (ndx, ndy) and move it by distance.
         """
         self._camera.move_to_screen(ndx, ndy, distance)
-        self._update_programs_vars(
+        self._update_program_vars(
             [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
         )
 
@@ -211,10 +221,10 @@ class Renderer:
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self._show_grid = True
-        self._update_programs_vars([ProgramValues.SHOW_GRID])
+        self._update_program_vars([ProgramValues.SHOW_GRID])
         self._axes_renderee.render()
         self._show_grid = show_grid
-        self._update_programs_vars([ProgramValues.SHOW_GRID])
+        self._update_program_vars([ProgramValues.SHOW_GRID])
         self._main_renderee.render()
         self._render_labels()
 

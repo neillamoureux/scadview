@@ -34,9 +34,14 @@ class ProgramUpdater:
     ):
         for var in vars:
             if var in self.register:
-                var_name = self.register[var]
-                uniform = self.program[var_name]
-                if uniform.gl_type == 0x8B56:
-                    uniform.value = values[var]
-                else:
-                    self.program[var_name].write(values[var])
+                self.update_program_var(var, values[var])
+
+    def update_program_var(self, var: ProgramValues, value: Any):
+        if var not in self.register:
+            return
+        var_name = self.register[var]
+        uniform = self.program[var_name]
+        if uniform.gl_type == 0x8B56:
+            uniform.value = value
+        else:
+            uniform.write(value)
