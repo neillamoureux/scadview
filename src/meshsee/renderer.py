@@ -1,6 +1,8 @@
+from typing import Any
 from importlib.resources import as_file, files
 
 import moderngl
+import numpy as np
 from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import box
@@ -8,6 +10,7 @@ from trimesh.creation import box
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
+from meshsee.program_updater import ProgramUpdater, ProgramValues
 from meshsee.render.renderee import LabelRenderee, TrimeshRenderee
 import meshsee.shaders
 
@@ -15,7 +18,7 @@ import meshsee.shaders
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
 AXIS_DEPTH = 0.01
-MESH_COLOR = (0.5, 0.5, 0.5, 1.0)
+MESH_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 MAX_LABEL_FRAC_OF_STEP = 0.5
 MAX_LABELS_PER_AXIS = 20
 PER_NUMBER_FRAC_OF_AXIS = 0.04
@@ -42,8 +45,22 @@ class Renderer:
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._ctx = context
         self._camera = camera
-        self._prog = self._create_shader_program()
-        self._num_prog = self._create_num_shader_program()
+        self._m_model = Matrix44.identity(dtype="f4")
+        self._show_grid = True
+        self._m_scale = None
+        self._program_vars: dict[ProgramValues, Any] = {
+            ProgramValues.CAMERA_MATRIX: self._camera.view_matrix,
+            ProgramValues.MESH_COLOR: MESH_COLOR,
+            ProgramValues.MODEL_MATRIX: self._m_model,
+            ProgramValues.PROJECTION_MATRIX: self._camera.projection_matrix,
+            ProgramValues.SCALE_MATRIX: self._m_scale,
+            ProgramValues.SHOW_GRID: self._show_grid,
+        }
+        self._program_updaters: list[ProgramUpdater] = []
+        self._prog, prog_vars = self._create_shader_program()
+        self._program_updaters.append(ProgramUpdater(self._prog, prog_vars))
+        self._num_prog, num_prog_vars = self._create_num_shader_program()
+        self._program_updaters.append(ProgramUpdater(self._num_prog, num_prog_vars))
         self.aspect_ratio = aspect_ratio
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
@@ -61,10 +78,38 @@ class Renderer:
     @aspect_ratio.setter
     def aspect_ratio(self, aspect_ratio):
         self._camera.aspect_ratio = aspect_ratio
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._program_vars[ProgramValues.PROJECTION_MATRIX] = (
+            self._camera.projection_matrix
+        )
+        self._update_programs_vars([ProgramValues.PROJECTION_MATRIX])
+
+    def _update_programs_vars(self, vars: list[ProgramValues]):
+        for var in vars:
+            if var == ProgramValues.CAMERA_MATRIX:
+                value = self._camera.view_matrix
+            elif var == ProgramValues.MESH_COLOR:
+                value = MESH_COLOR
+            elif var == ProgramValues.MODEL_MATRIX:
+                value = self._m_model
+            elif var == ProgramValues.PROJECTION_MATRIX:
+                value = self._camera.projection_matrix
+            elif var == ProgramValues.SCALE_MATRIX:
+                value = self._m_scale
+            elif var == ProgramValues.SHOW_GRID:
+                value = self._show_grid
+            self._program_vars[var] = value
+
+        for pu in self._program_updaters:
+            pu.update_program_vars(vars, self._program_vars)
 
     def _create_shader_program(self) -> moderngl.Program:
+        program_vars = {
+            ProgramValues.MODEL_MATRIX: "m_model",
+            ProgramValues.CAMERA_MATRIX: "m_camera",
+            ProgramValues.PROJECTION_MATRIX: "m_proj",
+            ProgramValues.MESH_COLOR: "color",
+            ProgramValues.SHOW_GRID: "show_grid",
+        }
         vertex_shader_source = files(meshsee.shaders).joinpath("vertex.glsl")
         fragment_shader_source = files(meshsee.shaders).joinpath("fragment.glsl")
         with (
@@ -72,14 +117,21 @@ class Renderer:
             as_file(fragment_shader_source) as fs_f,
         ):
             try:
-                return self._ctx.program(
+                prog = self._ctx.program(
                     vertex_shader=vs_f.read_text(),
                     fragment_shader=fs_f.read_text(),
                 )
             except Exception as e:
                 print(f"Error creating shader program: {e}")
+        return prog, program_vars
 
     def _create_num_shader_program(self) -> moderngl.Program:
+        program_vars = {
+            ProgramValues.MODEL_MATRIX: "m_model",
+            ProgramValues.CAMERA_MATRIX: "m_camera",
+            ProgramValues.PROJECTION_MATRIX: "m_proj",
+            ProgramValues.SCALE_MATRIX: "m_scale",
+        }
         vertex_shader_source = files(meshsee.shaders).joinpath("label_vertex.glsl")
         fragment_shader_source = files(meshsee.shaders).joinpath("label_fragment.glsl")
         with (
@@ -87,12 +139,13 @@ class Renderer:
             as_file(fragment_shader_source) as fs_f,
         ):
             try:
-                return self._ctx.program(
+                prog = self._ctx.program(
                     vertex_shader=vs_f.read_text(),
                     fragment_shader=fs_f.read_text(),
                 )
             except Exception as e:
                 print(f"Error creating num shader program: {e}")
+            return prog, program_vars
 
     def load_mesh(
         self,
@@ -105,68 +158,63 @@ class Renderer:
         self._set_program_data()
 
     def _set_program_data(self):
-        m_model = Matrix44.identity(dtype="f4")
-
-        self._prog["m_model"].write(m_model)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._prog["color"].value = MESH_COLOR
-        self._num_prog["m_model"].write(m_model)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [
+                ProgramValues.MODEL_MATRIX,
+                ProgramValues.CAMERA_MATRIX,
+                ProgramValues.PROJECTION_MATRIX,
+                ProgramValues.MESH_COLOR,
+            ]
+        )
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
+        )
 
     def move(self, distance):
         self._camera.move(distance)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
+        )
 
     def move_up(self, distance):
         self._camera.move_up(distance)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
+        )
 
     def move_right(self, distance):
         self._camera.move_right(distance)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
+        )
 
     def move_along(self, vector):
         self._camera.move_along(vector)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
+        )
 
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
         Move the camera to the normalized screen position (ndx, ndy) and move it by distance.
         """
         self._camera.move_to_screen(ndx, ndy, distance)
-        self._prog["m_camera"].write(self._camera.view_matrix)
-        self._prog["m_proj"].write(self._camera.projection_matrix)
-        self._num_prog["m_camera"].write(self._camera.view_matrix)
-        self._num_prog["m_proj"].write(self._camera.projection_matrix)
+        self._update_programs_vars(
+            [ProgramValues.CAMERA_MATRIX, ProgramValues.PROJECTION_MATRIX]
+        )
 
     def render(self, show_grid: bool):  # override
         self._ctx.enable_only(moderngl.DEPTH_TEST)
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
-        self._prog["show_grid"] = True
+        self._show_grid = True
+        self._update_programs_vars([ProgramValues.SHOW_GRID])
         self._axes_renderee.render()
-        self._prog["show_grid"] = show_grid
+        self._show_grid = show_grid
+        self._update_programs_vars([ProgramValues.SHOW_GRID])
         self._main_renderee.render()
         self._render_labels()
 
