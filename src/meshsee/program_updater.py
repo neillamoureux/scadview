@@ -11,7 +11,6 @@ class ProgramValues(Enum):
     MODEL_MATRIX = auto()
     CAMERA_MATRIX = auto()
     PROJECTION_MATRIX = auto()
-    # SCALE_MATRIX = auto()
     MESH_COLOR = auto()
     SHOW_GRID = auto()
 
@@ -24,10 +23,6 @@ class ProgramUpdater:
     ):
         self.program = program
         self.register = register
-        # self.on_change = Observable()
-
-        # for item in register.items():
-        #     self.on_change.subscribe(item, self.update_program)
 
     def update_program_vars(
         self, vars: list[ProgramValues], values: dict[ProgramValues, Any]
