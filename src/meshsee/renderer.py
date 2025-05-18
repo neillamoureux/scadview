@@ -10,6 +10,7 @@ from trimesh.creation import box
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
+from meshsee.observable import Observable
 from meshsee.program_updater import ProgramUpdater, ProgramValues
 from meshsee.render.renderee import LabelRenderee, TrimeshRenderee
 import meshsee.shaders
@@ -58,9 +59,11 @@ class Renderer:
         }
         self._program_updaters: list[ProgramUpdater] = []
         self._prog, prog_vars = self._create_shader_program()
-        self._program_updaters.append(ProgramUpdater(self._prog, prog_vars))
+        pu = ProgramUpdater(self._prog, prog_vars)
+        self._program_updaters.append(pu)
         self._num_prog, num_prog_vars = self._create_num_shader_program()
-        self._program_updaters.append(ProgramUpdater(self._num_prog, num_prog_vars))
+        pu_num = ProgramUpdater(self._num_prog, num_prog_vars)
+        self._program_updaters.append(pu_num)
         self.aspect_ratio = aspect_ratio
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
@@ -70,6 +73,9 @@ class Renderer:
         self._axes_renderee = TrimeshRenderee(self._ctx, self._prog, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_renderees = {}
+        self.on_program_value_change = Observable()
+        pu.subscribe_to_updates(self.on_program_value_change)
+        pu_num.subscribe_to_updates(self.on_program_value_change)
         self._camera.on_program_value_change.subscribe(self._update_program_value)
 
     @property
@@ -85,9 +91,10 @@ class Renderer:
         self._update_program_vars([ProgramValues.PROJECTION_MATRIX])
 
     def _update_program_value(self, t: ProgramValues, value: Any):
-        self._update_program_vars([t])
-        for pu in self._program_updaters:
-            pu.update_program_var(t, value)
+        self.on_program_value_change.notify(t, value)
+        # self._update_program_vars([t])
+        # for pu in self._program_updaters:
+        #     pu.update_program_var(t, value)
 
     def _update_program_vars(self, vars: list[ProgramValues]):
         value = None

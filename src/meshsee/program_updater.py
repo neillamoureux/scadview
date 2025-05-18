@@ -45,3 +45,6 @@ class ProgramUpdater:
             uniform.value = value
         else:
             uniform.write(value)
+
+    def subscribe_to_updates(self, updates: Observable):
+        updates.subscribe(self.update_program_var)
