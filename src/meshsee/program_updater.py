@@ -1,7 +1,6 @@
 from enum import Enum, auto
 from typing import Any
 
-import moderngl
 from moderngl import Program
 
 from meshsee.observable import Observable
