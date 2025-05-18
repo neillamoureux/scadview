@@ -73,9 +73,15 @@ class Camera:
 
     @property
     def projection_matrix(self) -> np.ndarray:
-        return matrix44.create_perspective_projection(
+        pm = matrix44.create_perspective_projection(
             self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
         )
+        self.on_program_value_change.notify(ProgramValues.PROJECTION_MATRIX, pm)
+        return pm
+
+    def update_matrices(self):
+        self.view_matrix
+        self.projection_matrix
 
     def orbit(self, angle_from_up, rotation_angle):
         """
@@ -96,6 +102,7 @@ class Camera:
         new_up = matrix33.apply_to_vector(rotation, perp_up)
         self.position = self.look_at - new_direction
         self.up = new_up
+        self.update_matrices()
 
     @property
     def fovx(self):
@@ -135,6 +142,7 @@ class Camera:
         new_bb = self._bounding_box_in_cam_space(points)
         self.far = -np.min(new_bb[:, 2]) * self.FAR_MULTIPLIER
         self.near = self.far / self.FAR_NEAR_RATIO
+        self.update_matrices()
 
     def _bounding_box_in_cam_space(self, points: np.ndarray) -> np.ndarray:
         """
@@ -208,22 +216,26 @@ class Camera:
         vector = self.direction * distance / np.linalg.norm(self.direction)
         self.position = self.position + vector
         self.look_at = self.look_at + vector
+        self.update_matrices()
 
     # move the camera along the up vector
     def move_up(self, distance):
         displacement = self.perpendicular_up * distance
         self.position = self.position + displacement
         self.look_at = self.look_at + displacement
+        self.update_matrices()
 
     # move the camera along the right vector
     def move_right(self, distance):
         right = np.cross(self.direction / np.linalg.norm(self.direction), self.up)
         self.position = self.position + right * distance
         self.look_at = self.look_at + right * distance
+        self.update_matrices()
 
     def move_along(self, vector):
         self.position = self.position + vector
         self.look_at = self.look_at + vector
+        self.update_matrices()
 
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
@@ -236,3 +248,4 @@ class Camera:
         ray_vector = pos_on_far[:3] / pos_on_far[3] - self.position
         ray_vector = ray_vector / np.linalg.norm(ray_vector) * distance
         self.move_along(ray_vector)
+        self.update_matrices()

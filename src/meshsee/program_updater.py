@@ -11,7 +11,7 @@ class ProgramValues(Enum):
     MODEL_MATRIX = auto()
     CAMERA_MATRIX = auto()
     PROJECTION_MATRIX = auto()
-    SCALE_MATRIX = auto()
+    # SCALE_MATRIX = auto()
     MESH_COLOR = auto()
     SHOW_GRID = auto()
 
