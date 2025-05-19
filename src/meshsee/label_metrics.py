@@ -86,14 +86,3 @@ def labels_to_show(min_value: float, max_value: float, step: float) -> list[str]
             labels.append(label_format(label_round(label_min + i * step, step), step))
         i += 1
     return labels
-
-
-class SceneMetrics:
-    def __init__(self, camera: Camera):
-        self.camera = camera
-
-    def axis_visible_range(self, axis: int):
-        return self.camera.axis_visible_range(axis)
-
-    def labels_to_show(min: float, max: float, max_labels: int) -> list[float]:
-        return []
