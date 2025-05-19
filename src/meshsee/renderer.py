@@ -40,25 +40,61 @@ def _make_axes() -> Trimesh:
     )
 
 
+class ShaderProgram:
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        vertex_shader_loc: str,
+        fragment_shader_loc: str,
+        register: dict[ProgramValues, str],
+    ):
+        self._ctx = ctx
+        self.register = register
+        vertex_shader_source = files(meshsee.shaders).joinpath(vertex_shader_loc)
+        fragment_shader_source = files(meshsee.shaders).joinpath(fragment_shader_loc)
+        with (
+            as_file(vertex_shader_source) as vs_f,
+            as_file(fragment_shader_source) as fs_f,
+        ):
+            try:
+                self.program = self._ctx.program(
+                    vertex_shader=vs_f.read_text(),
+                    fragment_shader=fs_f.read_text(),
+                )
+            except Exception as e:
+                print(f"Error creating shader program: {e}")
+
+    def update_program_var(self, var: ProgramValues, value: Any):
+        if var not in self.register:
+            return
+        var_name = self.register[var]
+        uniform = self.program[var_name]
+        if uniform.gl_type == 0x8B56:
+            uniform.value = value
+        else:
+            uniform.write(value)
+
+    def subscribe_to_updates(self, updates: Observable):
+        updates.subscribe(self.update_program_var)
+
+
 class Renderer:
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._ctx = context
-        self._prog, prog_vars = self._create_main_shader_program()
-        self._pu = ProgramUpdater(self._prog, prog_vars)
-        self._num_prog, num_prog_vars = self._create_num_shader_program()
-        self.label_prog_pu = ProgramUpdater(self._num_prog, num_prog_vars)
+        self.on_program_value_change = Observable()
+        self._prog = self._create_main_shader_program()
+        self._num_prog = self._create_num_shader_program()
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self._default_mesh = _make_default_mesh()
-        self._main_renderee = TrimeshRenderee(self._ctx, self._prog, self._default_mesh)
+        self._main_renderee = TrimeshRenderee(
+            self._ctx, self._prog.program, self._default_mesh
+        )
         self._axes = _make_axes()
-        self._axes_renderee = TrimeshRenderee(self._ctx, self._prog, self._axes)
+        self._axes_renderee = TrimeshRenderee(self._ctx, self._prog.program, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_renderees = {}
-        self.on_program_value_change = Observable()
-        self._pu.subscribe_to_updates(self.on_program_value_change)
-        self.label_prog_pu.subscribe_to_updates(self.on_program_value_change)
         self._camera = camera
         self._camera.on_program_value_change.subscribe(self._update_program_value)
         self.aspect_ratio = aspect_ratio
@@ -92,7 +128,7 @@ class Renderer:
 
     def _create_main_shader_program(
         self,
-    ) -> tuple[moderngl.Program, dict[ProgramValues, str]]:
+    ) -> ShaderProgram:
         program_vars = {
             ProgramValues.MODEL_MATRIX: "m_model",
             ProgramValues.CAMERA_MATRIX: "m_camera",
@@ -100,39 +136,30 @@ class Renderer:
             ProgramValues.MESH_COLOR: "color",
             ProgramValues.SHOW_GRID: "show_grid",
         }
-        return self._create_shader_program("vertex.glsl", "fragment.glsl"), program_vars
+        return self._create_shader_program("vertex.glsl", "fragment.glsl", program_vars)
 
     def _create_shader_program(
         self,
         vertex_shader_loc: str,
         fragment_shader_loc: str,
-    ) -> moderngl.Program:
-        vertex_shader_source = files(meshsee.shaders).joinpath(vertex_shader_loc)
-        fragment_shader_source = files(meshsee.shaders).joinpath(fragment_shader_loc)
-        with (
-            as_file(vertex_shader_source) as vs_f,
-            as_file(fragment_shader_source) as fs_f,
-        ):
-            try:
-                prog = self._ctx.program(
-                    vertex_shader=vs_f.read_text(),
-                    fragment_shader=fs_f.read_text(),
-                )
-            except Exception as e:
-                print(f"Error creating shader program: {e}")
-            return prog
+        register: dict[ProgramValues, str],
+    ) -> ShaderProgram:
+        prog = ShaderProgram(
+            self._ctx, vertex_shader_loc, fragment_shader_loc, register
+        )
+        prog.subscribe_to_updates(self.on_program_value_change)
+        return prog
 
     def _create_num_shader_program(
         self,
-    ) -> tuple[moderngl.Program, dict[ProgramValues, str]]:
+    ) -> ShaderProgram:
         program_vars = {
             ProgramValues.MODEL_MATRIX: "m_model",
             ProgramValues.CAMERA_MATRIX: "m_camera",
             ProgramValues.PROJECTION_MATRIX: "m_proj",
         }
-        return (
-            self._create_shader_program("label_vertex.glsl", "label_fragment.glsl"),
-            program_vars,
+        return self._create_shader_program(
+            "label_vertex.glsl", "label_fragment.glsl", program_vars
         )
 
     def load_mesh(
@@ -197,7 +224,7 @@ class Renderer:
                 if label not in self._label_renderees.keys():
                     self._label_renderees[label] = LabelRenderee(
                         self._ctx,
-                        self._num_prog,
+                        self._num_prog.program,
                         self._label_atlas,
                         self._camera,
                         label,
