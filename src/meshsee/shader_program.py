@@ -17,6 +17,8 @@ class ShaderVar(Enum):
 
 
 class ShaderProgram:
+    BOOLEAN = 0x8B56
+
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -45,7 +47,7 @@ class ShaderProgram:
             return
         var_name = self.register[var]
         uniform = self.program[var_name]
-        if uniform.gl_type == 0x8B56:
+        if uniform.gl_type == self.BOOLEAN:
             uniform.value = value
         else:
             uniform.write(value)
