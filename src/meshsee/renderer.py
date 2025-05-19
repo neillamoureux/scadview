@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 from importlib.resources import as_file, files
 
 import moderngl
@@ -83,10 +83,19 @@ class Renderer:
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._ctx = context
-        self.on_program_value_change = Observable()
-        self._prog = self._create_main_shader_program()
-        self._num_prog = self._create_num_shader_program()
+        self._create_shaders()
         self._ctx.clear(*self.BACKGROUND_COLOR)
+        self._create_renderees()
+        self._set_up_camera(camera, aspect_ratio)
+        self._init_shaders()
+        self.frame()
+
+    def _create_shaders(self):
+        self.on_program_value_change = Observable()
+        self._prog = self._create_main_shader_program(self.on_program_value_change)
+        self._num_prog = self._create_num_shader_program(self.on_program_value_change)
+
+    def _create_renderees(self):
         self._default_mesh = _make_default_mesh()
         self._main_renderee = TrimeshRenderee(
             self._ctx, self._prog.program, self._default_mesh
@@ -95,14 +104,15 @@ class Renderer:
         self._axes_renderee = TrimeshRenderee(self._ctx, self._prog.program, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_renderees = {}
+
+    def _set_up_camera(self, camera: Camera, aspect_ratio: float):
         self._camera = camera
         self._camera.on_program_value_change.subscribe(self._update_program_value)
         self.aspect_ratio = aspect_ratio
+
+    def _init_shaders(self):
         self._m_model = Matrix44.identity(dtype="f4")
         self.show_grid = True
-        self._m_scale = None
-        self.frame()
-
         self._update_program_value(ProgramValues.MODEL_MATRIX, self._m_model)
         self._update_program_value(ProgramValues.MESH_COLOR, MESH_COLOR)
 
@@ -126,9 +136,7 @@ class Renderer:
     def _update_program_value(self, t: ProgramValues, value: Any):
         self.on_program_value_change.notify(t, value)
 
-    def _create_main_shader_program(
-        self,
-    ) -> ShaderProgram:
+    def _create_main_shader_program(self, observable: Observable) -> ShaderProgram:
         program_vars = {
             ProgramValues.MODEL_MATRIX: "m_model",
             ProgramValues.CAMERA_MATRIX: "m_camera",
@@ -136,37 +144,38 @@ class Renderer:
             ProgramValues.MESH_COLOR: "color",
             ProgramValues.SHOW_GRID: "show_grid",
         }
-        return self._create_shader_program("vertex.glsl", "fragment.glsl", program_vars)
+        return self._create_shader_program(
+            "vertex.glsl", "fragment.glsl", program_vars, observable
+        )
 
     def _create_shader_program(
         self,
         vertex_shader_loc: str,
         fragment_shader_loc: str,
         register: dict[ProgramValues, str],
+        observable: Observable,
     ) -> ShaderProgram:
         prog = ShaderProgram(
             self._ctx, vertex_shader_loc, fragment_shader_loc, register
         )
-        prog.subscribe_to_updates(self.on_program_value_change)
+        prog.subscribe_to_updates(observable)
         return prog
 
-    def _create_num_shader_program(
-        self,
-    ) -> ShaderProgram:
+    def _create_num_shader_program(self, observable: Observable) -> ShaderProgram:
         program_vars = {
             ProgramValues.MODEL_MATRIX: "m_model",
             ProgramValues.CAMERA_MATRIX: "m_camera",
             ProgramValues.PROJECTION_MATRIX: "m_proj",
         }
         return self._create_shader_program(
-            "label_vertex.glsl", "label_fragment.glsl", program_vars
+            "label_vertex.glsl", "label_fragment.glsl", program_vars, observable
         )
 
     def load_mesh(
         self,
         mesh: Trimesh,
     ):
-        self._main_renderee = TrimeshRenderee(self._ctx, self._prog, mesh)
+        self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
 
     def frame(self, direction=None, up=None):
         self._camera.frame(self._main_renderee.points, direction, up)
