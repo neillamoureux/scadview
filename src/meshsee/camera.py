@@ -2,7 +2,7 @@ import numpy as np
 from pyrr import matrix33, matrix44
 
 from meshsee.observable import Observable
-from meshsee.program_updater import ProgramValues
+from meshsee.shader_program import ShaderVar
 
 
 def point_center(points: np.ndarray) -> np.ndarray:
@@ -68,7 +68,7 @@ class Camera:
     @property
     def view_matrix(self):
         vm = matrix44.create_look_at(self.position, self.look_at, self.up, dtype="f4")
-        self.on_program_value_change.notify(ProgramValues.CAMERA_MATRIX, vm)
+        self.on_program_value_change.notify(ShaderVar.VIEW_MATRIX, vm)
         return vm
 
     @property
@@ -76,7 +76,7 @@ class Camera:
         pm = matrix44.create_perspective_projection(
             self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
         )
-        self.on_program_value_change.notify(ProgramValues.PROJECTION_MATRIX, pm)
+        self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
         return pm
 
     def update_matrices(self):

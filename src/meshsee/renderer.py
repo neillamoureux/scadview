@@ -1,5 +1,4 @@
-from typing import Any, Callable
-from importlib.resources import as_file, files
+from typing import Any
 
 import moderngl
 import numpy as np
@@ -11,9 +10,8 @@ from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.observable import Observable
-from meshsee.program_updater import ProgramUpdater, ProgramValues
+from meshsee.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.renderee import LabelRenderee, TrimeshRenderee
-import meshsee.shaders
 
 
 AXIS_LENGTH = 1000.0
@@ -38,44 +36,6 @@ def _make_axes() -> Trimesh:
         .union(box([AXIS_DEPTH, AXIS_WIDTH, AXIS_LENGTH]))
         .union(box([AXIS_WIDTH, AXIS_DEPTH, AXIS_LENGTH]))
     )
-
-
-class ShaderProgram:
-    def __init__(
-        self,
-        ctx: moderngl.Context,
-        vertex_shader_loc: str,
-        fragment_shader_loc: str,
-        register: dict[ProgramValues, str],
-    ):
-        self._ctx = ctx
-        self.register = register
-        vertex_shader_source = files(meshsee.shaders).joinpath(vertex_shader_loc)
-        fragment_shader_source = files(meshsee.shaders).joinpath(fragment_shader_loc)
-        with (
-            as_file(vertex_shader_source) as vs_f,
-            as_file(fragment_shader_source) as fs_f,
-        ):
-            try:
-                self.program = self._ctx.program(
-                    vertex_shader=vs_f.read_text(),
-                    fragment_shader=fs_f.read_text(),
-                )
-            except Exception as e:
-                print(f"Error creating shader program: {e}")
-
-    def update_program_var(self, var: ProgramValues, value: Any):
-        if var not in self.register:
-            return
-        var_name = self.register[var]
-        uniform = self.program[var_name]
-        if uniform.gl_type == 0x8B56:
-            uniform.value = value
-        else:
-            uniform.write(value)
-
-    def subscribe_to_updates(self, updates: Observable):
-        updates.subscribe(self.update_program_var)
 
 
 class Renderer:
@@ -113,8 +73,8 @@ class Renderer:
     def _init_shaders(self):
         self._m_model = Matrix44.identity(dtype="f4")
         self.show_grid = True
-        self._update_program_value(ProgramValues.MODEL_MATRIX, self._m_model)
-        self._update_program_value(ProgramValues.MESH_COLOR, MESH_COLOR)
+        self._update_program_value(ShaderVar.MODEL_MATRIX, self._m_model)
+        self._update_program_value(ShaderVar.MESH_COLOR, MESH_COLOR)
 
     @property
     def aspect_ratio(self):
@@ -131,18 +91,18 @@ class Renderer:
     @show_grid.setter
     def show_grid(self, value: bool):
         self._show_grid = value
-        self._update_program_value(ProgramValues.SHOW_GRID, value)
+        self._update_program_value(ShaderVar.SHOW_GRID, value)
 
-    def _update_program_value(self, t: ProgramValues, value: Any):
+    def _update_program_value(self, t: ShaderVar, value: Any):
         self.on_program_value_change.notify(t, value)
 
     def _create_main_shader_program(self, observable: Observable) -> ShaderProgram:
         program_vars = {
-            ProgramValues.MODEL_MATRIX: "m_model",
-            ProgramValues.CAMERA_MATRIX: "m_camera",
-            ProgramValues.PROJECTION_MATRIX: "m_proj",
-            ProgramValues.MESH_COLOR: "color",
-            ProgramValues.SHOW_GRID: "show_grid",
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.VIEW_MATRIX: "m_camera",
+            ShaderVar.PROJECTION_MATRIX: "m_proj",
+            ShaderVar.MESH_COLOR: "color",
+            ShaderVar.SHOW_GRID: "show_grid",
         }
         return self._create_shader_program(
             "vertex.glsl", "fragment.glsl", program_vars, observable
@@ -152,7 +112,7 @@ class Renderer:
         self,
         vertex_shader_loc: str,
         fragment_shader_loc: str,
-        register: dict[ProgramValues, str],
+        register: dict[ShaderVar, str],
         observable: Observable,
     ) -> ShaderProgram:
         prog = ShaderProgram(
@@ -163,9 +123,9 @@ class Renderer:
 
     def _create_num_shader_program(self, observable: Observable) -> ShaderProgram:
         program_vars = {
-            ProgramValues.MODEL_MATRIX: "m_model",
-            ProgramValues.CAMERA_MATRIX: "m_camera",
-            ProgramValues.PROJECTION_MATRIX: "m_proj",
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.VIEW_MATRIX: "m_camera",
+            ShaderVar.PROJECTION_MATRIX: "m_proj",
         }
         return self._create_shader_program(
             "label_vertex.glsl", "label_fragment.glsl", program_vars, observable
