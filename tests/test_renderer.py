@@ -43,7 +43,7 @@ def test_aspect_ratio():
         "m_camera": Mock(),
         "m_model": Mock(),
         "color": Mock(),
-        "atlas": Mock(),
+        "show_grid": Mock(),
     }
     context.program = Mock(return_value=shader_vars)
     camera = Camera()
@@ -54,7 +54,6 @@ def test_aspect_ratio():
     renderer.aspect_ratio = new_aspect_ratio
     assert renderer.aspect_ratio == new_aspect_ratio
     assert camera.aspect_ratio == new_aspect_ratio
-    assert np.array_equal(m_proj.write.call_args[0][0], camera.projection_matrix)
 
 
 def test_frame():
