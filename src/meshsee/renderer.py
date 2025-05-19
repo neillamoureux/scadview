@@ -84,10 +84,10 @@ class Renderer:
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._ctx = context
         self._create_shaders()
-        self._ctx.clear(*self.BACKGROUND_COLOR)
         self._create_renderees()
         self._set_up_camera(camera, aspect_ratio)
         self._init_shaders()
+        self._ctx.clear(*self.BACKGROUND_COLOR)
         self.frame()
 
     def _create_shaders(self):
