@@ -48,6 +48,8 @@ class Renderer:
         self._set_up_camera(camera, aspect_ratio)
         self._init_shaders()
         self._ctx.clear(*self.BACKGROUND_COLOR)
+        # self._default_mesh = _make_default_mesh()
+        self.load_mesh(_make_default_mesh())
         self.frame()
 
     def _create_shaders(self):
@@ -56,10 +58,6 @@ class Renderer:
         self._num_prog = self._create_num_shader_program(self.on_program_value_change)
 
     def _create_renderees(self):
-        self._default_mesh = _make_default_mesh()
-        self._main_renderee = TrimeshRenderee(
-            self._ctx, self._prog.program, self._default_mesh
-        )
         self._axes = _make_axes()
         self._axes_renderee = TrimeshRenderee(self._ctx, self._prog.program, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
@@ -136,9 +134,11 @@ class Renderer:
         mesh: Trimesh,
     ):
         self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
+        self._camera.points = self._main_renderee.points
 
     def frame(self, direction=None, up=None):
-        self._camera.frame(self._main_renderee.points, direction, up)
+        self._camera.frame(direction, up)
+        # self._camera.frame(self._main_renderee.points, direction, up)
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
