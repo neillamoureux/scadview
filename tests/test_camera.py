@@ -1,5 +1,4 @@
 from copy import copy, deepcopy
-from math import acos, cos
 
 from pytest import approx, mark
 import numpy as np
@@ -537,3 +536,59 @@ def test_move_to_screen():
     )
     assert position_screen_coords[0] / position_screen_coords[3] == approx(ndx)
     assert position_screen_coords[1] / position_screen_coords[3] == approx(ndy)
+
+
+@mark.parametrize(
+    "axis",
+    [(0), (1), (2)],
+)
+def test_axis_visible_range(axis):
+    cam = Camera()
+    position = np.array([1.0, 2.0, 3.0])
+    look_at = np.array([-1.0, -2.0, -5.0])
+    cam.position = position
+    cam.look_at = look_at
+    axis_range = cam.axis_visible_range(axis)
+    assert axis_range[0] <= axis_range[1]
+    test_vec = np.array([0.0, 0.0, 0.0, 1.0])
+    test_vec[axis] = axis_range[0]
+    clip = cam.projection_matrix.T @ cam.view_matrix.T @ test_vec
+    ndc = clip[:3] / clip[3]
+    assert any(np.isclose(abs(ndc), 1.0))
+    test_vec[axis] = axis_range[1]
+    clip = cam.projection_matrix.T @ cam.view_matrix.T @ test_vec
+    ndc = clip[:3] / clip[3]
+    assert any(np.isclose(abs(ndc), 1.0))
+
+
+def test_axis_visible_range_parallel_plane():
+    cam = Camera()
+    position = np.array([1.0, 0.0, 0.0])
+    look_at = np.array([0.0, 0.0, 0.0])
+    cam.position = position
+    cam.look_at = look_at
+    axis_range = cam.axis_visible_range(0)
+    assert axis_range[0] <= axis_range[1]
+    test_vec = np.array([0.0, 0.0, 0.0, 1.0])
+    test_vec[0] = axis_range[0]
+    clip = cam.projection_matrix.T @ cam.view_matrix.T @ test_vec
+    ndc = clip[:3] / clip[3]
+    assert any(np.isclose(abs(ndc), 1.0))
+    test_vec[0] = axis_range[1]
+    clip = cam.projection_matrix.T @ cam.view_matrix.T @ test_vec
+    ndc = clip[:3] / clip[3]
+    assert any(np.isclose(abs(ndc), 1.0))
+
+    # cam = Camera()
+    # position = np.array([1.0, 0.0, 0.0])
+    # look_at = np.array([0.0, 0.0, 0.0])
+    # cam.position = position
+    # cam.look_at = look_at
+    # axis_range = cam.axis_visible_range(0)
+    # assert axis_range[0] <= axis_range[1]
+    # clip = (
+    #     cam.projection_matrix.T
+    #     @ cam.view_matrix
+    #     @ np.array([axis_range[0], 0.0, 0.0, 1.0])
+    # )
+    # assert any(abs(clip)) == np.inf

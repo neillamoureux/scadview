@@ -1,12 +1,9 @@
+from math import copysign
 import numpy as np
 from pyrr import matrix33, matrix44
 
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderVar
-
-
-def point_center(points: np.ndarray) -> np.ndarray:
-    return np.mean(points, axis=0)
 
 
 def intersection(range1: tuple[float], range2: tuple[float]) -> tuple[float] | None:
@@ -181,6 +178,7 @@ class Camera:
         view_matrix = self.view_matrix
         projection_matrix = self.projection_matrix
         frustum_matrix = projection_matrix.T @ view_matrix.T
+        # frustum_matrix = projection_matrix @ view_matrix
 
         planes = np.zeros((6, 4), dtype="f4")
         # Left
@@ -220,7 +218,10 @@ class Camera:
         # so if x = inf, a * inf + d > 0 if a > 0, otherwise < 0
 
         for plane in planes:
-            intersects_at = -plane[3] / plane[axis]
+            if plane[axis] == 0.0:
+                continue
+            else:
+                intersects_at = -plane[3] / plane[axis]
             if plane[axis] > 0:
                 plane_range = (intersects_at, np.inf)
             else:
