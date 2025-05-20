@@ -6,57 +6,44 @@ import numpy as np
 from meshsee.camera import Camera, intersection
 
 
-def test_intersection():
-    range1 = (0, 1)
-    range2 = (0.5, 1.5)
+@mark.parametrize(
+    "range1, range2, expected",
+    [
+        ((0, 1), (0.5, 1.5), (0.5, 1)),
+        ((0, 1), (0, 1), (0, 1)),
+        ((0, 1), (1, 2), (1, 1)),
+        ((0, 1), (2, 3), None),
+        ((0, 1), (0.5, 0.5), (0.5, 0.5)),
+        ((0, 1), (-0.5, 0.5), (0, 0.5)),
+        ((0, 1), (-0.5, -0.1), None),
+    ],
+)
+def test_intersection(range1, range2, expected):
     actual = intersection(range1, range2)
-    expected = (0.5, 1)
-    assert actual == expected
-    range2 = (0, 1)
-    actual = intersection(range1, range2)
-    expected = (0, 1)
-    assert actual == expected
-    range2 = (1, 2)
-    actual = intersection(range1, range2)
-    expected = (1, 1)
-    assert actual == expected
-    range2 = (2, 3)
-    actual = intersection(range1, range2)
-    expected = None
-    assert actual == expected
-    range2 = (0.5, 0.5)
-    actual = intersection(range1, range2)
-    expected = (0.5, 0.5)
-    assert actual == expected
-    range2 = (-0.5, 0.5)
-    actual = intersection(range1, range2)
-    expected = (0, 0.5)
-    assert actual == expected
-    range2 = (-0.5, -0.1)
-    actual = intersection(range1, range2)
-    expected = None
     assert actual == expected
 
 
-def test_intersection_inf():
-    range1 = (0, np.inf)
-    range2 = (-np.inf, 0.5)
+@mark.parametrize(
+    "range1, range2, expected",
+    [
+        ((0, np.inf), (-np.inf, 0.5), (0, 0.5)),
+        ((0, np.inf), (0.5, np.inf), (0.5, np.inf)),
+    ],
+)
+def test_intersection_inf(range1, range2, expected):
     actual = intersection(range1, range2)
-    expected = (0, 0.5)
-    assert actual == expected
-    range2 = (0.5, np.inf)
-    actual = intersection(range1, range2)
-    expected = (0.5, np.inf)
     assert actual == expected
 
 
-def test_intersection_none():
-    range1 = (0, 1)
-    range2 = None
+@mark.parametrize(
+    "range1, range2, expected",
+    [
+        ((0, 1), None, None),
+        (None, (0, 1), None),
+    ],
+)
+def test_intersection_none(range1, range2, expected):
     actual = intersection(range1, range2)
-    expected = None
-    assert actual == expected
-    actual = intersection(range2, range1)
     assert actual == expected
 
 
@@ -578,17 +565,5 @@ def test_axis_visible_range_parallel_plane():
     clip = cam.projection_matrix.T @ cam.view_matrix.T @ test_vec
     ndc = clip[:3] / clip[3]
     assert any(np.isclose(abs(ndc), 1.0))
-
-    # cam = Camera()
-    # position = np.array([1.0, 0.0, 0.0])
-    # look_at = np.array([0.0, 0.0, 0.0])
-    # cam.position = position
-    # cam.look_at = look_at
-    # axis_range = cam.axis_visible_range(0)
-    # assert axis_range[0] <= axis_range[1]
-    # clip = (
-    #     cam.projection_matrix.T
-    #     @ cam.view_matrix
-    #     @ np.array([axis_range[0], 0.0, 0.0, 1.0])
-    # )
-    # assert any(abs(clip)) == np.inf
+    position = np.array([1.0, 0.0, 0.0])
+    look_at = np.array([0.0, 0.0, 0.0])
