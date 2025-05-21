@@ -62,8 +62,8 @@ def func_that_returns():
     assert list(loader.run_function(file_path)) == [4]
 
 
-def test_run_function_tmp_file(tmp_path):
-    file_path = tmp_path / "tmp_module.py"
+def test_run_function_tmp_file_missing_func(tmp_path):
+    file_path = tmp_path / "tmp_module2.py"
     file_path.write_text(
         """
 def func_that_is_spelled_wrong():
