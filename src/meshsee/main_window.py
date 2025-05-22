@@ -111,6 +111,14 @@ class MainWindow(QMainWindow):
         view_from_z_btn.clicked.connect(self._gl_widget.view_from_z)
         camera_button_layout.addWidget(view_from_z_btn)
 
+        orthogonal_camera_btn = QPushButton("Ortho")
+        orthogonal_camera_btn.clicked.connect(self._gl_widget.use_orthogonal_camera)
+        camera_button_layout.addWidget(orthogonal_camera_btn)
+
+        perspective_camera_btn = QPushButton("Persp")
+        perspective_camera_btn.clicked.connect(self._gl_widget.use_perspective_camera)
+        camera_button_layout.addWidget(perspective_camera_btn)
+
         grid_btn = QPushButton("Grid")
         grid_btn.setCheckable(True)
         grid_btn.setChecked(self._gl_widget.show_grid)

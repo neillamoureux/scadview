@@ -1,4 +1,5 @@
-from math import copysign
+from math import pi
+
 import numpy as np
 from pyrr import matrix33, matrix44
 
@@ -42,7 +43,7 @@ class Camera:
         )
         self.up = self.Z_DIR
         self.fovy = self.FOVY_INIT
-        self.aspect_ratio = 1.0
+        self._aspect_ratio = 1.0
         self.near = self.NEAR_INIT
         self.far = self.FAR_INIT
         self.on_program_value_change = Observable()
@@ -50,6 +51,15 @@ class Camera:
     @property
     def direction(self):
         return self.look_at - self.position
+
+    @property
+    def aspect_ratio(self):
+        return self._aspect_ratio
+
+    @aspect_ratio.setter
+    def aspect_ratio(self, value: float):
+        self._aspect_ratio = value
+        self.update_matrices()
 
     @property
     def perpendicular_up(self):
@@ -267,3 +277,36 @@ class Camera:
         ray_vector = pos_on_far[:3] / pos_on_far[3] - self.position
         ray_vector = ray_vector / np.linalg.norm(ray_vector) * distance
         self.move_along(ray_vector)
+
+
+class CameraOrthogonal(Camera):
+    # Treat as the perspective cam,
+    # that has been moved to infinity and zoomed in
+    # preserving the width of the view at origin.
+    #
+    # So top = norm(position) * tan(fovy / 2)
+    #
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def top(self):
+        return np.tan(np.radians(self.fovy / 2)) * np.linalg.norm(self.position)
+
+    @property
+    def right(self):
+        return self.top * self.aspect_ratio
+
+    @property
+    def projection_matrix(self) -> np.ndarray:
+        pm = matrix44.create_orthogonal_projection(
+            -self.right,
+            self.right,
+            -self.top,
+            self.top,
+            self.near,
+            self.far,
+            dtype="f4",
+        )
+        self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
+        return pm

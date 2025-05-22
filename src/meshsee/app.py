@@ -1,4 +1,4 @@
-from meshsee.camera import Camera
+from meshsee.camera import Camera, CameraOrthogonal
 from meshsee.controller import Controller
 from meshsee.gl_ui import GlUi
 from meshsee.gl_widget_adapter import GlWidgetAdapter

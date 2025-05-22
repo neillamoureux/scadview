@@ -1,6 +1,7 @@
 import numpy as np
 
 from meshsee.renderer import RendererFactory
+from meshsee.camera import Camera, CameraOrthogonal
 
 
 class GlWidgetAdapter:
@@ -105,3 +106,9 @@ class GlWidgetAdapter:
 
     def frame(self, direction=None, up=None):
         self._renderer.frame(direction, up)
+
+    def use_orthogonal_camera(self):
+        self._renderer.camera = CameraOrthogonal()
+
+    def use_perspective_camera(self):
+        self._renderer.camera = Camera()

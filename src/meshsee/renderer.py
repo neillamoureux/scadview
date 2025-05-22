@@ -42,10 +42,13 @@ class Renderer:
     BACKGROUND_COLOR = (0.5, 0.3, 0.2)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
+        self._camera = None
+        self._aspect_ratio = aspect_ratio
         self._ctx = context
         self._create_shaders()
         self._create_renderees()
-        self._set_up_camera(camera, aspect_ratio)
+        self.camera = camera
+        # self._set_up_camera(camera, aspect_ratio)
         self._init_shaders()
         self._ctx.clear(*self.BACKGROUND_COLOR)
         # self._default_mesh = _make_default_mesh()
@@ -63,10 +66,21 @@ class Renderer:
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_renderees = {}
 
-    def _set_up_camera(self, camera: Camera, aspect_ratio: float):
+    @property
+    def camera(self):
+        return self._camera
+
+    @camera.setter
+    def camera(self, camera: Camera):
+        old_camera = self._camera
+        if old_camera is not None:
+            old_camera.on_program_value_change.unsubscribe(self._update_program_value)
+            camera.points = old_camera.points
+            camera.look_at = old_camera.look_at
+            camera.position = old_camera.position
         self._camera = camera
         self._camera.on_program_value_change.subscribe(self._update_program_value)
-        self.aspect_ratio = aspect_ratio
+        self._camera.aspect_ratio = self.aspect_ratio
 
     def _init_shaders(self):
         self._m_model = Matrix44.identity(dtype="f4")
@@ -76,11 +90,13 @@ class Renderer:
 
     @property
     def aspect_ratio(self):
-        return self._camera.aspect_ratio
+        return self._aspect_ratio
 
     @aspect_ratio.setter
     def aspect_ratio(self, aspect_ratio):
-        self._camera.aspect_ratio = aspect_ratio
+        self._aspect_ratio = aspect_ratio
+        if self._camera is not None:
+            self._camera.aspect_ratio = aspect_ratio
 
     @property
     def show_grid(self):
