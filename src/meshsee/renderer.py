@@ -78,6 +78,7 @@ class Renderer:
             camera.points = old_camera.points
             camera.look_at = old_camera.look_at
             camera.position = old_camera.position
+            camera.up = old_camera.up
         self._camera = camera
         self._camera.on_program_value_change.subscribe(self._update_program_value)
         self._camera.aspect_ratio = self.aspect_ratio
