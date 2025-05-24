@@ -291,7 +291,13 @@ class CameraOrthogonal(Camera):
 
     @property
     def top(self):
-        return np.tan(np.radians(self.fovy / 2)) * np.linalg.norm(self.position)
+        return np.tan(np.radians(self.fovy / 2)) * self._distance_to_focal_plane()
+
+    def _distance_to_focal_plane(self):
+        # We want distance from position to plane perp to direction and through origin
+        # So x where (position + x (direction) / norm(direction)) . distance  = 0
+        # -> x = - position . direction / norm(direction)
+        return -np.dot(self.position, self.direction) / np.linalg.norm(self.direction)
 
     @property
     def right(self):
@@ -334,18 +340,17 @@ class CameraOrthogonal(Camera):
             pointer_view_coords
         )
         pointer_world_coords = pointer_world_coords[:3] / pointer_world_coords[3]
+        perp_direction = self.position - pointer_world_coords
 
         # Get the scaling factor
-        old_position_size = np.linalg.norm(self.position)
-        new_position_size = old_position_size - distance
-        s = old_position_size / new_position_size
+        old_fp_distance = self._distance_to_focal_plane()
+        self.move_along(self.direction / np.linalg.norm(self.direction) * distance)
+        new_fp_distance = self._distance_to_focal_plane()
+        s = old_fp_distance / new_fp_distance
 
         # s is the scaling amount, which pushes the position - pivot out by s * (self.position - pivot)
         # and we want to move that back to pivot by x so that
         # position - pivot = s * (position - pivot) + x
         # x = position - pivot - s (position - pivot)
         # x = (1 - s) (position = pivot)
-        self.move_along(
-            (self.position - pointer_world_coords) * (1.0 - s)
-            + self.direction * distance / np.linalg.norm(self.direction)
-        )
+        self.move_along(perp_direction * (1.0 - s))
