@@ -310,3 +310,42 @@ class CameraOrthogonal(Camera):
         )
         self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
         return pm
+
+    def move_to_screen(self, ndx: float, ndy: float, distance: float):
+        """
+        Move the camera to the normalized screen coordinates ndx, ndy
+        """
+        position_clip_coords = (
+            self.projection_matrix.T
+            @ self.view_matrix.T
+            @ np.append(self.position, 1.0)
+        )
+        position_clip_coords = position_clip_coords[:3] / position_clip_coords[3]
+
+        # Get the pointer view coords on the plane through position (perp to direction)
+        # Since the projection maps perp to direction, we can use the inverse of the projection matrix
+        pointer_view_coords = np.linalg.inv(self.projection_matrix.T).dot(
+            np.array([ndx, ndy, position_clip_coords[2], 1.0])
+        )
+
+        # Get the world coords of the pointer on the plane (perp to direction ) through position.
+        # Note that position - pointer_world_coords should be perpendicular to direction
+        pointer_world_coords = np.linalg.inv(self.view_matrix.T).dot(
+            pointer_view_coords
+        )
+        pointer_world_coords = pointer_world_coords[:3] / pointer_world_coords[3]
+
+        # Get the scaling factor
+        old_position_size = np.linalg.norm(self.position)
+        new_position_size = old_position_size - distance
+        s = old_position_size / new_position_size
+
+        # s is the scaling amount, which pushes the position - pivot out by s * (self.position - pivot)
+        # and we want to move that back to pivot by x so that
+        # position - pivot = s * (position - pivot) + x
+        # x = position - pivot - s (position - pivot)
+        # x = (1 - s) (position = pivot)
+        self.move_along(
+            (self.position - pointer_world_coords) * (1.0 - s)
+            + self.direction * distance / np.linalg.norm(self.direction)
+        )
