@@ -1,5 +1,3 @@
-from math import pi
-
 import numpy as np
 from pyrr import matrix33, matrix44
 
@@ -22,7 +20,7 @@ def intersection(range1: tuple[float], range2: tuple[float]) -> tuple[float] | N
     return result
 
 
-class Camera:  # forward declaration
+class Camera:  # forward declaration for functions
     pass
 
 
@@ -98,11 +96,12 @@ class Camera:
 
     @property
     def projection_matrix(self) -> np.ndarray:
-        pm = matrix44.create_perspective_projection(
-            self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
-        )
-        self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
-        return pm
+        ...
+        # pm = matrix44.create_perspective_projection(
+        #     self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
+        # )
+        # self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
+        # return pm
 
     @property
     def points(self) -> np.ndarray:
@@ -277,6 +276,25 @@ class Camera:
         self.position = self.position + vector
         self.look_at = self.look_at + vector
         self.update_matrices()
+
+    def move_to_screen(self, ndx: float, ndy: float, distance: float):
+        """
+        Move the camera to the normalized screen coordinates ndx, ndy
+        """
+        ...
+
+
+class CameraPerspective(Camera):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def projection_matrix(self) -> np.ndarray:
+        pm = matrix44.create_perspective_projection(
+            self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
+        )
+        self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
+        return pm
 
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """

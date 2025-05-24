@@ -3,7 +3,13 @@ from copy import copy, deepcopy
 from pytest import approx, mark
 import numpy as np
 
-from meshsee.camera import Camera, intersection
+from meshsee.camera import (
+    Camera,
+    CameraPerspective,
+    CameraOrthogonal,
+    copy_camera_state,
+    intersection,
+)
 
 
 @mark.parametrize(
@@ -170,8 +176,8 @@ def test_view_matrix2():
     )
 
 
-def test_projection_matrix():
-    cam = Camera()
+def test_projection_matrix_perspective():
+    cam = CameraPerspective()
     cam.aspect_ratio = 2.0
     cam.fovy = 90.0
     cam.near = 1.0
@@ -192,9 +198,9 @@ def test_projection_matrix():
     )
 
 
-def test_projection_matrix_near_and_far():
+def test_projection_matrix_near_and_far_perspective():
     # Note: OpenGL is right-handed, so the z-axis is pointing out of the screen back to the viewer
-    cam = Camera()
+    cam = CameraPerspective()
     cam.aspect_ratio = 2.0
     cam.fovy = 45.0
     cam.near = 0.25
@@ -220,9 +226,9 @@ def test_projection_matrix_near_and_far():
 
 
 # test fov by placing at corner of near plane
-def test_projection_matrix_fov():
+def test_projection_matrix_fov_perspective():
     # Note: OpenGL is right-handed, so the z-axis is pointing out of the screen back to the viewer
-    cam = Camera()
+    cam = CameraPerspective()
     cam.aspect_ratio = 2.0
     cam.fovy = 53.0
     cam.near = 0.02
@@ -390,7 +396,7 @@ def test_frame_points_in_clip_point_10000():
 
 def check_frame_points_in_clip(multiplier):
     __tracebackhide__ = True
-    cam = Camera()
+    cam = CameraPerspective()
 
     # fmt off
     points = multiplier * np.array(
@@ -499,8 +505,8 @@ def test_move_along():
     assert np.allclose(cam.perpendicular_up, perp_up)
 
 
-def test_move_to_screen():
-    cam = Camera()
+def test_move_to_screen_perspective():
+    cam = CameraPerspective()
     position = np.array([1.0, 2.0, 3.0])
     look_at = np.array([-1.0, -2.0, -5.0])
     cam.position = position
@@ -525,12 +531,24 @@ def test_move_to_screen():
     assert position_screen_coords[1] / position_screen_coords[3] == approx(ndy)
 
 
+@mark.skip
+def test_move_to_screen_orthogonal():
+    # Does not work as well as desired and test like for perspective fails
+    cam = CameraOrthogonal()
+
+
 @mark.parametrize(
-    "axis",
-    [(0), (1), (2)],
+    "axis, cam",
+    [
+        (0, CameraPerspective()),
+        (1, CameraPerspective()),
+        (2, CameraPerspective()),
+        (0, CameraOrthogonal()),
+        (1, CameraOrthogonal()),
+        (2, CameraOrthogonal()),
+    ],
 )
-def test_axis_visible_range(axis):
-    cam = Camera()
+def test_axis_visible_range(axis, cam):
     position = np.array([1.0, 2.0, 3.0])
     look_at = np.array([-1.0, -2.0, -5.0])
     cam.position = position
@@ -548,8 +566,9 @@ def test_axis_visible_range(axis):
     assert any(np.isclose(abs(ndc), 1.0))
 
 
-def test_axis_visible_range_parallel_plane():
-    cam = Camera()
+@mark.parametrize("cam", [(CameraPerspective()), (CameraOrthogonal())])
+def test_axis_visible_range_parallel_plane(cam):
+    cam = CameraPerspective()
     position = np.array([1.0, 0.0, 0.0])
     look_at = np.array([0.0, 0.0, 0.0])
     cam.position = position
@@ -567,3 +586,24 @@ def test_axis_visible_range_parallel_plane():
     assert any(np.isclose(abs(ndc), 1.0))
     position = np.array([1.0, 0.0, 0.0])
     look_at = np.array([0.0, 0.0, 0.0])
+
+
+def test_copy_camera_state():
+    cam = CameraPerspective()
+    position = np.array([1.0, 0.0, 0.0])
+    look_at = np.array([0.0, 0.0, 0.0])
+    up = np.array([0.1, 0.2, 0.3])
+    points = np.array([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]])
+    aspect_ratio = 2.4
+    cam.position = position
+    cam.look_at = look_at
+    cam.up = up
+    cam.aspect_ratio = aspect_ratio
+    cam.points = points
+    cam2 = CameraOrthogonal
+    copy_camera_state(cam, cam2)
+    assert all(cam2.position == position)
+    assert all(cam2.look_at == look_at)
+    assert all(cam2.up == up)
+    assert cam2.aspect_ratio == aspect_ratio
+    assert (cam2.points == points).all

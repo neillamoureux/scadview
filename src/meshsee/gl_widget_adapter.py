@@ -1,7 +1,7 @@
 import numpy as np
 
 from meshsee.renderer import RendererFactory
-from meshsee.camera import Camera, CameraOrthogonal
+from meshsee.camera import CameraPerspective, CameraOrthogonal
 
 
 class GlWidgetAdapter:
@@ -111,4 +111,4 @@ class GlWidgetAdapter:
         self._renderer.camera = CameraOrthogonal()
 
     def use_perspective_camera(self):
-        self._renderer.camera = Camera()
+        self._renderer.camera = CameraPerspective()
