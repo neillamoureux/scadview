@@ -8,6 +8,7 @@ from trimesh import Trimesh
 
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
+from meshsee.label_metrics import label_char_width, label_step, labels_to_show
 
 
 class Renderee(ABC):
@@ -193,3 +194,53 @@ class LabelRenderee(Renderee):
             return rotation * m_base_scale_at_label
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
+
+
+class LabelSetRenderee(Renderee):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        label_atlas: LabelAtlas,
+        max_labels_per_axis: int,
+        max_label_frac_of_step: float,
+        camera: Camera,
+    ):
+        super().__init__(ctx, program)
+        self._label_atlas = label_atlas
+        self.camera = camera
+        self._max_labels_per_axis = max_labels_per_axis
+        self._max_label_frac_of_step = max_label_frac_of_step
+        self._label_renderees = {}
+
+    def render(self):
+        axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
+        visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
+        if len(visible_ranges) == 0:
+            return
+        spans = [range[1][1] - range[1][0] for range in visible_ranges]
+        max_span = max(spans)
+        step = label_step(max_span, self._max_labels_per_axis)
+        min_value = min([visible_range[1][0] for visible_range in visible_ranges])
+        max_value = max([visible_range[1][1] for visible_range in visible_ranges])
+        char_width = label_char_width(
+            min_value, max_value, step, self._max_label_frac_of_step
+        )
+        for visible in visible_ranges:
+            axis = visible[0]
+            min_value = visible[1][0]
+            max_value = visible[1][1]
+            show = labels_to_show(min_value, max_value, step)
+            for label in show:
+                if label not in self._label_renderees.keys():
+                    self._label_renderees[label] = LabelRenderee(
+                        self._ctx,
+                        self._program,
+                        self._label_atlas,
+                        self.camera,
+                        label,
+                    )
+                l = self._label_renderees[label]
+                l.char_width = char_width
+                l.axis = axis
+                l.render()

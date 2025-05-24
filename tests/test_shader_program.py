@@ -12,7 +12,7 @@ def mock_context():
 @pytest.fixture
 def shader_program(mock_context):
     register = {
-        ShaderVar.MODEL_MATRIX: "u_modelMatrix",
+        # ShaderVar.MODEL_MATRIX: "u_modelMatrix",
         ShaderVar.VIEW_MATRIX: "u_viewMatrix",
         ShaderVar.PROJECTION_MATRIX: "u_projectionMatrix",
         ShaderVar.MESH_COLOR: "u_meshColor",

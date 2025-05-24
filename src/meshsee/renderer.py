@@ -11,7 +11,7 @@ from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderProgram, ShaderVar
-from meshsee.render.renderee import LabelRenderee, TrimeshRenderee
+from meshsee.render.renderee import LabelSetRenderee, TrimeshRenderee
 
 
 AXIS_LENGTH = 1000.0
@@ -46,12 +46,10 @@ class Renderer:
         self._aspect_ratio = aspect_ratio
         self._ctx = context
         self._create_shaders()
-        self._create_renderees()
         self.camera = camera
-        # self._set_up_camera(camera, aspect_ratio)
+        self._create_renderees()
         self._init_shaders()
         self._ctx.clear(*self.BACKGROUND_COLOR)
-        # self._default_mesh = _make_default_mesh()
         self.load_mesh(_make_default_mesh())
         self.frame()
 
@@ -64,7 +62,14 @@ class Renderer:
         self._axes = _make_axes()
         self._axes_renderee = TrimeshRenderee(self._ctx, self._prog.program, self._axes)
         self._label_atlas = LabelAtlas(self._ctx)
-        self._label_renderees = {}
+        self._label_set_renderee = LabelSetRenderee(
+            self._ctx,
+            self._num_prog.program,
+            self._label_atlas,
+            MAX_LABELS_PER_AXIS,
+            MAX_LABEL_FRAC_OF_STEP,
+            self._camera,
+        )
 
     @property
     def camera(self):
@@ -79,6 +84,7 @@ class Renderer:
         if old_camera is not None:
             old_camera.on_program_value_change.unsubscribe(self._update_program_value)
             copy_camera_state(old_camera, camera)
+            self._label_set_renderee.camera = camera
         self._camera = camera
 
     def _init_shaders(self):
@@ -184,39 +190,7 @@ class Renderer:
         self._axes_renderee.render()
         self.show_grid = show_grid
         self._main_renderee.render()
-        self._render_labels()
-
-    def _render_labels(self):
-        axis_ranges = [(i, self._camera.axis_visible_range(i)) for i in range(3)]
-        visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
-        if len(visible_ranges) == 0:
-            return
-        spans = [range[1][1] - range[1][0] for range in visible_ranges]
-        max_span = max(spans)
-        step = label_step(max_span, MAX_LABELS_PER_AXIS)
-        min_value = min([visible_range[1][0] for visible_range in visible_ranges])
-        max_value = max([visible_range[1][1] for visible_range in visible_ranges])
-        char_width = label_char_width(
-            min_value, max_value, step, MAX_LABEL_FRAC_OF_STEP
-        )
-        for visible in visible_ranges:
-            axis = visible[0]
-            min_value = visible[1][0]
-            max_value = visible[1][1]
-            show = labels_to_show(min_value, max_value, step)
-            for label in show:
-                if label not in self._label_renderees.keys():
-                    self._label_renderees[label] = LabelRenderee(
-                        self._ctx,
-                        self._num_prog.program,
-                        self._label_atlas,
-                        self._camera,
-                        label,
-                    )
-                l = self._label_renderees[label]
-                l.char_width = char_width
-                l.axis = axis
-                l.render()
+        self._label_set_renderee.render()
 
 
 class RendererFactory:
