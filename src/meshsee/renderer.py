@@ -6,7 +6,7 @@ from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import box
 
-from meshsee.camera import Camera
+from meshsee.camera import Camera, copy_camera_state
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.observable import Observable
@@ -72,16 +72,14 @@ class Renderer:
 
     @camera.setter
     def camera(self, camera: Camera):
+        if self._camera == camera:
+            return
         old_camera = self._camera
+        camera.on_program_value_change.subscribe(self._update_program_value)
         if old_camera is not None:
             old_camera.on_program_value_change.unsubscribe(self._update_program_value)
-            camera.points = old_camera.points
-            camera.look_at = old_camera.look_at
-            camera.position = old_camera.position
-            camera.up = old_camera.up
+            copy_camera_state(old_camera, camera)
         self._camera = camera
-        self._camera.on_program_value_change.subscribe(self._update_program_value)
-        self._camera.aspect_ratio = self.aspect_ratio
 
     def _init_shaders(self):
         self._m_model = Matrix44.identity(dtype="f4")

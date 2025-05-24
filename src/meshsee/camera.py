@@ -22,6 +22,18 @@ def intersection(range1: tuple[float], range2: tuple[float]) -> tuple[float] | N
     return result
 
 
+class Camera:  # forward declaration
+    pass
+
+
+def copy_camera_state(from_camera: Camera, to_camera: Camera):
+    to_camera.points = from_camera.points
+    to_camera.look_at = from_camera.look_at
+    to_camera.position = from_camera.position
+    to_camera.up = from_camera.up
+    to_camera.aspect_ratio = from_camera.aspect_ratio
+
+
 class Camera:
     POSITION_INIT = np.array([2.0, 2.0, 2.0], dtype="f4")
     LOOK_AT_INIT = np.array([0.0, 0.0, 0.0], dtype="f4")
