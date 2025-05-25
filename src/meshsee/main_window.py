@@ -1,4 +1,5 @@
 from time import time
+import queue
 
 from PySide6.QtCore import Signal, QObject, Qt, QRunnable, QThreadPool
 from PySide6.QtWidgets import (
@@ -10,12 +11,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from manifold3d import Manifold, Mesh
 from trimesh import Trimesh
 
 from meshsee.controller import Controller, export_formats
 from meshsee.moderngl_widget import (
     ModernglWidget,
 )
+
+from meshsee.utils import manifold_to_trimesh
 
 
 class MainWindow(QMainWindow):
@@ -147,6 +151,7 @@ class MainWindow(QMainWindow):
     def _start_worker(self, worker):
         self._mesh_loading_worker = worker
         self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
+        self._mesh_loading_worker.signals.manifold_update.connect(self._update_mesh)
         self._mesh_loading_worker.signals.load_start.connect(self._start_load)
         self._mesh_loading_worker.signals.stopped.connect(self._start_next_worker)
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
@@ -165,23 +170,33 @@ class MainWindow(QMainWindow):
         self._first_mesh = True
 
     def _update_mesh(self, mesh: Trimesh, force=False):
-        self._latest_unloaded_mesh = None
-        if self._first_mesh:
+        print(
+            f"MainWindow_update_mesh(force={force}) called; "  # last update {time() - self._last_mesh_update} ms ago"
+        )
+        try:
+            mesh = self._mesh_loading_worker._mesh_queue.get_nowait()
             self._gl_widget.load_mesh(mesh)
-            self._last_mesh_update = time()
-            self._gl_widget.frame()
-            self._first_mesh = False
-            return
-        if force:
-            self._gl_widget.load_mesh(mesh)
-            self._last_mesh_update = time()
-            return
-        if time() - self._last_mesh_update > self.UPDATE_MESH_INTERVAL_MS / 1000:
-            self._latest_unloaded_mesh = None
-            self._gl_widget.load_mesh(mesh)
-            self._last_mesh_update = time()
-        else:
-            self._latest_unloaded_mesh = mesh
+        except queue.Empty:
+            pass
+        # self._gl_widget.update()
+        # self._latest_unloaded_mesh = None
+        # if self._first_mesh:
+        #     self._gl_widget.load_mesh(mesh)
+        #     self._last_mesh_update = time()
+        #     self._gl_widget.frame()
+        #     self._first_mesh = False
+        #     return
+        # if force:
+        #     self._gl_widget.load_mesh(mesh)
+        #     self._last_mesh_update = time()
+        #     return
+        # if time() - self._last_mesh_update > self.UPDATE_MESH_INTERVAL_MS / 1000:
+        #     self._latest_unloaded_mesh = None
+        #     print("about to load mesh")
+        #     self._gl_widget.load_mesh(mesh)
+        #     self._last_mesh_update = time()
+        # else:
+        #     self._latest_unloaded_mesh = mesh
 
     def export(self):
         filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
@@ -192,21 +207,30 @@ class MainWindow(QMainWindow):
 
 class MeshUpdateSignals(QObject):
     mesh_update = Signal(Trimesh)
+    manifold_update = Signal(Manifold)
+    manifold_mesh_update = Signal(Mesh)
     load_start = Signal()
     stopped = Signal()
 
 
 class LoadMeshRunnable(QRunnable):
+    UPDATE_MESH_INTERVAL_MS = 100
+
     def __init__(
         self, controller: Controller, file_path: str, gl_widget: ModernglWidget
     ):
         super().__init__()
         self._controller = controller
+        self._renderer = controller.gl_widget_adapter._renderer
         self._file_path = file_path
         self._gl_widget = gl_widget
         self.signals = MeshUpdateSignals()
         self._stop_requested = False
         self._stopped = False
+        self._first_mesh = True
+        self._last_mesh_update = time()
+        self._latest_unloaded_mesh = None
+        self._mesh_queue = queue.Queue(maxsize=1)
 
     def run(self):
         if self._file_path is not None:
@@ -218,7 +242,15 @@ class LoadMeshRunnable(QRunnable):
             if self._stop_requested:
                 self.signal_stop()
                 return
-            self.signals.mesh_update.emit(mesh)
+            self._update_if_time(mesh)
+            # if isinstance(mesh, Trimesh):
+            #     self._renderer.load_mesh(mesh)
+            #     self.signals.mesh_update.emit(mesh)
+            # elif isinstance(mesh, Manifold):
+            #     self._renderer.load_mesh(mesh)
+            #     print("emitting manifold_update")
+            #     self.signals.manifold_update.emit(mesh)
+        self._update_mesh(mesh)
         self.signal_stop()
 
     def stop(self):
@@ -229,3 +261,53 @@ class LoadMeshRunnable(QRunnable):
     def signal_stop(self):
         self._stopped = True
         self.signals.stopped.emit()
+
+    def _update_if_time(self, mesh: Trimesh, force=False):
+        print(
+            f"_update_mesh(force={force}) called; last update {time() - self._last_mesh_update} ms ago"
+        )
+        if self._mesh_queue.full():
+            return
+        # self._latest_unloaded_mesh = None
+        if self._first_mesh:
+            print("first mesh")
+            self._update_mesh(mesh)
+            # self._renderer.load_mesh(mesh)
+            # self._last_mesh_update = time()
+            # print("emiting mesh_update")
+            # self.signals.mesh_update.emit(mesh)
+            # # self._gl_widget.frame()
+            self._first_mesh = False
+            return
+        if force:
+            print("force")
+            self._update_mesh(mesh)
+            # self._renderer.load_mesh(mesh)
+            # self._last_mesh_update = time()
+            # print("emiting mesh_update")
+            # self.signals.mesh_update.emit(mesh)
+            return
+        if time() - self._last_mesh_update > self.UPDATE_MESH_INTERVAL_MS / 1000:
+            # self._latest_unloaded_mesh = None
+            print("time")
+            self._update_mesh(mesh)
+            # self._renderer.load_mesh(mesh)
+            # print("emiting mesh_update")
+            # self._last_mesh_update = time()
+            # self.signals.mesh_update.emit(mesh)
+        else:
+            self._latest_unloaded_mesh = mesh
+
+    def _update_mesh(self, mesh):
+        mesh2 = mesh
+        if isinstance(mesh, Manifold):
+            mesh2 = manifold_to_trimesh(mesh)
+        self._last_mesh_update = time()
+        self._latest_unloaded_mesh = None
+        try:
+            self._mesh_queue.put_nowait(mesh2)
+        except queue.Full:
+            _ = self._mesh_queue.get_nowait()
+            self._mesh_queue.put_nowait(mesh2)
+        print("emiting mesh_update")
+        self.signals.mesh_update.emit(mesh2)

@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 from math import pi
 
 import moderngl
+from manifold3d import Manifold, Mesh
 import numpy as np
 from pyrr import Matrix44
 from trimesh import Trimesh
+from trimesh.bounds import corners
 
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
@@ -18,17 +20,37 @@ class Renderee(ABC):
 
     @abstractmethod
     def render(self) -> None:
-        """Render the object."""
+        """Render   he object."""
         pass
 
 
 AXIS_WIDTH = 0.01
 
 
+# Helper to convert a Manifold into a Trimesh
+# From https://colab.research.google.com/drive/1VxrFYHPSHZgUbl9TeWzCeovlpXrPQ5J5?usp=sharing#scrollTo=xCHqkWeJXgmJ
+#
+def manifold_to_trimesh(manifold: Manifold) -> Trimesh:
+    mesh = manifold.to_mesh()
+    return manifold_mesh_to_trimesh(mesh)
+
+
+def manifold_mesh_to_trimesh(mesh: Mesh) -> Trimesh:
+    if mesh.vert_properties.shape[1] > 3:
+        vertices = mesh.vert_properties[:, :3]
+        colors = (mesh.vert_properties[:, 3:] * 255).astype(np.uint8)
+    else:
+        vertices = mesh.vert_properties
+        colors = None
+
+    return Trimesh(vertices=vertices, faces=mesh.tri_verts, vertex_colors=colors)
+
+
 class TrimeshRenderee(Renderee):
     def __init__(self, ctx: moderngl.Context, program: moderngl.Program, mesh: Trimesh):
         super().__init__(ctx, program)
         # self._mesh = mesh
+        self._points = corners(mesh.bounds)
         self._points = mesh.triangles.reshape(-1, 3)
         self._vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
         self._normals = ctx.buffer(
@@ -57,6 +79,34 @@ class TrimeshRenderee(Renderee):
 
     def render(self):
         self._vao.render()
+
+
+class ManifoldRenderee:
+    def __init__(
+        self, ctx: moderngl.Context, program: moderngl.Program, manifold: Manifold
+    ):
+        trimesh = manifold_to_trimesh(manifold)
+        self._trimesh_renderee = TrimeshRenderee(ctx, program, trimesh)
+
+    @property
+    def points(self) -> np.ndarray:
+        return self._trimesh_renderee.points
+
+    def render(self):
+        self._trimesh_renderee.render()
+
+
+class MeshRenderer:
+    def __init__(self, ctx: moderngl.Context, program: moderngl.Program, mesh: Mesh):
+        trimesh = manifold_mesh_to_trimesh(mesh)
+        self._trimesh_renderee = TrimeshRenderee(ctx, program, trimesh)
+
+    @property
+    def points(self) -> np.ndarray:
+        return self._trimesh_renderee.points
+
+    def render(self):
+        self._trimesh_renderee.render()
 
 
 class LabelRenderee(Renderee):
