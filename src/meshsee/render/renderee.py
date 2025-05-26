@@ -49,9 +49,7 @@ def manifold_mesh_to_trimesh(mesh: Mesh) -> Trimesh:
 class TrimeshRenderee(Renderee):
     def __init__(self, ctx: moderngl.Context, program: moderngl.Program, mesh: Trimesh):
         super().__init__(ctx, program)
-        # self._mesh = mesh
         self._points = corners(mesh.bounds)
-        self._points = mesh.triangles.reshape(-1, 3)
         self._vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
         self._normals = ctx.buffer(
             data=np.array([[v] * 3 for v in mesh.triangles_cross])
@@ -79,34 +77,6 @@ class TrimeshRenderee(Renderee):
 
     def render(self):
         self._vao.render()
-
-
-class ManifoldRenderee:
-    def __init__(
-        self, ctx: moderngl.Context, program: moderngl.Program, manifold: Manifold
-    ):
-        trimesh = manifold_to_trimesh(manifold)
-        self._trimesh_renderee = TrimeshRenderee(ctx, program, trimesh)
-
-    @property
-    def points(self) -> np.ndarray:
-        return self._trimesh_renderee.points
-
-    def render(self):
-        self._trimesh_renderee.render()
-
-
-class MeshRenderer:
-    def __init__(self, ctx: moderngl.Context, program: moderngl.Program, mesh: Mesh):
-        trimesh = manifold_mesh_to_trimesh(mesh)
-        self._trimesh_renderee = TrimeshRenderee(ctx, program, trimesh)
-
-    @property
-    def points(self) -> np.ndarray:
-        return self._trimesh_renderee.points
-
-    def render(self):
-        self._trimesh_renderee.render()
 
 
 class LabelRenderee(Renderee):

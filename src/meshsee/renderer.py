@@ -1,6 +1,5 @@
 from typing import Any
 
-from manifold3d import Manifold
 import moderngl
 import numpy as np
 from pyrr import Matrix44
@@ -10,10 +9,9 @@ from trimesh.creation import box
 from meshsee.camera import Camera, copy_camera_state
 from meshsee.label_atlas import LabelAtlas
 
-# from meshsee.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderProgram, ShaderVar
-from meshsee.render.renderee import LabelSetRenderee, ManifoldRenderee, TrimeshRenderee
+from meshsee.render.renderee import LabelSetRenderee, TrimeshRenderee
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
@@ -155,19 +153,11 @@ class Renderer:
         self,
         mesh: Trimesh,
     ):
-        if isinstance(mesh, Trimesh):
-            self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
-        elif isinstance(mesh, Manifold):
-            self._main_renderee = ManifoldRenderee(self._ctx, self._prog.program, mesh)
-        else:
-            raise ValueError(
-                f"Mesh must be a Trimesh or Manifold Mesh but is {type(mesh)}"
-            )
+        self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
         self._camera.points = self._main_renderee.points
 
     def frame(self, direction=None, up=None):
         self._camera.frame(direction, up)
-        # self._camera.frame(self._main_renderee.points, direction, up)
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
