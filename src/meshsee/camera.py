@@ -95,13 +95,7 @@ class Camera:
         return vm
 
     @property
-    def projection_matrix(self) -> np.ndarray:
-        ...
-        # pm = matrix44.create_perspective_projection(
-        #     self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
-        # )
-        # self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
-        # return pm
+    def projection_matrix(self) -> np.ndarray: ...
 
     @property
     def points(self) -> np.ndarray:
@@ -386,6 +380,3 @@ class CameraOrthogonal(Camera):
         # correct distance after scaling.
 
         self.move_along(perp_direction * (s - 1.0) / s)
-        print(
-            f"fp distance before perp move: {new_fp_distance}, current: {self._distance_to_focal_plane()}"
-        )

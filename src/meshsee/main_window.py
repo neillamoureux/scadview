@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
         self._load_mesh(None)
 
     def _load_mesh(self, file_path: str | None):
-        worker = LoadMeshRunnable(self._controller, file_path, self._gl_widget)
+        worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
             self._start_worker(worker)
         else:
@@ -157,18 +157,17 @@ class MainWindow(QMainWindow):
         if self._next_mesh_loading_worker is not None:
             self._start_worker(self._next_mesh_loading_worker)
             self._next_mesh_loading_worker = None
-        else:
-            if self._latest_unloaded_mesh is not None:
-                self._update_mesh(self._latest_unloaded_mesh, force=True)
 
     def _start_load(self):
         self._first_mesh = True
 
-    def _update_mesh(self, mesh: Trimesh, force=False):
-        print(f"MainWindow_update_mesh(force={force}) called")
+    def _update_mesh(self, mesh: Trimesh):
         try:
             mesh = self._mesh_loading_worker._mesh_queue.get_nowait()
             self._gl_widget.load_mesh(mesh)
+            if self._first_mesh:
+                self._first_mesh = False
+                self._gl_widget.frame()
         except queue.Empty:
             pass
 
@@ -189,13 +188,13 @@ class LoadMeshRunnable(QRunnable):
     UPDATE_MESH_INTERVAL_MS = 100
 
     def __init__(
-        self, controller: Controller, file_path: str, gl_widget: ModernglWidget
+        self,
+        controller: Controller,
+        file_path: str,
     ):
         super().__init__()
         self._controller = controller
-        self._renderer = controller.gl_widget_adapter._renderer
         self._file_path = file_path
-        self._gl_widget = gl_widget
         self.signals = MeshUpdateSignals()
         self._stop_requested = False
         self._stopped = False
@@ -215,7 +214,8 @@ class LoadMeshRunnable(QRunnable):
                 self.signal_stop()
                 return
             self._update_if_time(mesh)
-        self._update_mesh(mesh)
+        if self._latest_unloaded_mesh is not None:
+            self._update_mesh(mesh)
         self.signal_stop()
 
     def stop(self):
@@ -227,30 +227,17 @@ class LoadMeshRunnable(QRunnable):
         self._stopped = True
         self.signals.stopped.emit()
 
-    def _update_if_time(self, mesh: Trimesh, force=False):
-        print(
-            f"_update_if_time(force={force}) called; last update {time() - self._last_mesh_update} ms ago"
-        )
-        if self._mesh_queue.full():
-            return
-        # self._latest_unloaded_mesh = None
-        if self._first_mesh:
-            print("first mesh")
+    def _update_if_time(self, mesh: Trimesh):
+         if self._first_mesh:
             self._update_mesh(mesh)
             self._first_mesh = False
             return
-        if force:
-            print("force")
-            self._update_mesh(mesh)
-            return
         if time() - self._last_mesh_update > self.UPDATE_MESH_INTERVAL_MS / 1000:
-            print("time")
             self._update_mesh(mesh)
         else:
             self._latest_unloaded_mesh = mesh
 
     def _update_mesh(self, mesh):
-        print("_update_mesh called")
         mesh2 = mesh
         if isinstance(mesh, Manifold):
             mesh2 = manifold_to_trimesh(mesh)
@@ -261,5 +248,4 @@ class LoadMeshRunnable(QRunnable):
         except queue.Full:
             _ = self._mesh_queue.get_nowait()
             self._mesh_queue.put_nowait(mesh2)
-        print("emiting mesh_update")
         self.signals.mesh_update.emit(mesh2)
