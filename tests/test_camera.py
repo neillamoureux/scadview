@@ -518,22 +518,41 @@ def test_move_to_screen_perspective():
     ndx = 0.6
     ndy = -0.7
     cam.move_to_screen(ndx, ndy, distance)
+
     displacement = cam.position - position
     assert np.linalg.norm(displacement) == approx(distance)
     assert np.allclose(cam.direction, look_at - position)
     assert np.allclose(cam.perpendicular_up, perp_up)
 
-    # Check that the new position transformed with the original
-    # view and projection are at ndx, ndy
-    position_screen_coords = orig_proj.T.dot(
-        orig_view.T.dot(np.append(cam.position, 1.0))
+    check_pointer_world_position_stationary_on_screen(
+        orig_view, orig_proj, ndx, ndy, cam
     )
-    assert position_screen_coords[0] / position_screen_coords[3] == approx(ndx)
-    assert position_screen_coords[1] / position_screen_coords[3] == approx(ndy)
+
+
+def check_pointer_world_position_stationary_on_screen(
+    orig_view, orig_proj, ndx, ndy, cam
+):
+    __tracebackhide__ = True
+    pointer_world_coords = (
+        np.linalg.inv(orig_view.T)
+        @ np.linalg.inv(orig_proj.T)
+        @ np.array([ndx, ndy, 0.0, 1.0])
+    )
+    pointer_world_coords = pointer_world_coords[:3] / pointer_world_coords[3]
+
+    pointer_screen_coords = cam.projection_matrix.T.dot(
+        cam.view_matrix.T.dot(np.append(pointer_world_coords, [1.0]))
+    )
+    print(pointer_screen_coords)
+    assert pointer_screen_coords[0] / pointer_screen_coords[3] == approx(
+        ndx, rel=0.0001
+    )
+    assert pointer_screen_coords[1] / pointer_screen_coords[3] == approx(
+        ndy, rel=0.0001
+    )
 
 
 def test_move_to_screen_orthogonal():
-    # Does not work as well as desired and test like for perspective fails
     cam = CameraOrthogonal()
     position = np.array([10.0, 20.0, 30.0])
     look_at = np.array([-10.0, -20.0, -50.0])
@@ -543,32 +562,18 @@ def test_move_to_screen_orthogonal():
     orig_proj = cam.projection_matrix
     perp_up = cam.perpendicular_up
     distance = 1.5
-    pointer_ndc = [0.6, -0.7]
-
+    ndx = 0.6
+    ndy = -0.7
     orig_fp_distance = cam._distance_to_focal_plane()
-    cam.move_to_screen(pointer_ndc[0], pointer_ndc[1], distance)
+    cam.move_to_screen(ndx, ndy, distance)
+
     new_fp_distance = cam._distance_to_focal_plane()
     assert (orig_fp_distance - new_fp_distance) == approx(distance)
     assert np.allclose(cam.direction, look_at - position)
     assert np.allclose(cam.perpendicular_up, perp_up)
 
-    pointer_world_coords = (
-        np.linalg.inv(orig_view.T)
-        @ np.linalg.inv(orig_proj.T)
-        @ np.append(pointer_ndc, [0.0, 1.0])
-    )
-    pointer_world_coords = pointer_world_coords[:3] / pointer_world_coords[3]
-    print(pointer_world_coords)
-
-    pointer_screen_coords = cam.projection_matrix.T.dot(
-        cam.view_matrix.T.dot(np.append(pointer_world_coords, [1.0]))
-    )
-    print(pointer_screen_coords)
-    assert pointer_screen_coords[0] / pointer_screen_coords[3] == approx(
-        pointer_ndc[0], rel=0.0001
-    )
-    assert pointer_screen_coords[1] / pointer_screen_coords[3] == approx(
-        pointer_ndc[1], rel=0.0001
+    check_pointer_world_position_stationary_on_screen(
+        orig_view, orig_proj, ndx, ndy, cam
     )
 
 
