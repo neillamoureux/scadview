@@ -370,7 +370,7 @@ class CameraOrthogonal(Camera):
             pointer_view_coords
         )
         pointer_world_coords = pointer_world_coords[:3] / pointer_world_coords[3]
-        perp_direction = self.position - pointer_world_coords
+        perp_direction = pointer_world_coords - self.position
 
         # Get the scaling factor
         old_fp_distance = self._distance_to_focal_plane()
@@ -378,9 +378,14 @@ class CameraOrthogonal(Camera):
         new_fp_distance = self._distance_to_focal_plane()
         s = old_fp_distance / new_fp_distance
 
-        # s is the scaling amount, which pushes the position - pivot out by s * (self.position - pivot)
-        # and we want to move that back to pivot by x so that
-        # position - pivot = s * (position - pivot) + x
-        # x = position - pivot - s (position - pivot)
-        # x = (1 - s) (position = pivot)
-        self.move_along(perp_direction * (1.0 - s))
+        # s is the scaling amount, which moves the ndc of the points "underneath" the normalized ddvice coords (ndx, ndy)
+        # to (s * ndx, s * ndy).  We want to shift the center so that (s * ndx, s * ndy) is back moved
+        # back to (ndx, ndy) - that it, move the center to ((s - 1) * ndx, (s - 1) * ndy).
+        # In world coordinates, this means moving in a direction perependicular to the direction
+        # We calculated this perp direction before scaling, so we need to divide by s to get the
+        # correct distance after scaling.
+
+        self.move_along(perp_direction * (s - 1.0) / s)
+        print(
+            f"fp distance before perp move: {new_fp_distance}, current: {self._distance_to_focal_plane()}"
+        )
