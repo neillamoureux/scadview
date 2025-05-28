@@ -228,7 +228,7 @@ class LoadMeshRunnable(QRunnable):
         self.signals.stopped.emit()
 
     def _update_if_time(self, mesh: Trimesh):
-         if self._first_mesh:
+        if self._first_mesh:
             self._update_mesh(mesh)
             self._first_mesh = False
             return
