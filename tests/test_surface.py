@@ -15,8 +15,14 @@ def heightmap():
     return np.arange(20, dtype=float).reshape((5, 4)) + 1
 
 
-def check_mesh(mesh, heightmap):
+def check_mesh(mesh, heightmap, invert: str):
     __tracebackhide__ = True
+    if invert == "image":
+        heightmap = 1.0 - heightmap
+    elif invert == "text":
+        heightmap = heightmap.max() - heightmap + heightmap.min()
+    elif invert != "none":
+        raise ValueError(f"Invalid invert value: {invert}")
     assert isinstance(mesh, trimesh.Trimesh)
     check_vertex_count(mesh, heightmap)
     check_face_count(mesh, heightmap)
@@ -56,28 +62,33 @@ def check_mesh_heights(mesh, expected_heights, offset=0):
 
 
 @pytest.mark.parametrize(
-    "extension, delimiter",
+    "extension, delimiter, invert",
     [
-        ("csv", ","),
-        ("tsv", "\t"),
-        ("txt", " "),
-        ("dat", " "),
+        ("csv", ",", "none"),
+        ("tsv", "\t", "none"),
+        ("txt", " ", "none"),
+        ("dat", " ", "none"),
+        ("csv", ",", "text"),
+        ("tsv", "\t", "text"),
+        ("txt", " ", "text"),
+        ("dat", " ", "text"),
     ],
 )
-def test_surface_with_text_files(tmp_path, heightmap, extension, delimiter):
+def test_surface_with_text_files(tmp_path, heightmap, extension, delimiter, invert):
     csv_path = tmp_path / f"heightmap.{extension}"
     np.savetxt(csv_path, heightmap, delimiter=delimiter)
-    mesh = surface(str(csv_path))
-    check_mesh(mesh, heightmap)
+    mesh = surface(str(csv_path), invert=(invert == "text"))
+    check_mesh(mesh, heightmap, invert=invert)
 
 
-def test_surface_with_image(tmp_path, heightmap):
+@pytest.mark.parametrize("invert", [False, True])
+def test_surface_with_image(tmp_path, heightmap, invert):
     # Create a simple grayscale image
     img = Image.fromarray(heightmap.astype(np.uint8), mode="L")
     img_path = tmp_path / "heightmap.png"
     img.save(img_path)
-    mesh = surface(str(img_path))
-    check_mesh(mesh, heightmap / 255.0)
+    mesh = surface(str(img_path), invert=invert)
+    check_mesh(mesh, heightmap / 255.0, invert="image" if invert else "none")
     # assert isinstance(mesh, trimesh.Trimesh)
 
 

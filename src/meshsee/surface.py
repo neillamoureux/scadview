@@ -5,7 +5,9 @@ from PIL import Image
 import trimesh
 
 
-def surface(file: str, scale: tuple = (1.0, 1.0, 1.0)) -> trimesh.Trimesh:
+def surface(
+    file: str, scale: tuple = (1.0, 1.0, 1.0), invert: bool = False
+) -> trimesh.Trimesh:
     """
     Create a 3D mesh on a base at z = 0.0 from a file containing heightmap data.
 
@@ -31,11 +33,11 @@ def surface(file: str, scale: tuple = (1.0, 1.0, 1.0)) -> trimesh.Trimesh:
     if delimiter is not None:
         # Load heightmap from text file
         heightmap = np.loadtxt(file, delimiter=delimiter)
-        return _solid_from_heightmap(heightmap, scale=scale)
+        return _solid_from_heightmap(heightmap, scale=scale, invert=invert)
     else:
         # Assume it's an image file
         with open(file, "rb") as img_file:
-            return _solid_from_image(img_file, scale=scale)
+            return _solid_from_image(img_file, scale=scale, invert=invert)
 
 
 def _solid_from_image(
@@ -67,14 +69,17 @@ def _solid_from_image(
         heightmap = np.array(img_gray, dtype=np.float32) / 255.0
 
     # Create a mesh from the heightmap
+    # Note: values already inverted if invert=True
     return _solid_from_heightmap(heightmap, scale=scale)
 
 
-def _solid_from_heightmap(heightmap, scale=(1.0, 1.0, 1.0)):
+def _solid_from_heightmap(
+    heightmap, scale=(1.0, 1.0, 1.0), invert: bool = False
+) -> trimesh.Trimesh:
     y_span, x_span = heightmap.shape
     v_count = y_span * x_span
 
-    verts_top = _create_top_vertices(heightmap, scale)
+    verts_top = _create_top_vertices(heightmap, scale, invert=invert)
     verts_bot = _create_bottom_vertices(verts_top)
     faces = _create_faces(y_span, x_span)
     # invert bottom faces so normals point outward
@@ -83,11 +88,15 @@ def _solid_from_heightmap(heightmap, scale=(1.0, 1.0, 1.0)):
     return _assemble_solid(verts_top, verts_bot, faces, faces_bot, side_faces)
 
 
-def _create_top_vertices(heightmap: np.ndarray, scale: tuple) -> np.ndarray:
+def _create_top_vertices(
+    heightmap: np.ndarray, scale: tuple, invert: bool = False
+) -> np.ndarray:
     y_span, x_span = heightmap.shape
     xs = np.arange(x_span) * scale[0]
     ys = np.arange(y_span) * scale[1]
     xx, yy = np.meshgrid(xs, ys)
+    if invert:
+        heightmap = heightmap.max() - heightmap + heightmap.min()
     top_z = heightmap * scale[2]
     return np.column_stack([xx.ravel(), yy.ravel(), top_z.ravel()])
 
