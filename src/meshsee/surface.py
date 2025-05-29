@@ -21,18 +21,25 @@ def surface(file: str, scale: tuple = (1.0, 1.0, 1.0)) -> trimesh.Trimesh:
     trimesh.Trimesh
         A trimesh object representing the 3D mesh.
     """
+    delimiter = None
     if file.endswith(".csv"):
-        # Load heightmap from CSV file
-        heightmap = np.loadtxt(file, delimiter=",")
-        return solid_from_heightmap(heightmap, scale=scale)
+        delimiter = ","
+    elif file.endswith(".tsv"):
+        delimiter = "\t"
+    elif file.endswith(".txt") or format(file).endswith(".dat"):
+        delimiter = " "
+    if delimiter is not None:
+        # Load heightmap from text file
+        heightmap = np.loadtxt(file, delimiter=delimiter)
+        return _solid_from_heightmap(heightmap, scale=scale)
     else:
         # Assume it's an image file
         with open(file, "rb") as img_file:
-            return solid_from_image(img_file, scale=scale)
+            return _solid_from_image(img_file, scale=scale)
 
 
-def solid_from_image(
-    image_file: IO, scale: tuple = (1.0, 1.0, 1.0), invert: bool = True
+def _solid_from_image(
+    image_file: IO, scale: tuple = (1.0, 1.0, 1.0), invert: bool = False
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh from an image file.
@@ -60,16 +67,16 @@ def solid_from_image(
         heightmap = np.array(img_gray, dtype=np.float32) / 255.0
 
     # Create a mesh from the heightmap
-    return solid_from_heightmap(heightmap, scale=scale)
+    return _solid_from_heightmap(heightmap, scale=scale)
 
 
-def solid_from_heightmap(heightmap, scale=(1.0, 1.0, 1.0)):
+def _solid_from_heightmap(heightmap, scale=(1.0, 1.0, 1.0)):
     y_span, x_span = heightmap.shape
     v_count = y_span * x_span
 
     verts_top = _create_top_vertices(heightmap, scale)
     verts_bot = _create_bottom_vertices(verts_top)
-    faces = _create_faces(y_span, x_span, v_count)
+    faces = _create_faces(y_span, x_span)
     # invert bottom faces so normals point outward
     faces_bot = faces[:, [0, 2, 1]] + v_count
     side_faces = _create_side_faces(y_span, x_span, v_count)
@@ -91,7 +98,7 @@ def _create_bottom_vertices(verts_top: np.ndarray) -> np.ndarray:
     return verts_bot
 
 
-def _create_faces(y_span: int, x_span: int, v_count: int) -> np.ndarray:
+def _create_faces(y_span: int, x_span: int) -> np.ndarray:
     faces = []
     for i in range(y_span - 1):
         for j in range(x_span - 1):
