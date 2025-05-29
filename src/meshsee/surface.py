@@ -6,7 +6,7 @@ import trimesh
 
 
 def surface(
-    file: str, scale: tuple = (1.0, 1.0, 1.0), invert: bool = False
+    file: str, scale: tuple = (1.0, 1.0, 1.0), base: float = 0.0, invert: bool = False
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh on a base at z = 0.0 from a file containing heightmap data.
@@ -33,15 +33,18 @@ def surface(
     if delimiter is not None:
         # Load heightmap from text file
         heightmap = np.loadtxt(file, delimiter=delimiter)
-        return _solid_from_heightmap(heightmap, scale=scale, invert=invert)
+        return _solid_from_heightmap(heightmap, scale=scale, base=base, invert=invert)
     else:
         # Assume it's an image file
         with open(file, "rb") as img_file:
-            return _solid_from_image(img_file, scale=scale, invert=invert)
+            return _solid_from_image(img_file, scale=scale, base=base, invert=invert)
 
 
 def _solid_from_image(
-    image_file: IO, scale: tuple = (1.0, 1.0, 1.0), invert: bool = False
+    image_file: IO,
+    scale: tuple = (1.0, 1.0, 1.0),
+    base: float = 0.0,
+    invert: bool = False,
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh from an image file.
@@ -70,16 +73,17 @@ def _solid_from_image(
 
     # Create a mesh from the heightmap
     # Note: values already inverted if invert=True
-    return _solid_from_heightmap(heightmap, scale=scale)
+    heightmap = np.flipud(heightmap)  # preserve image orientation
+    return _solid_from_heightmap(heightmap, scale=scale, base=base)
 
 
 def _solid_from_heightmap(
-    heightmap, scale=(1.0, 1.0, 1.0), invert: bool = False
+    heightmap, scale=(1.0, 1.0, 1.0), base: float = 0.0, invert: bool = False
 ) -> trimesh.Trimesh:
     y_span, x_span = heightmap.shape
     v_count = y_span * x_span
 
-    verts_top = _create_top_vertices(heightmap, scale, invert=invert)
+    verts_top = _create_top_vertices(heightmap, scale, base=base, invert=invert)
     verts_bot = _create_bottom_vertices(verts_top)
     faces = _create_faces(y_span, x_span)
     # invert bottom faces so normals point outward
@@ -89,7 +93,7 @@ def _solid_from_heightmap(
 
 
 def _create_top_vertices(
-    heightmap: np.ndarray, scale: tuple, invert: bool = False
+    heightmap: np.ndarray, scale: tuple, base: float = 0.0, invert: bool = False
 ) -> np.ndarray:
     y_span, x_span = heightmap.shape
     xs = np.arange(x_span) * scale[0]
@@ -97,7 +101,7 @@ def _create_top_vertices(
     xx, yy = np.meshgrid(xs, ys)
     if invert:
         heightmap = heightmap.max() - heightmap + heightmap.min()
-    top_z = heightmap * scale[2]
+    top_z = heightmap * scale[2] + base
     return np.column_stack([xx.ravel(), yy.ravel(), top_z.ravel()])
 
 

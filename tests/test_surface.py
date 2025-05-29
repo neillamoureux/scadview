@@ -15,7 +15,7 @@ def heightmap():
     return np.arange(20, dtype=float).reshape((5, 4)) + 1
 
 
-def check_mesh(mesh, heightmap, invert: str):
+def check_mesh(mesh, heightmap, invert: str, base: float):
     __tracebackhide__ = True
     if invert == "image":
         heightmap = 1.0 - heightmap
@@ -27,9 +27,9 @@ def check_mesh(mesh, heightmap, invert: str):
     check_vertex_count(mesh, heightmap)
     check_face_count(mesh, heightmap)
     expected_heights = heightmap.flatten()
-    check_mesh_heights(mesh, expected_heights)
+    check_mesh_heights(mesh, expected_heights, base)
     check_mesh_heights(
-        mesh, np.zeros(heightmap.size, dtype=float), offset=heightmap.size
+        mesh, np.zeros(heightmap.size, dtype=float), base=0.0, offset=heightmap.size
     )
     assert mesh.is_watertight, "Mesh is not watertight"
 
@@ -52,48 +52,51 @@ def check_face_count(mesh, heightmap):
     assert mesh.faces.shape[0] == expected_faces
 
 
-def check_mesh_heights(mesh, expected_heights, offset=0):
+def check_mesh_heights(mesh, expected_heights, base, offset=0):
     __tracebackhide__ = True
     # Check if the mesh vertices have the expected heights
     for i, height in enumerate(expected_heights):
         assert np.isclose(
-            mesh.vertices[i + offset, 2], height
+            mesh.vertices[i + offset, 2], height + base
         ), f"Vertex {i} height mismatch"
 
 
 @pytest.mark.parametrize(
-    "extension, delimiter, invert",
+    "extension, delimiter, base, invert",
     [
-        ("csv", ",", "none"),
-        ("tsv", "\t", "none"),
-        ("txt", " ", "none"),
-        ("dat", " ", "none"),
-        ("csv", ",", "text"),
-        ("tsv", "\t", "text"),
-        ("txt", " ", "text"),
-        ("dat", " ", "text"),
+        ("csv", ",", 0.0, "none"),
+        ("tsv", "\t", 1.0, "none"),
+        ("txt", " ", 0.0, "none"),
+        ("dat", " ", 1.0, "none"),
+        ("csv", ",", 1.0, "text"),
+        ("tsv", "\t", 0.0, "text"),
+        ("txt", " ", 1.0, "text"),
+        ("dat", " ", 0.0, "text"),
     ],
 )
-def test_surface_with_text_files(tmp_path, heightmap, extension, delimiter, invert):
+def test_surface_with_text_files(
+    tmp_path, heightmap, extension, delimiter, base, invert
+):
     csv_path = tmp_path / f"heightmap.{extension}"
     np.savetxt(csv_path, heightmap, delimiter=delimiter)
-    mesh = surface(str(csv_path), invert=(invert == "text"))
-    check_mesh(mesh, heightmap, invert=invert)
+    mesh = surface(str(csv_path), base=base, invert=(invert == "text"))
+    check_mesh(mesh, heightmap, invert=invert, base=base)
 
 
-@pytest.mark.parametrize("invert", [False, True])
-def test_surface_with_image(tmp_path, heightmap, invert):
+@pytest.mark.parametrize("invert, base", [(False, 0.0), (True, 2.3)])
+def test_surface_with_image(tmp_path, heightmap, invert, base):
     # Create a simple grayscale image
-    img = Image.fromarray(heightmap.astype(np.uint8), mode="L")
+    # reverse the heightmap since for images, the code flips to preserve them image orientation
+    heightmap_ud = np.flipud(heightmap)
+    img = Image.fromarray(heightmap_ud.astype(np.uint8), mode="L")
     img_path = tmp_path / "heightmap.png"
     img.save(img_path)
-    mesh = surface(str(img_path), invert=invert)
-    check_mesh(mesh, heightmap / 255.0, invert="image" if invert else "none")
+    mesh = surface(str(img_path), invert=invert, base=base)
+    check_mesh(mesh, heightmap / 255.0, base=base, invert="image" if invert else "none")
     # assert isinstance(mesh, trimesh.Trimesh)
 
 
 def test_surface_scale_argument(tmp_path, heightmap):
-    # heightmap = np.array([[1, 2], [3, 4]], dtype=float)
     csv_path = tmp_path / "heightmap.csv"
     np.savetxt(csv_path, heightmap, delimiter=",")
     scale = (2.0, 3.0, 4.0)
@@ -109,10 +112,9 @@ def test_surface_invalid_file(tmp_path):
 
 
 def test_mesh_from_heightmap_shape_and_faces(heightmap):
-    # heightmap = np.array([[0, 1, 2], [3, 4, 5]], dtype=float)
     mesh = mesh_from_heightmap(heightmap)
     expected_vertices = heightmap.size
     assert mesh.vertices.shape == (expected_vertices, 3)
     expected_faces = (heightmap.shape[0] - 1) * (heightmap.shape[1] - 1) * 2
     assert mesh.faces.shape == (expected_faces, 3)
-    check_mesh_heights(mesh, heightmap.flatten())
+    check_mesh_heights(mesh, heightmap.flatten(), base=0.0)
