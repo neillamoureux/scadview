@@ -1,5 +1,7 @@
 import os
+from copy import copy
 from functools import cache
+from typing import Any
 
 import numpy as np
 import trimesh
@@ -20,9 +22,12 @@ SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
 
 
 def create_mesh():
-    t = "".join(chr(i) for i in range(32, 127))
+    # t = "".join(chr(i) for i in range(32, 127))
+    t = "Abc123"
     font = "Papyrus:style=Condensed"
-    return text(t, font=font, size=100).apply_scale((1.0, 1.0, 10.0))
+    return text(t, font=font, size=100, valign="bottom", halign="right").apply_scale(
+        (1.0, 1.0, 10.0)
+    )
 
 
 @cache
@@ -83,49 +88,82 @@ def text(
         )
         # Use the default font if the specified font is not found
         font_path = DEFAULT_FONT_PATH
-    loops = _loops_from_text(text, font_path, size, valign)
+    loops = _loops_from_text(text, font_path, size, halign, valign)
     # polys = polygons_with_holes(loops, _is_loop_orientation_reversed(loops))
     polys = _make_polys(loops)
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
     return trimesh.util.concatenate(meshes)
 
 
-def _loops_from_text(text, font_path, size=10, valign="baseline"):
+def _loops_from_text(
+    text: str, font_path: str, size: float, halign: str, valign: str
+) -> np.ndarray:
     # Note: to implement spacing, we need to call ft2font.FT2Font.get_kerning()
     # which requires a pair of glyphs indices, and a KERNING_DEFAULT mode.
     # For now, we will just ignore spacing.
     # See https://matplotlib.org/3.5.3/gallery/misc/font_indexing.html
     fp = FontProperties(fname=font_path, size=size * SIZE_MULTIPLIER)
-    y_offset = _calc_y_offset(text, fp, valign)
+    x_offset, y_offset = _calc_offsets(text, fp, halign, valign)
 
-    # Create a list of loops (exterior and interior)
-    # Each loop is a tuple (kind, vertices) where kind is 'exterior' or 'interior'
     tp = TextPath((0, 0), text, prop=fp)
     loops = []
     for poly in tp.to_polygons():
         verts = np.array(poly)
-        loops.append(verts + np.array([0, y_offset]))
+        loops.append(verts + np.array([x_offset, y_offset]))
     return loops
 
 
-def _calc_y_offset(text: str, fp: FontProperties, valign: str):
-    _, height, descent = TextToPath().get_text_width_height_descent(
+def _calc_offsets(
+    text: str, fp: FontProperties, halign: str, valign: str
+) -> tuple[float, float]:
+    """
+    Calculate the x and y offsets based on the horizontal and vertical alignment of the text.
+    :param text: The text to measure.
+    :param fp: FontProperties object containing font information.
+    :param halign: Horizontal alignment ('left', 'center', 'right').
+    :param valign: Vertical alignment ('baseline', 'top', 'bottom', 'center').
+    :return: A tuple (x_offset, y_offset) for the text.
+    """
+    width, height, descent = TextToPath().get_text_width_height_descent(
         text, prop=fp, ismath=False
     )
+    y_offset = _calc_y_offset(valign, height, descent)
+    x_offset = _calc_x_offset(halign, width)
+    return x_offset, y_offset
+
+
+def _calc_y_offset(valign: str, height: float, descent: float) -> float:
     if valign == "baseline":
-        y_offset = 0.0
+        return 0.0
     elif valign == "top":
-        y_offset = -height
+        return -height
     elif valign == "bottom":
-        y_offset = +descent
+        return descent
     elif valign == "center":
-        y_offset = -(height - descent) / 2.0
+        return -(height - descent) / 2.0
     else:
         raise ValueError(f"Invalid valign: {valign}")
-    return y_offset
 
 
-def _make_polys(loops):
+def _calc_x_offset(halign: str, width: float) -> float:
+    """
+    Calculate the x offset based on the horizontal alignment of the text.
+    :param text: The text to measure.
+    :param fp: FontProperties object containing font information.
+    :param halign: Horizontal alignment ('left', 'center', 'right').
+    :return: The x offset for the text.
+    """
+    if halign == "left":
+        return 0.0
+    elif halign == "center":
+        return -width / 2.0
+    elif halign == "right":
+        return -width
+    else:
+        raise ValueError(f"Invalid halign: {halign}")
+
+
+def _make_polys(loops: np.ndarray) -> list[Polygon]:
     """
     Create a list of shapely.Polygon objects from the given loops.
     Each loop is a list of points (x, y) representing the vertices of the loop.
@@ -134,32 +172,42 @@ def _make_polys(loops):
     :param loops: List of loops, each loop is a list of points (x, y).
     :return: List of shapely.Polygon objects with holes.
     """
+    return _assemble_polys(loops, _track_containment(loops))
+
+
+def _track_containment(loops: np.ndarray) -> list[dict[str, Any]]:
     # Track containment relationships between loops
-    loop_cont = [{"contains": [], "exterior": True, "holes": []} for _ in loops]
+    loops_cont = [{"contains": [], "exterior": True} for _ in loops]
     simple_polys = [Polygon(loop) for loop in loops]
-    rep_points = [Point(loop[0]) for loop in loops]
-    for i, rep_point_i in enumerate(rep_points):
+    first_points = [Point(loop[0]) for loop in loops]
+    for i, first_point_i in enumerate(first_points):
         for j, spoly_j in enumerate(simple_polys):
             if i == j:
                 continue
-            if rep_point_i.within(spoly_j):
+            if first_point_i.within(spoly_j):
                 # if within, flip the exterior flag.  An even number of containments implies exterior.
-                loop_cont[i]["exterior"] = not loop_cont[i]["exterior"]
-                loop_cont[j]["contains"].append(i)
-                loop_cont[j]["holes"].append(
-                    i
-                )  # initially assume all contained loops are holes
-    polys = []
+                loops_cont[i]["exterior"] = not loops_cont[i]["exterior"]
+                loops_cont[j]["contains"].append(i)
+    return loops_cont
+
+
+def _assemble_polys(loops: np.ndarray, loops_cont: dict[str, Any]) -> list[Polygon]:
     # Determine which "contained" loops are contained by another loop and no others.
     # We only consider loops "exterior" loops
+    for loop_cont in loops_cont:
+        if loop_cont["exterior"]:
+            loop_cont["holes"] = copy(
+                loop_cont["contains"]
+            )  # initialize holes with contained loops
+    polys = []
     for i in range(len(loops)):
-        if loop_cont[i]["exterior"]:
-            for j in loop_cont[i]["contains"]:
+        if loops_cont[i]["exterior"]:
+            for j in loops_cont[i]["contains"]:
                 # remove contained loops that are contained in interior loops from the holes
-                for k in loop_cont[j]["contains"]:
-                    if k in loop_cont[i]["holes"]:
-                        loop_cont[i]["holes"].remove(k)
-            polys.append(Polygon(loops[i], [loops[j] for j in loop_cont[i]["holes"]]))
+                for k in loops_cont[j]["contains"]:
+                    if k in loops_cont[i]["holes"]:
+                        loops_cont[i]["holes"].remove(k)
+            polys.append(Polygon(loops[i], [loops[j] for j in loops_cont[i]["holes"]]))
     return polys
 
 
