@@ -1,4 +1,5 @@
 import numpy as np
+from time import time
 import trimesh
 from matplotlib import font_manager, ft2font
 from matplotlib.font_manager import FontProperties, ttfFontProperty, weight_dict
@@ -44,8 +45,17 @@ def list_system_fonts():
     (only TrueType/OpenType fonts).
     """
     # findSystemFonts returns absolute paths to .ttf/.otf files
+    start = time()
     font_paths = font_manager.findSystemFonts(fontpaths=None, fontext="ttf")
+    print(
+        f"Found {len(font_paths)} system TrueType fonts in {time() - start:.2f} seconds"
+    )
+    # also add OpenType fonts
+    start = time()
     font_paths += font_manager.findSystemFonts(fontpaths=None, fontext="otf")
+    print(
+        f"Found {len(font_paths)} system OpenType fonts in {time() - start:.2f} seconds"
+    )
     print(f"Found {len(font_paths)} system fonts")
 
     fonts = {}
@@ -83,6 +93,27 @@ def list_system_fonts():
         print(name)
     print(weight_dict)
     return fonts
+
+
+def text_to_3d_mesh(
+    text: str,
+    font_path: str,
+    pt_size: float = 72,
+    depth: float = 1.0,
+    spacing: int = 0,
+    valign: str = "baseline",
+) -> trimesh.Trimesh:
+    # 1. get all loops (exterior & interior)
+    loops = loops_from_text(text, font_path, pt_size, spacing, valign)
+
+    # 2. assemble shapely.Polygon objects with proper holes
+    polys = polygons_with_holes(loops, is_loop_orientation_ok(loops))
+
+    # 3. extrude each polygon (holes stay as voids!)
+    meshes = [extrude_polygon(poly, height=depth) for poly in polys]
+
+    # 4. stitch into one mesh
+    return trimesh.util.concatenate(meshes)
 
 
 def loops_from_text(text, font_path, pt_size=72, spacing=0, valign="baseline"):
@@ -228,27 +259,6 @@ def polygons_with_holes(loops, loop_orientation_ok):
                 holes.append(hole)
         result.append(Polygon(ext, holes))
     return result
-
-
-def text_to_3d_mesh(
-    text: str,
-    font_path: str,
-    pt_size: float = 72,
-    depth: float = 1.0,
-    spacing: int = 0,
-    valign: str = "baseline",
-) -> trimesh.Trimesh:
-    # 1. get all loops (exterior & interior)
-    loops = loops_from_text(text, font_path, pt_size, spacing, valign)
-
-    # 2. assemble shapely.Polygon objects with proper holes
-    polys = polygons_with_holes(loops, is_loop_orientation_ok(loops))
-
-    # 3. extrude each polygon (holes stay as voids!)
-    meshes = [extrude_polygon(poly, height=depth) for poly in polys]
-
-    # 4. stitch into one mesh
-    return trimesh.util.concatenate(meshes)
 
 
 if __name__ == "__main__":
