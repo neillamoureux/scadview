@@ -11,7 +11,11 @@ from meshsee.label_atlas import LabelAtlas
 
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderProgram, ShaderVar
-from meshsee.render.renderee import LabelSetRenderee, TrimeshRenderee
+from meshsee.render.renderee import (
+    LabelSetRenderee,
+    TrimeshRenderee,
+    TrimeshListRenderee,
+)
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
@@ -151,9 +155,20 @@ class Renderer:
 
     def load_mesh(
         self,
-        mesh: Trimesh,
+        mesh: Trimesh | list[Trimesh],
     ):
-        self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
+        if isinstance(mesh, list):
+            if not all(isinstance(m, Trimesh) for m in mesh):
+                raise TypeError(
+                    "All elements in the mesh list must be Trimesh instances."
+                )
+            self._main_renderee = TrimeshListRenderee(
+                self._ctx, self._prog.program, mesh
+            )
+        elif isinstance(mesh, Trimesh):
+            self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
+        elif not isinstance(mesh, Trimesh):
+            raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
         self._camera.points = self._main_renderee.points
 
     def frame(self, direction=None, up=None):

@@ -79,6 +79,21 @@ class TrimeshRenderee(Renderee):
         self._vao.render()
 
 
+class TrimeshListRenderee(Renderee):
+    def __init__(
+        self, ctx: moderngl.Context, program: moderngl.Program, meshes: list[Trimesh]
+    ):
+        self._renderees = [TrimeshRenderee(ctx, program, mesh) for mesh in meshes]
+
+    @property
+    def points(self) -> np.ndarray:
+        return np.concatenate([r.points for r in self._renderees], axis=0)
+
+    def render(self):
+        for renderee in self._renderees:
+            renderee.render()
+
+
 class LabelRenderee(Renderee):
     ATLAS_SAMPLER_LOCATION = 0
     NUMBER_HEIGHT = 1.0
