@@ -71,6 +71,9 @@ def text(
     :param script: Script of the text (not used in this implementation).
     :return: A trimesh.Trimesh object representing the 3D mesh of the text.
     """
+    if text.strip() == "":
+        # If the text is empty or contains only spaces, return an empty mesh
+        return trimesh.Trimesh(vertices=np.empty((0, 3)), faces=np.empty((0, 3)))
     font_path = list_system_fonts().get(font, None)
     # font_path = None
     if not font_path:

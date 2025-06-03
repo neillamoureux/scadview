@@ -1,0 +1,145 @@
+import pytest
+import numpy as np
+from meshsee import text_builder
+from shapely.geometry import Polygon
+import trimesh
+import trimesh
+
+
+def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):
+    # Mock matplotlib.font_manager.findSystemFonts to return fake font paths
+    fake_fonts = [
+        "/fake/path/font1.ttf",
+        "/fake/path/font2.otf",
+        "/fake/path/font3.ttf",
+    ]
+    monkeypatch.setattr(
+        text_builder.font_manager, "findSystemFonts", lambda *args, **kwargs: fake_fonts
+    )
+
+    # Mock FT2Font to return a fake name
+    class FakeFT2Font:
+        def __init__(self, font_path):
+            self.font_path = font_path
+
+        @property
+        def family_name(self):
+            if "3" in self.font_path:
+                raise ValueError("Corrupted font file")
+            return "FakeFont" + self.font_path[-5]
+
+        @property
+        def style_name(self):
+            return "Regular" if "1" in self.font_path else "Italic"
+
+    monkeypatch.setattr(text_builder.ft2font, "FT2Font", FakeFT2Font)
+    fonts = text_builder.list_system_fonts()
+    assert isinstance(fonts, dict)
+    assert "FakeFont1" in fonts.keys()
+    assert "FakeFont1:style=Regular" in fonts.keys()
+    assert "FakeFont2:style=Italic" in fonts.keys()
+    assert len(fonts) == 3
+
+
+def test_text_returns_trimesh_object():
+    mesh = text_builder.text("Test", size=12)
+    # Should be a trimesh.Trimesh object
+    assert isinstance(mesh, trimesh.Trimesh)
+    assert mesh.vertices.shape[1] == 3
+
+
+def test_text_with_nonexistent_font_falls_back_to_default(monkeypatch):
+    # Patch list_system_fonts to return empty dict
+    monkeypatch.setattr(text_builder, "list_system_fonts", lambda: {})
+    mesh = text_builder.text("Fallback", size=10, font="NonexistentFont")
+    assert isinstance(mesh, trimesh.Trimesh)
+
+
+def test_spaces_only(monkeypatch):
+    monkeypatch.setattr(text_builder, "list_system_fonts", lambda: {})
+    mesh = text_builder.text("  ")
+    assert isinstance(mesh, trimesh.Trimesh)
+    assert mesh.vertices.shape[0] == 0
+
+
+def test_loops_from_text_alignment_variants():
+    text = "A"
+    font_path = text_builder.DEFAULT_FONT_PATH
+    size = 10
+    for halign in ["left", "center", "right"]:
+        for valign in ["baseline", "top", "bottom", "center"]:
+            loops = text_builder._loops_from_text(text, font_path, size, halign, valign)
+            assert isinstance(loops, list)
+            assert all(isinstance(loop, np.ndarray) for loop in loops)
+
+
+def test_calc_offsets_and_x_y_offset():
+    text = "Test"
+    font_path = text_builder.DEFAULT_FONT_PATH
+    fp = text_builder.FontProperties(fname=font_path, size=10)
+    hal = {}
+    for halign in ["left", "center", "right"]:
+        hal[halign], _ = text_builder._calc_offsets(text, fp, halign, "baseline")
+    assert hal["right"] < hal["center"] < hal["left"]
+    assert hal["left"] == 0.0
+    assert hal["center"] == pytest.approx(hal["right"] / 2.0)
+
+    val = {}
+    for valign in ["baseline", "top", "bottom", "center"]:
+        _, val[valign] = text_builder._calc_offsets(text, fp, "left", valign)
+    assert val["top"] < val["center"] < val["baseline"] < val["bottom"]
+    assert val["baseline"] == 0.0
+    assert val["center"] == pytest.approx((val["bottom"] + val["top"]) / 2.0)
+
+
+def test_make_polys_and_track_containment_simple():
+    # Two non-overlapping squares
+    loops = [
+        np.array([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]),
+        np.array([[2, 2], [2, 3], [3, 3], [3, 2], [2, 2]]),
+    ]
+    polys = text_builder._make_polys(loops)
+    assert isinstance(polys, list)
+    assert all(isinstance(p, Polygon) for p in polys)
+    assert len(polys) == 2
+
+
+def test_make_polys_with_hole():
+    # Outer square and inner square (hole)
+    outer = np.array([[0, 0], [0, 4], [4, 4], [4, 0], [0, 0]])
+    inner = np.array([[1, 1], [1, 2], [2, 2], [2, 1], [1, 1]])
+    loops = [outer, inner]
+    polys = text_builder._make_polys(loops)
+    assert len(polys) == 1
+    assert polys[0].interiors
+    assert np.allclose(polys[0].exterior.coords[:], outer)
+    assert np.allclose(list(polys[0].interiors)[0].coords[:], inner)
+
+
+def test_make_nested_polys_with_holes():
+    # Outer square and inner square (hole)
+    outer = np.array([[0, 0], [0, 4], [4, 4], [4, 0], [0, 0]])
+    inner = np.array([[1, 1], [1, 2], [2, 2], [2, 1], [1, 1]])
+    inner_2 = np.array(
+        [[1.25, 1.25], [1.25, 1.75], [1.75, 1.75], [1.75, 1.25], [1.25, 1.25]]
+    )
+    inner_3 = np.array([[1.4, 1.4], [1.4, 1.6], [1.6, 1.6], [1.6, 1.4], [1.4, 1.4]])
+    loops = [outer, inner, inner_2, inner_3]
+    polys = text_builder._make_polys(loops)
+    assert len(polys) == 2
+    assert polys[0].interiors
+    assert polys[1].interiors
+    assert np.allclose(polys[0].exterior.coords[:], outer)
+    assert np.allclose(list(polys[0].interiors)[0].coords[:], inner)
+    assert np.allclose(polys[1].exterior.coords[:], inner_2)
+    assert np.allclose(list(polys[1].interiors)[0].coords[:], inner_3)
+
+
+def test_calc_x_offset_invalid():
+    with pytest.raises(ValueError):
+        text_builder._calc_x_offset("invalid", 10)
+
+
+def test_calc_y_offset_invalid():
+    with pytest.raises(ValueError):
+        text_builder._calc_y_offset("invalid", 10, 2)
