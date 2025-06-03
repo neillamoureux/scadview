@@ -196,7 +196,9 @@ class Renderer:
         self._camera.move_to_screen(ndx, ndy, distance)
 
     def render(self, show_grid: bool):  # override
-        self._ctx.enable_only(moderngl.DEPTH_TEST)
+        # self._ctx.enable_only(moderngl.DEPTH_TEST)
+        self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self.show_grid = True

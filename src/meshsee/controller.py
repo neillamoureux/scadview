@@ -46,4 +46,8 @@ class Controller:
         if not self.current_mesh:
             print("No mesh to export")
             return
-        self.current_mesh.export(file_path)
+        if isinstance(self.current_mesh, list):
+            export_mesh = self.current_mesh[-1]
+        else:
+            export_mesh = self.current_mesh
+        export_mesh.export(file_path)

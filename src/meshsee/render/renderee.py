@@ -11,6 +11,7 @@ from trimesh.bounds import corners
 from meshsee.camera import Camera
 from meshsee.label_atlas import LabelAtlas
 from meshsee.label_metrics import label_char_width, label_step, labels_to_show
+from meshsee.renderer import ShaderVar
 
 
 class Renderee(ABC):
@@ -47,6 +48,8 @@ def manifold_mesh_to_trimesh(mesh: Mesh) -> Trimesh:
 
 
 class TrimeshRenderee(Renderee):
+    DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
+
     def __init__(self, ctx: moderngl.Context, program: moderngl.Program, mesh: Trimesh):
         super().__init__(ctx, program)
         self._points = corners(mesh.bounds)
@@ -56,6 +59,10 @@ class TrimeshRenderee(Renderee):
             .astype("f4")
             .tobytes()
         )
+        self._color = self.DEFAULT_COLOR
+        if "meshsee" in mesh.metadata:
+            if "color" in mesh.metadata["meshsee"]:
+                self._color = np.array(mesh.metadata["meshsee"]["color"], "f4")
         try:
             self._vao = self._create_vao()
         except Exception as e:
@@ -76,6 +83,14 @@ class TrimeshRenderee(Renderee):
         )
 
     def render(self):
+        self._program["color"] = self._color
+        if self._color[3] < 1.0:
+            self._ctx.blend_func = moderngl.DEFAULT_BLENDING
+            self._ctx.disable(moderngl.DEPTH_TEST)
+            self._ctx.enable(moderngl.BLEND)
+        else:
+            self._ctx.enable(moderngl.DEPTH_TEST)
+            self._ctx.disable(moderngl.BLEND)
         self._vao.render()
 
 
@@ -83,6 +98,7 @@ class TrimeshListRenderee(Renderee):
     def __init__(
         self, ctx: moderngl.Context, program: moderngl.Program, meshes: list[Trimesh]
     ):
+        super().__init__(ctx, program)
         self._renderees = [TrimeshRenderee(ctx, program, mesh) for mesh in meshes]
 
     @property
