@@ -143,3 +143,26 @@ def test_calc_x_offset_invalid():
 def test_calc_y_offset_invalid():
     with pytest.raises(ValueError):
         text_builder._calc_y_offset("invalid", 10, 2)
+
+
+def test_text_direction_ltr_and_rtl(monkeypatch):
+    # Patch list_system_fonts to return empty dict to force default font
+    monkeypatch.setattr(text_builder, "list_system_fonts", lambda: {})
+    # LTR should return a mesh
+    mesh_ltr = text_builder.text("abc", direction="ltr")
+    assert isinstance(mesh_ltr, trimesh.Trimesh)
+    # RTL should reverse the text, but still return a mesh
+    mesh_rtl = text_builder.text("abc", direction="rtl")
+    assert isinstance(mesh_rtl, trimesh.Trimesh)
+    # The meshes should not be identical (since text is reversed)
+    assert not np.allclose(mesh_ltr.vertices, mesh_rtl.vertices)
+    # Invalid direction should raise ValueError
+    with pytest.raises(ValueError):
+        text_builder.text("abc", direction="invalid")
+
+
+def test_text_empty_string_returns_empty_mesh():
+    mesh = text_builder.text("")
+    assert isinstance(mesh, trimesh.Trimesh)
+    assert mesh.vertices.shape[0] == 0
+    assert mesh.faces.shape[0] == 0

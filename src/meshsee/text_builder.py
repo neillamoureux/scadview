@@ -66,7 +66,7 @@ def text(
     :param halign: Horizontal alignment of the text ('left', 'center', 'right').
     :param valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
     :param spacing: Spacing between characters in mesh units (not used in this implementtion).
-    :param direction: Text direction (only 'ltr' is supported in this implementation).
+    :param direction: Text direction (only 'ltr' and 'rtl' are is supported in this implementation).
     :param language: Language of the text (not used in this implementation).
     :param script: Script of the text (not used in this implementation).
     :return: A trimesh.Trimesh object representing the 3D mesh of the text.
@@ -74,15 +74,21 @@ def text(
     if text.strip() == "":
         # If the text is empty or contains only spaces, return an empty mesh
         return trimesh.Trimesh(vertices=np.empty((0, 3)), faces=np.empty((0, 3)))
-    font_path = list_system_fonts().get(font, None)
-    # font_path = None
+    if direction == "ltr":
+        ordered_text = text
+    elif direction == "rtl":
+        ordered_text = text[::-1]
+    else:
+        raise ValueError("direction must be ltr or rtl")
+    # font_path = list_system_fonts().get(font, None)
+    font_path = None
     if not font_path:
         print(
             f"Font '{font}' not found in system fonts. Using default font: {DEFAULT_FONT_PATH}"
         )
         # Use the default font if the specified font is not found
         font_path = DEFAULT_FONT_PATH
-    loops = _loops_from_text(text, font_path, size, halign, valign)
+    loops = _loops_from_text(ordered_text, font_path, size, halign, valign)
     # polys = polygons_with_holes(loops, _is_loop_orientation_reversed(loops))
     polys = _make_polys(loops)
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
@@ -187,7 +193,7 @@ def _track_containment(loops: np.ndarray) -> list[dict[str, Any]]:
 
 def _assemble_polys(loops: np.ndarray, loops_cont: dict[str, Any]) -> list[Polygon]:
     # Determine which "contained" loops are contained by another loop and no others.
-    # We only consider loops "exterior" loops
+    # We only consider "exterior" loops
     for loop_cont in loops_cont:
         if loop_cont["exterior"]:
             loop_cont["holes"] = copy(
@@ -197,7 +203,7 @@ def _assemble_polys(loops: np.ndarray, loops_cont: dict[str, Any]) -> list[Polyg
     for i in range(len(loops)):
         if loops_cont[i]["exterior"]:
             for j in loops_cont[i]["contains"]:
-                # remove contained loops that are contained in interior loops from the holes
+                # remove contained loops that are also contained in interior loops from the holes list
                 for k in loops_cont[j]["contains"]:
                     if k in loops_cont[i]["holes"]:
                         loops_cont[i]["holes"].remove(k)
