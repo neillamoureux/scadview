@@ -83,9 +83,11 @@ class TrimeshSolidRenderee(TrimeshRenderee):
             .astype("f4")
             .tobytes()
         )
-        self._colors = np.tile(
-            get_metadata_color(mesh), self._triangles.shape[0] * 3
-        ).astype("f4")
+        self._colors = (
+            np.tile(get_metadata_color(mesh), self._triangles.shape[0] * 3)
+            .astype("f4")
+            .reshape(-1, 3, 4)
+        )
         self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
         try:
             self._vao = self._create_vao()
@@ -114,7 +116,7 @@ class TrimeshNullRenderee(TrimeshSolidRenderee):
         pass
 
 
-class TrimeshTransparentRenderee(TrimeshRenderee):
+class TrimeshTransparentRenderee(TrimeshSolidRenderee):
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -180,11 +182,11 @@ class TrimeshTransparentRenderee(TrimeshRenderee):
     def render(self):
         if self._resort_verts:
             self._sort_buffers()
+            self._vao = self._create_vao()
         self._ctx.blend_func = moderngl.DEFAULT_BLENDING
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.enable(moderngl.BLEND)
         self._ctx.depth_mask = False
-        self._vao = self._create_vao()
         self._vao.render()
 
 
@@ -232,7 +234,7 @@ class TrimeshListRenderee(TrimeshRenderee):
         self._transparent_renderee.render()
 
 
-class TrimeshListSolidRenderee(TrimeshSolidRenderee):
+class TrimeshListSolidRenderee(TrimeshRenderee):
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -247,6 +249,10 @@ class TrimeshListSolidRenderee(TrimeshSolidRenderee):
         if len(self._renderees) == 0:
             return np.empty((1, 3))
         return np.concatenate([r.points for r in self._renderees], axis=0)
+
+    @property
+    def subscribe_to_updates(self, updates):
+        pass
 
     def render(self):
         for renderee in self._renderees:
