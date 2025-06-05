@@ -71,7 +71,7 @@ def _sort_triangles(
     )
     eye_verts = triangle_centers @ model_matrix @ view_matrix
     depths = eye_verts[:, 2] / eye_verts[:, 3]
-    return np.argsort(-depths)
+    return np.argsort(depths)
 
 
 class TrimeshRenderee(Renderee):
@@ -128,6 +128,14 @@ class TrimeshRenderee(Renderee):
         self._vao.render()
 
 
+class TrimeshNullRenderee(TrimeshRenderee):
+    def __init__(self):
+        self._points = np.empty((1, 3))
+
+    def render(self):
+        pass
+
+
 class TrimeshTransparentRenderee(TrimeshRenderee):
     def __init__(
         self,
@@ -179,17 +187,16 @@ class TrimeshTransparentRenderee(TrimeshRenderee):
         sorted_indices = _sort_triangles(
             self._triangles, self.model_matrix, self.view_matrix
         )
-        self._triangles = self._triangles[sorted_indices]
-        self._triangles_cross = self._triangles_cross[sorted_indices]
-        self._colors = self._colors[sorted_indices]
-        self._vertices = self._ctx.buffer(data=self._triangles)
+        sorted_triangles = self._triangles[sorted_indices]
+        sorted_triangles_cross = self._triangles_cross[sorted_indices]
+        sorted_colors = self._colors[sorted_indices]
+        self._vertices = self._ctx.buffer(data=sorted_triangles)
         self._normals = self._ctx.buffer(
-            data=np.array([[v] * 3 for v in self._triangles_cross])
+            data=np.array([[v] * 3 for v in sorted_triangles_cross])
             .astype("f4")
             .tobytes()
         )
-        self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
-        self._create_vao()
+        self._color_buff = self._ctx.buffer(data=sorted_colors.tobytes())
         self._resort_verts = False
 
     def render(self):
@@ -199,6 +206,7 @@ class TrimeshTransparentRenderee(TrimeshRenderee):
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.enable(moderngl.BLEND)
         self._ctx.depth_mask = False
+        self._vao = self._create_vao()
         self._vao.render()
 
 
@@ -219,12 +227,18 @@ class TrimeshListRenderee(Renderee):
                 self._transparent_meshes.append(mesh)
             else:
                 self._solid_meshes.append(mesh)
-        self._solid_renderee = TrimeshListSolidRenderee(
-            ctx, program, self._solid_meshes
-        )
-        self._transparent_renderee = TrimeshListTransparentRenderee(
-            ctx, program, self._transparent_meshes, model_matrix, view_matrix
-        )
+        if len(self._solid_meshes) == 0:
+            self._solid_renderee = TrimeshNullRenderee()
+        else:
+            self._solid_renderee = TrimeshListSolidRenderee(
+                ctx, program, self._solid_meshes
+            )
+        if len(self._transparent_meshes) == 0:
+            self._transparent_renderee = TrimeshNullRenderee()
+        else:
+            self._transparent_renderee = TrimeshListTransparentRenderee(
+                ctx, program, self._transparent_meshes, model_matrix, view_matrix
+            )
 
     @property
     def points(self) -> np.ndarray:
@@ -296,7 +310,7 @@ class TrimeshListTransparentRenderee(TrimeshTransparentRenderee):
         for mesh in meshes:
             color = get_metadata_color(mesh)
             n_triangles = mesh.triangles.shape[0]
-            colors_list.append(np.tile(color, (n_triangles * 3, 1)))
+            colors_list.append(np.tile(color, (n_triangles, 3)))
         self._colors = np.concatenate(colors_list, axis=0).astype("f4")
 
         # self._colors = np.concatenate(
