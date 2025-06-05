@@ -10,5 +10,5 @@ class Renderee(ABC):
 
     @abstractmethod
     def render(self) -> None:
-        """Render   he object."""
-        pass
+        """Render the object."""
+        ...

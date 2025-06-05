@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 import moderngl
 import numpy as np
 from trimesh import Trimesh
@@ -12,7 +14,7 @@ def get_metadata_color(mesh: Trimesh) -> np.ndarray:
     if "meshsee" in mesh.metadata:
         if "color" in mesh.metadata["meshsee"]:
             return np.array(mesh.metadata["meshsee"]["color"])
-    return TrimeshRenderee.DEFAULT_COLOR
+    return TrimeshSolidRenderee.DEFAULT_COLOR
 
 
 def is_transparent(mesh: Trimesh) -> bool:
@@ -35,6 +37,34 @@ def _sort_triangles(
 
 
 class TrimeshRenderee(Renderee):
+    def __init__(self, ctx: moderngl.Context, program: moderngl.Program):
+        super().__init__(ctx, program)
+        self._ctx = ctx
+        self._program = program
+        self._vertices = self._ctx.buffer(data=np.empty((1, 3)))
+        self._normals = self._ctx.buffer(data=np.empty((1, 3)))
+        self._color_buff = self._ctx.buffer(data=np.empty((1, 4)))
+
+    @property
+    @abstractmethod
+    def points(self) -> np.ndarray: ...
+
+    def _create_vao(self) -> moderngl.VertexArray:
+        return self._ctx.vertex_array(
+            self._program,
+            [
+                (self._vertices, "3f4", "in_position"),
+                (self._normals, "3f4", "in_normal"),
+                (self._color_buff, "4f4", "in_color"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+
+    @abstractmethod
+    def subscribe_to_updates(self, updates: Observable): ...
+
+
+class TrimeshSolidRenderee(TrimeshRenderee):
     DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 
     def __init__(
@@ -47,7 +77,6 @@ class TrimeshRenderee(Renderee):
         self._triangles = mesh.triangles.astype("f4")
         self._triangles_cross = mesh.triangles_cross
         self._points = corners(mesh.bounds)
-        # self._vertex_count = len(mesh.triangles)
         self._vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
         self._normals = ctx.buffer(
             data=np.array([[v] * 3 for v in mesh.triangles_cross])
@@ -70,17 +99,6 @@ class TrimeshRenderee(Renderee):
     def subscribe_to_updates(self, updates: Observable):
         pass
 
-    def _create_vao(self) -> moderngl.VertexArray:
-        return self._ctx.vertex_array(
-            self._program,
-            [
-                (self._vertices, "3f4", "in_position"),
-                (self._normals, "3f4", "in_normal"),
-                (self._color_buff, "4f4", "in_color"),
-            ],
-            mode=moderngl.TRIANGLES,
-        )
-
     def render(self):
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
@@ -88,7 +106,7 @@ class TrimeshRenderee(Renderee):
         self._vao.render()
 
 
-class TrimeshNullRenderee(TrimeshRenderee):
+class TrimeshNullRenderee(TrimeshSolidRenderee):
     def __init__(self):
         self._points = np.empty((1, 3))
 
@@ -170,7 +188,7 @@ class TrimeshTransparentRenderee(TrimeshRenderee):
         self._vao.render()
 
 
-class TrimeshListRenderee(Renderee):
+class TrimeshListRenderee(TrimeshRenderee):
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -214,7 +232,7 @@ class TrimeshListRenderee(Renderee):
         self._transparent_renderee.render()
 
 
-class TrimeshListSolidRenderee(Renderee):
+class TrimeshListSolidRenderee(TrimeshSolidRenderee):
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -222,7 +240,7 @@ class TrimeshListSolidRenderee(Renderee):
         meshes: list[Trimesh],
     ):
         super().__init__(ctx, program)
-        self._renderees = [TrimeshRenderee(ctx, program, mesh) for mesh in meshes]
+        self._renderees = [TrimeshSolidRenderee(ctx, program, mesh) for mesh in meshes]
 
     @property
     def points(self) -> np.ndarray:
@@ -255,30 +273,18 @@ class TrimeshListTransparentRenderee(TrimeshTransparentRenderee):
         self._triangles_cross = np.concatenate(
             [mesh.triangles_cross for mesh in meshes]
         ).astype("f4")
-        # self._vertex_count = self._triangles.shape[0] * 3
         self._vertices = ctx.buffer(data=self._triangles.tobytes())
         self._normals = ctx.buffer(
             data=np.array([[v] * 3 for v in self._triangles_cross])
             .astype("f4")
             .tobytes()
         )
-        # self._colors = np.empty((1, 4))
-        # for mesh in meshes:
-        #     color = np.tile(get_metadata_color(mesh), mesh.triangles.shape[0] * 3)
-        #     self._colors = np.append(self._colors, color)
         colors_list = []
         for mesh in meshes:
             color = get_metadata_color(mesh)
             n_triangles = mesh.triangles.shape[0]
             colors_list.append(np.tile(color, (n_triangles, 3)))
         self._colors = np.concatenate(colors_list, axis=0).astype("f4")
-
-        # self._colors = np.concatenate(
-        #     [
-        #         np.tile(get_metadata_color(mesh), mesh.triangles.shape[0] * 3)
-        #         for mesh in meshes
-        #     ]
-        # )
         self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
         try:
             self._vao = self._create_vao()
@@ -314,6 +320,6 @@ def create_trimesh_renderee(
                 view_matrix,
             )
         else:
-            return TrimeshRenderee(ctx, program, mesh)
+            return TrimeshSolidRenderee(ctx, program, mesh)
     elif not isinstance(mesh, Trimesh):
         raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")

@@ -14,7 +14,10 @@ from meshsee.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.label_renderee import (
     LabelSetRenderee,
 )
-from meshsee.render.trimesh_renderee import create_trimesh_renderee, TrimeshRenderee
+from meshsee.render.trimesh_renderee import (
+    create_trimesh_renderee,
+    TrimeshSolidRenderee,
+)
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
@@ -63,7 +66,7 @@ class Renderer:
 
     def _create_renderees(self):
         self._axes = _make_axes()
-        self._axes_renderee = TrimeshRenderee(
+        self._axes_renderee = TrimeshSolidRenderee(
             self._ctx,
             self._axis_prog.program,
             self._axes,
@@ -128,7 +131,6 @@ class Renderer:
             ShaderVar.MODEL_MATRIX: "m_model",
             ShaderVar.VIEW_MATRIX: "m_camera",
             ShaderVar.PROJECTION_MATRIX: "m_proj",
-            # ShaderVar.MESH_COLOR: "color",
             ShaderVar.SHOW_GRID: "show_grid",
         }
         return self._create_shader_program(
@@ -140,7 +142,6 @@ class Renderer:
             ShaderVar.MODEL_MATRIX: "m_model",
             ShaderVar.VIEW_MATRIX: "m_camera",
             ShaderVar.PROJECTION_MATRIX: "m_proj",
-            # ShaderVar.MESH_COLOR: "color",
             ShaderVar.SHOW_GRID: "show_grid",
         }
         return self._create_shader_program(
