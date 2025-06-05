@@ -15,6 +15,7 @@ from meshsee.render.renderee import (
     LabelSetRenderee,
     TrimeshRenderee,
     TrimeshListRenderee,
+    create_trimesh_renderee,
 )
 
 AXIS_LENGTH = 1000.0
@@ -68,9 +69,6 @@ class Renderer:
             self._ctx,
             self._axis_prog.program,
             self._axes,
-            self._m_model,
-            self._camera.view_matrix,
-            self._camera.projection_matrix,
         )
         self._axes_renderee.subscribe_to_updates(self.on_program_value_change)
         self._label_atlas = LabelAtlas(self._ctx)
@@ -178,31 +176,14 @@ class Renderer:
         self,
         mesh: Trimesh | list[Trimesh],
     ):
-        if isinstance(mesh, list):
-            if not all(isinstance(m, Trimesh) for m in mesh):
-                raise TypeError(
-                    "All elements in the mesh list must be Trimesh instances."
-                )
-            self._main_renderee = TrimeshListRenderee(
-                self._ctx,
-                self._main_prog.program,
-                mesh,
-                self._m_model,
-                self._camera.view_matrix,
-                self._camera.projection_matrix,
-            )
-        elif isinstance(mesh, Trimesh):
-            self._main_renderee = TrimeshRenderee(
-                self._ctx,
-                self._main_prog.program,
-                mesh,
-                self._m_model,
-                self._camera.view_matrix,
-                self._camera.projection_matrix,
-            )
-            self._main_renderee.subscribe_to_updates(self.on_program_value_change)
-        elif not isinstance(mesh, Trimesh):
-            raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
+        self._main_renderee = create_trimesh_renderee(
+            self._ctx,
+            self._main_prog.program,
+            mesh,
+            self._m_model,
+            self._camera.view_matrix,
+        )
+        self._main_renderee.subscribe_to_updates(self.on_program_value_change)
         self._camera.points = self._main_renderee.points
 
     def frame(self, direction=None, up=None):

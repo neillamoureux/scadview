@@ -48,6 +48,32 @@ def manifold_mesh_to_trimesh(mesh: Mesh) -> Trimesh:
     return Trimesh(vertices=vertices, faces=mesh.tri_verts, vertex_colors=colors)
 
 
+def get_metadata_color(mesh: Trimesh) -> np.ndarray:
+    if "meshsee" in mesh.metadata:
+        if "color" in mesh.metadata["meshsee"]:
+            return np.array(mesh.metadata["meshsee"]["color"])
+    return TrimeshRenderee.DEFAULT_COLOR
+
+
+def is_transparent(mesh: Trimesh) -> bool:
+    return get_metadata_color(mesh)[3] < 1.0
+
+
+def _sort_triangles(
+    triangles: np.ndarray, model_matrix: np.ndarray, view_matrix: np.ndarray
+) -> list[int]:
+    triangle_centers = np.mean(
+        triangles,
+        axis=1,
+    )
+    triangle_centers = np.hstack(
+        [triangle_centers, np.ones((triangle_centers.shape[0], 1), dtype="f4")]
+    )
+    eye_verts = triangle_centers @ model_matrix @ view_matrix
+    depths = eye_verts[:, 2] / eye_verts[:, 3]
+    return np.argsort(-depths)
+
+
 class TrimeshRenderee(Renderee):
     DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 
@@ -56,32 +82,64 @@ class TrimeshRenderee(Renderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         mesh: Trimesh,
-        model_matrix: np.ndarray,
-        view_matrix: np.ndarray,
-        projection_matrix: np.ndarray,
     ):
         super().__init__(ctx, program)
-        self.model_matrix = model_matrix
-        self.view_matrix = view_matrix
-        self.projection_matrix = projection_matrix
         self._triangles = mesh.triangles.astype("f4")
         self._triangles_cross = mesh.triangles_cross
         self._points = corners(mesh.bounds)
-        self._vertex_count = len(mesh.triangles)
+        # self._vertex_count = len(mesh.triangles)
         self._vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
         self._normals = ctx.buffer(
             data=np.array([[v] * 3 for v in mesh.triangles_cross])
             .astype("f4")
             .tobytes()
         )
-        self._color = self.DEFAULT_COLOR
-        if "meshsee" in mesh.metadata:
-            if "color" in mesh.metadata["meshsee"]:
-                self._color = np.array(mesh.metadata["meshsee"]["color"], "f4")
+        self._colors = np.tile(
+            get_metadata_color(mesh), self._triangles.shape[0] * 3
+        ).astype("f4")
+        self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
         try:
             self._vao = self._create_vao()
         except Exception as e:
             print(f"Error creating vertex array: {e}")
+
+    @property
+    def points(self) -> np.ndarray:
+        return self._points
+
+    def subscribe_to_updates(self, updates: Observable):
+        pass
+
+    def _create_vao(self) -> moderngl.VertexArray:
+        return self._ctx.vertex_array(
+            self._program,
+            [
+                (self._vertices, "3f4", "in_position"),
+                (self._normals, "3f4", "in_normal"),
+                (self._color_buff, "4f4", "in_color"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+
+    def render(self):
+        self._ctx.enable(moderngl.DEPTH_TEST)
+        self._ctx.disable(moderngl.BLEND)
+        self._ctx.depth_mask = True
+        self._vao.render()
+
+
+class TrimeshTransparentRenderee(TrimeshRenderee):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        mesh: Trimesh,
+        model_matrix: np.ndarray,
+        view_matrix: np.ndarray,
+    ):
+        super().__init__(ctx, program, mesh)
+        self.model_matrix = model_matrix
+        self.view_matrix = view_matrix
         self._resort_verts = True
 
     @property
@@ -106,15 +164,6 @@ class TrimeshRenderee(Renderee):
         self._view_matrix = value
         self._resort_verts = True
 
-    @property
-    def projection_matrix(self):
-        return self._projection_matrix
-
-    @projection_matrix.setter
-    def projection_matrix(self, value):
-        self._projection_matrix = value
-        self._resort_verts = True
-
     def subscribe_to_updates(self, updates: Observable):
         updates.subscribe(self.update_matrix)
 
@@ -126,61 +175,30 @@ class TrimeshRenderee(Renderee):
         elif var == ShaderVar.PROJECTION_MATRIX:
             self.projection_matrix = matrix
 
-    def _sort_verts(self):
-        triangles = self._triangles.reshape(-1, 3)
-        triangles = np.hstack([triangles, np.ones((triangles.shape[0], 1), dtype="f4")])
-        # clip_matrix = self.projection_matrix @ self.view_matrix @ self.model_matrix
-        # clip_matrix = self.model_matrix @ self.view_matrix @ self.projection_matrix
-        eye_matrix = self.model_matrix @ self.view_matrix
-        eye_verts = triangles @ eye_matrix
-        depths = eye_verts[:, 2] / eye_verts[:, 3]
-        # clip_verts = triangles @ clip_matrix
-        # depths = clip_verts[:, 2] / clip_verts[:, 3]
-        depths = depths.reshape(-1, 3)
-        # max_depths = np.max(depths, axis=1)
-        # sorted_indices = np.argsort(max_depths)
-        min_depths = np.min(depths, axis=1)
-        sorted_indices = np.argsort(min_depths)
+    def _sort_buffers(self):
+        sorted_indices = _sort_triangles(
+            self._triangles, self.model_matrix, self.view_matrix
+        )
         self._triangles = self._triangles[sorted_indices]
-        # triangles = self._triangles.reshape(-1, 3)[sorted_indices]
-        # self._triangles = triangles.reshape(-1, 3, 3)
         self._triangles_cross = self._triangles_cross[sorted_indices]
+        self._colors = self._colors[sorted_indices]
         self._vertices = self._ctx.buffer(data=self._triangles)
         self._normals = self._ctx.buffer(
             data=np.array([[v] * 3 for v in self._triangles_cross])
             .astype("f4")
             .tobytes()
         )
+        self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
         self._create_vao()
         self._resort_verts = False
 
-    def _create_vao(self) -> moderngl.VertexArray:
-        colors = np.tile(self._color, self._vertex_count * 3).astype("f4")
-        colors = self._ctx.buffer(data=colors.tobytes())
-        return self._ctx.vertex_array(
-            self._program,
-            [
-                (self._vertices, "3f4", "in_position"),
-                (self._normals, "3f4", "in_normal"),
-                (colors, "4f4", "in_color"),
-            ],
-            mode=moderngl.TRIANGLES,
-        )
-
     def render(self):
-        # self._program["color"] = self._color
-        if self._color[3] < 1.0:
-            if self._resort_verts:
-                self._sort_verts()
-            self._ctx.blend_func = moderngl.DEFAULT_BLENDING
-            # self._ctx.disable(moderngl.DEPTH_TEST)
-            self._ctx.enable(moderngl.DEPTH_TEST)
-            self._ctx.enable(moderngl.BLEND)
-            self._ctx.depth_mask = False
-        else:
-            self._ctx.enable(moderngl.DEPTH_TEST)
-            self._ctx.disable(moderngl.BLEND)
-            self._ctx.depth_mask = True
+        if self._resort_verts:
+            self._sort_buffers()
+        self._ctx.blend_func = moderngl.DEFAULT_BLENDING
+        self._ctx.enable(moderngl.DEPTH_TEST)
+        self._ctx.enable(moderngl.BLEND)
+        self._ctx.depth_mask = False
         self._vao.render()
 
 
@@ -189,26 +207,142 @@ class TrimeshListRenderee(Renderee):
         self,
         ctx: moderngl.Context,
         program: moderngl.Program,
-        meshes: Trimesh,
+        meshes: list[Trimesh],
         model_matrix: np.ndarray,
         view_matrix: np.ndarray,
-        projection_matrix: np.ndarray,
     ):
         super().__init__(ctx, program)
-        self._renderees = [
-            TrimeshRenderee(
-                ctx, program, mesh, model_matrix, view_matrix, projection_matrix
-            )
-            for mesh in meshes
-        ]
+        self._transparent_meshes = []
+        self._solid_meshes = []
+        for mesh in meshes:
+            if is_transparent(mesh):
+                self._transparent_meshes.append(mesh)
+            else:
+                self._solid_meshes.append(mesh)
+        self._solid_renderee = TrimeshListSolidRenderee(
+            ctx, program, self._solid_meshes
+        )
+        self._transparent_renderee = TrimeshListTransparentRenderee(
+            ctx, program, self._transparent_meshes, model_matrix, view_matrix
+        )
 
     @property
     def points(self) -> np.ndarray:
+        return np.concatenate(
+            [self._solid_renderee.points, self._transparent_renderee.points], axis=0
+        )
+
+    def subscribe_to_updates(self, updates: Observable):
+        self._transparent_renderee.subscribe_to_updates(updates)
+
+    def render(self):
+        self._solid_renderee.render()
+        self._transparent_renderee.render()
+
+
+class TrimeshListSolidRenderee(Renderee):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        meshes: list[Trimesh],
+    ):
+        super().__init__(ctx, program)
+        self._renderees = [TrimeshRenderee(ctx, program, mesh) for mesh in meshes]
+
+    @property
+    def points(self) -> np.ndarray:
+        if len(self._renderees) == 0:
+            return np.empty((1, 3))
         return np.concatenate([r.points for r in self._renderees], axis=0)
 
     def render(self):
         for renderee in self._renderees:
             renderee.render()
+
+
+class TrimeshListTransparentRenderee(TrimeshTransparentRenderee):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        meshes: list[Trimesh],
+        model_matrix: np.ndarray,
+        view_matrix: np.ndarray,
+    ):
+        self._ctx = ctx
+        self._program = program
+        self.model_matrix = model_matrix
+        self.view_matrix = view_matrix
+        self._points = np.concatenate([corners(mesh.bounds) for mesh in meshes])
+        self._triangles = np.concatenate([mesh.triangles for mesh in meshes]).astype(
+            "f4"
+        )
+        self._triangles_cross = np.concatenate(
+            [mesh.triangles_cross for mesh in meshes]
+        ).astype("f4")
+        # self._vertex_count = self._triangles.shape[0] * 3
+        self._vertices = ctx.buffer(data=self._triangles.tobytes())
+        self._normals = ctx.buffer(
+            data=np.array([[v] * 3 for v in self._triangles_cross])
+            .astype("f4")
+            .tobytes()
+        )
+        # self._colors = np.empty((1, 4))
+        # for mesh in meshes:
+        #     color = np.tile(get_metadata_color(mesh), mesh.triangles.shape[0] * 3)
+        #     self._colors = np.append(self._colors, color)
+        colors_list = []
+        for mesh in meshes:
+            color = get_metadata_color(mesh)
+            n_triangles = mesh.triangles.shape[0]
+            colors_list.append(np.tile(color, (n_triangles * 3, 1)))
+        self._colors = np.concatenate(colors_list, axis=0).astype("f4")
+
+        # self._colors = np.concatenate(
+        #     [
+        #         np.tile(get_metadata_color(mesh), mesh.triangles.shape[0] * 3)
+        #         for mesh in meshes
+        #     ]
+        # )
+        self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
+        try:
+            self._vao = self._create_vao()
+        except Exception as e:
+            print(f"Error creating vertex array: {e}")
+        self._resort_verts = True
+
+
+def create_trimesh_renderee(
+    ctx: moderngl.Context,
+    program: moderngl.Program,
+    mesh: Trimesh | list[Trimesh],
+    model_matrix: np.ndarray,
+    view_matrix: np.ndarray,
+):
+    if isinstance(mesh, list):
+        if not all(isinstance(m, Trimesh) for m in mesh):
+            raise TypeError("All elements in the mesh list must be Trimesh instances.")
+        return TrimeshListRenderee(
+            ctx,
+            program,
+            mesh,
+            model_matrix,
+            view_matrix,
+        )
+    elif isinstance(mesh, Trimesh):
+        if is_transparent(mesh):
+            return TrimeshTransparentRenderee(
+                ctx,
+                program,
+                mesh,
+                model_matrix,
+                view_matrix,
+            )
+        else:
+            return TrimeshRenderee(ctx, program, mesh)
+    elif not isinstance(mesh, Trimesh):
+        raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
 
 
 class LabelRenderee(Renderee):
