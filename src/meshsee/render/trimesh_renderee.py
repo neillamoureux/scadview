@@ -7,12 +7,12 @@ from trimesh.bounds import corners
 
 from meshsee.observable import Observable
 from meshsee.render.label_renderee import Renderee
-from meshsee.renderer import ShaderVar
+from meshsee.shader_program import ShaderVar
 
 
 def get_metadata_color(mesh: Trimesh) -> np.ndarray:
     if "meshsee" in mesh.metadata:
-        if "color" in mesh.metadata["meshsee"]:
+        if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
             return np.array(mesh.metadata["meshsee"]["color"])
     return TrimeshSolidRenderee.DEFAULT_COLOR
 
