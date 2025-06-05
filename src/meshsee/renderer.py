@@ -11,11 +11,8 @@ from meshsee.label_atlas import LabelAtlas
 
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderProgram, ShaderVar
-from meshsee.render.renderee import (
+from meshsee.render.label_renderee import (
     LabelSetRenderee,
-    # TrimeshRenderee,
-    # TrimeshListRenderee,
-    # create_trimesh_renderee,
 )
 from meshsee.render.trimesh_renderee import create_trimesh_renderee, TrimeshRenderee
 

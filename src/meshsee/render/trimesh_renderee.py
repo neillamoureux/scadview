@@ -1,21 +1,11 @@
-# from abc import ABC, abstractmethod
-# from math import pi
-
 import moderngl
-
-# from manifold3d import Manifold, Mesh
 import numpy as np
-
-# from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.bounds import corners
 
-# from meshsee.camera import Camera
-# from meshsee.label_atlas import LabelAtlas
-# from meshsee.label_metrics import label_char_width, label_step, labels_to_show
-from meshsee.render.renderee import Renderee
-from meshsee.renderer import ShaderVar
 from meshsee.observable import Observable
+from meshsee.render.label_renderee import Renderee
+from meshsee.renderer import ShaderVar
 
 
 def get_metadata_color(mesh: Trimesh) -> np.ndarray:
