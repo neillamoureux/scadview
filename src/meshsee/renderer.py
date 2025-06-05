@@ -13,10 +13,11 @@ from meshsee.observable import Observable
 from meshsee.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.renderee import (
     LabelSetRenderee,
-    TrimeshRenderee,
-    TrimeshListRenderee,
-    create_trimesh_renderee,
+    # TrimeshRenderee,
+    # TrimeshListRenderee,
+    # create_trimesh_renderee,
 )
+from meshsee.render.trimesh_renderee import create_trimesh_renderee, TrimeshRenderee
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
