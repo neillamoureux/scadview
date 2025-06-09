@@ -16,7 +16,7 @@ from meshsee.render.label_renderee import (
 )
 from meshsee.render.trimesh_renderee import (
     create_trimesh_renderee,
-    TrimeshSolidRenderee,
+    TrimeshOpaqueRenderee,
 )
 
 AXIS_LENGTH = 1000.0
@@ -66,7 +66,7 @@ class Renderer:
 
     def _create_renderees(self):
         self._axes = _make_axes()
-        self._axes_renderee = TrimeshSolidRenderee(
+        self._axes_renderee = TrimeshOpaqueRenderee(
             self._ctx,
             self._axis_prog.program,
             self._axes,
