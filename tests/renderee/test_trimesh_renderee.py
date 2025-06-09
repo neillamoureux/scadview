@@ -81,37 +81,6 @@ def dummy_trimesh_list_renderee(dummy_trimesh_renderee, dummy_trimesh_alpha_rend
     )
 
 
-@pytest.fixture
-def dummy_trimesh_list_renderee_spy(monkeypatch, dummy_trimesh, dummy_trimesh_alpha):
-    ctx = mock.MagicMock()
-    program = mock.MagicMock()
-    model_matrix = np.eye(4, dtype="f4")
-    view_matrix = np.eye(4, dtype="f4")
-    opaque_points = np.ones((2, 3))
-    alpha_points = np.zeros((3, 3))
-    opaque_points_mock = mock.MagicMock(points=opaque_points)
-    alpha_mock = mock.MagicMock(points=alpha_points)
-    monkeypatch.setattr(
-        "meshsee.render.trimesh_renderee.TrimeshListopaqueRenderee",
-        lambda *a, **kw: opaque_points_mock,
-    )
-    monkeypatch.setattr(
-        "meshsee.render.trimesh_renderee.TrimeshListTransparentRenderee",
-        lambda *a, **kw: alpha_mock,
-    )
-    monkeypatch.setattr(
-        "meshsee.render.trimesh_renderee.TrimeshNullRenderee",
-        lambda *a, **kw: mock.MagicMock(points=np.empty((0, 3))),
-    )
-    return TrimeshListRenderee(
-        ctx,
-        program,
-        [dummy_trimesh, dummy_trimesh_alpha],
-        model_matrix,
-        view_matrix,
-    )
-
-
 def test_trimesh_renderee_init_and_properties(dummy_trimesh_renderee):
     assert hasattr(dummy_trimesh_renderee, "_ctx")
     assert hasattr(dummy_trimesh_renderee, "_program")
