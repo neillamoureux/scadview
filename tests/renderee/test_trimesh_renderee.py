@@ -16,7 +16,9 @@ from meshsee.render.trimesh_renderee import (
     get_metadata_color,
     is_alpha,
     create_colors_array,
+    create_colors_array_from_mesh,
     create_trimesh_renderee,
+    AlphaRenderee,
 )
 
 from meshsee.shader_program import ShaderVar
@@ -62,6 +64,25 @@ def dummy_trimesh_alpha():
     dummy_trimesh = DummyTrimesh()
     dummy_trimesh.metadata = {"meshsee": {"color": [0.2, 0.3, 0.4, 0.5]}}
     return dummy_trimesh
+
+
+@pytest.fixture
+def alpha_renderee():
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    mesh = box()
+    mesh.metadata["meshsee"] = {"meshsee": {"color": [0.2, 0.3, 0.4, 0.5]}}
+    model_matrix = np.eye(4, dtype="f4")
+    view_matrix = np.eye(4, dtype="f4")
+    return AlphaRenderee(
+        ctx,
+        program,
+        mesh.triangles,
+        mesh.triangles_cross,
+        create_colors_array_from_mesh(mesh),
+        model_matrix,
+        view_matrix,
+    )
 
 
 @pytest.fixture
@@ -317,16 +338,12 @@ def test_trimesh_null_renderee_has_no_buffers_or_vao():
     assert not hasattr(renderee, "_vao")
 
 
-def test_trimesh_alpha_renderee_init_sets_attributes(
-    dummy_trimesh_alpha_renderee,
+def test_alpha_renderee_init_sets_attributes(
+    alpha_renderee,
 ):
-    assert np.array_equal(
-        dummy_trimesh_alpha_renderee.model_matrix, np.eye(4, dtype="f4")
-    )
-    assert np.array_equal(
-        dummy_trimesh_alpha_renderee.view_matrix, np.eye(4, dtype="f4")
-    )
-    assert dummy_trimesh_alpha_renderee._resort_verts is False
+    assert np.array_equal(alpha_renderee.model_matrix, np.eye(4, dtype="f4"))
+    assert np.array_equal(alpha_renderee.view_matrix, np.eye(4, dtype="f4"))
+    assert alpha_renderee._resort_verts is False
 
 
 def test_trimesh_alpha_renderee_points_property(dummy_trimesh_alpha_renderee):
@@ -334,80 +351,71 @@ def test_trimesh_alpha_renderee_points_property(dummy_trimesh_alpha_renderee):
     assert np.array_equal(dummy_trimesh_alpha_renderee.points, np.array([[1, 2, 3]]))
 
 
-def test_trimesh_alpha_renderee_model_matrix_setter_sets_resort(
-    dummy_trimesh_alpha_renderee,
+def test_alpha_renderee_model_matrix_setter_sets_resort(
+    alpha_renderee,
 ):
-    dummy_trimesh_alpha_renderee._resort_verts = False
+    alpha_renderee._resort_verts = False
     new_matrix = np.eye(4, dtype="f4") * 2
-    dummy_trimesh_alpha_renderee.model_matrix = new_matrix
-    assert np.allclose(dummy_trimesh_alpha_renderee.model_matrix, new_matrix)
-    assert dummy_trimesh_alpha_renderee._resort_verts is True
+    alpha_renderee.model_matrix = new_matrix
+    assert np.allclose(alpha_renderee.model_matrix, new_matrix)
+    assert alpha_renderee._resort_verts is True
 
 
-def test_trimesh_alpha_renderee_view_matrix_setter_sets_resort(
-    dummy_trimesh_alpha_renderee,
+def test_alpha_renderee_view_matrix_setter_sets_resort(
+    alpha_renderee,
 ):
-    dummy_trimesh_alpha_renderee._resort_verts = False
+    alpha_renderee._resort_verts = False
     new_matrix = np.eye(4, dtype="f4") * 3
-    dummy_trimesh_alpha_renderee.view_matrix = new_matrix
-    assert np.allclose(dummy_trimesh_alpha_renderee.view_matrix, new_matrix)
-    assert dummy_trimesh_alpha_renderee._resort_verts is True
+    alpha_renderee.view_matrix = new_matrix
+    assert np.allclose(alpha_renderee.view_matrix, new_matrix)
+    assert alpha_renderee._resort_verts is True
 
 
-def test_trimesh_alpha_renderee_subscribe_to_updates_calls_subscribe(
-    dummy_trimesh_alpha_renderee,
+def test_alpha_renderee_subscribe_to_updates_calls_subscribe(
+    alpha_renderee,
 ):
     observable = mock.MagicMock()
-    dummy_trimesh_alpha_renderee.subscribe_to_updates(observable)
-    observable.subscribe.assert_called_once_with(
-        dummy_trimesh_alpha_renderee.update_matrix
-    )
+    alpha_renderee.subscribe_to_updates(observable)
+    observable.subscribe.assert_called_once_with(alpha_renderee.update_matrix)
 
 
-def test_trimesh_alpha_renderee_update_matrix_sets_matrices(
-    dummy_trimesh_alpha_renderee,
+def test_alpha_renderee_update_matrix_sets_matrices(
+    alpha_renderee,
 ):
     new_model = np.eye(4, dtype="f4") * 4
-    dummy_trimesh_alpha_renderee.update_matrix(ShaderVar.MODEL_MATRIX, new_model)
-    assert np.allclose(dummy_trimesh_alpha_renderee.model_matrix, new_model)
+    alpha_renderee.update_matrix(ShaderVar.MODEL_MATRIX, new_model)
+    assert np.allclose(alpha_renderee.model_matrix, new_model)
     # Test view matrix update
     new_view = np.eye(4, dtype="f4") * 5
-    dummy_trimesh_alpha_renderee.update_matrix(ShaderVar.VIEW_MATRIX, new_view)
-    assert np.allclose(dummy_trimesh_alpha_renderee.view_matrix, new_view)
-    # Test projection matrix update
-    new_proj = np.eye(4, dtype="f4") * 6
-    dummy_trimesh_alpha_renderee.projection_matrix = None
-    dummy_trimesh_alpha_renderee.update_matrix(ShaderVar.PROJECTION_MATRIX, new_proj)
-    assert np.allclose(dummy_trimesh_alpha_renderee.projection_matrix, new_proj)
+    alpha_renderee.update_matrix(ShaderVar.VIEW_MATRIX, new_view)
+    assert np.allclose(alpha_renderee.view_matrix, new_view)
 
 
-def test_trimesh_alpha_renderee_sort_buffers_calls_ctx_buffer(
-    dummy_trimesh_alpha_renderee,
+def test_alpha_renderee_sort_buffers_calls_ctx_buffer(
+    alpha_renderee,
 ):
-    dummy_trimesh_alpha_renderee._sort_buffers()
-    assert (
-        dummy_trimesh_alpha_renderee._ctx.buffer.call_count >= 3
-    )  # vertices, normals, color_buff
+    alpha_renderee._sort_buffers()
+    assert alpha_renderee._ctx.buffer.call_count >= 3  # vertices, normals, color_buff
 
 
 @mock.patch("meshsee.render.trimesh_renderee.create_vao")
-def test_trimesh_alpha_renderee_render_calls_sort_and_vao_render(
+def test_alpha_renderee_render_calls_sort_and_vao_render(
     create_vao,
-    dummy_trimesh_alpha_renderee,
+    alpha_renderee,
 ):
-    dummy_trimesh_alpha_renderee._resort_verts = True
-    dummy_trimesh_alpha_renderee._sort_buffers = mock.MagicMock()
+    alpha_renderee._resort_verts = True
+    alpha_renderee._sort_buffers = mock.MagicMock()
     # dummy_trimesh_alpha_renderee._create_vao = mock.MagicMock()
     vao_mock = mock.MagicMock()
     create_vao.return_value = vao_mock
     # dummy_trimesh_alpha_renderee._create_vao.return_value = vao_mock
-    dummy_trimesh_alpha_renderee._vao = vao_mock
-    dummy_trimesh_alpha_renderee.render()
-    dummy_trimesh_alpha_renderee._sort_buffers.assert_called_once()
+    alpha_renderee._vao = vao_mock
+    alpha_renderee.render()
+    alpha_renderee._sort_buffers.assert_called_once()
     # dummy_trimesh_alpha_renderee._create_vao.assert_called_once()
     vao_mock.render.assert_called_once()
-    assert dummy_trimesh_alpha_renderee._ctx.enable.call_count >= 2
-    assert dummy_trimesh_alpha_renderee._ctx.depth_mask is False
+    assert alpha_renderee._ctx.enable.call_count >= 2
+    assert alpha_renderee._ctx.depth_mask is False
 
 
 def test_trimesh_list_renderee_points_concat(dummy_trimesh_list_renderee):

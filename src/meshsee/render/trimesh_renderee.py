@@ -75,6 +75,15 @@ def create_vao(
         print(f"Error creating vertex array: {e}")
 
 
+def concat_colors(meshes: list[Trimesh]) -> np.ndarray:
+    colors_list = []
+    for mesh in meshes:
+        color = get_metadata_color(mesh)
+        n_triangles = mesh.triangles.shape[0]
+        colors_list.append(np.tile(color, (n_triangles, 3)))
+    return np.concatenate(colors_list, axis=0).astype("f4")
+
+
 class TrimeshRenderee(Renderee):
 
     @property
@@ -128,30 +137,25 @@ class TrimeshNullRenderee(TrimeshRenderee):
         pass
 
 
-class TrimeshAlphaRenderee(TrimeshRenderee):
+class AlphaRenderee(Renderee):
     def __init__(
         self,
         ctx: moderngl.Context,
         program: moderngl.Program,
-        mesh: Trimesh,
+        triangles: np.ndarray,
+        triangles_cross: np.ndarray,
+        colors_arr: np.ndarray,
         model_matrix: np.ndarray,
         view_matrix: np.ndarray,
     ):
-        super().__init__(ctx, program, mesh)
-        self._ctx = ctx
-        self._program = program
-        self._triangles = mesh.triangles.astype("f4")
-        self._triangles_cross = mesh.triangles_cross
-        self._points = corners(mesh.bounds)
-        self._colors_arr = create_colors_array_from_mesh(mesh)
-        self.model_matrix = model_matrix
-        self.view_matrix = view_matrix
+        super().__init__(ctx, program)
+        self._triangles = triangles
+        self._triangles_cross = triangles_cross
+        self._colors_arr = colors_arr
+        self._model_matrix = model_matrix
+        self._view_matrix = view_matrix
         self._resort_verts = True
         self._sort_buffers()
-
-    @property
-    def points(self) -> np.ndarray:
-        return self._points
 
     @property
     def model_matrix(self) -> np.ndarray:
@@ -179,8 +183,6 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
             self.model_matrix = matrix
         elif var == ShaderVar.VIEW_MATRIX:
             self.view_matrix = matrix
-        elif var == ShaderVar.PROJECTION_MATRIX:
-            self.projection_matrix = matrix
 
     def _sort_buffers(self):
         sorted_indices = sort_triangles(
@@ -208,6 +210,37 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
         self._vao.render()
 
 
+class TrimeshAlphaRenderee(TrimeshRenderee):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        mesh: Trimesh,
+        model_matrix: np.ndarray,
+        view_matrix: np.ndarray,
+    ):
+        self._alpha_renderee = AlphaRenderee(
+            ctx,
+            program,
+            mesh.triangles,
+            mesh.triangles_cross,
+            create_colors_array_from_mesh(mesh),
+            model_matrix,
+            view_matrix,
+        )
+        self._points = corners(mesh.bounds)
+
+    @property
+    def points(self):
+        return self._points
+
+    def subscribe_to_updates(self, updates: Observable):
+        updates.subscribe(self._alpha_renderee.update_matrix)
+
+    def render(self):
+        self._alpha_renderee.render()
+
+
 class TrimeshListOpaqueRenderee(TrimeshRenderee):
     def __init__(
         self,
@@ -233,7 +266,7 @@ class TrimeshListOpaqueRenderee(TrimeshRenderee):
             renderee.render()
 
 
-class TrimeshListAlphaRenderee(TrimeshAlphaRenderee):
+class TrimeshListAlphaRenderee(TrimeshRenderee):
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -242,27 +275,27 @@ class TrimeshListAlphaRenderee(TrimeshAlphaRenderee):
         model_matrix: np.ndarray,
         view_matrix: np.ndarray,
     ):
-        self._ctx = ctx
-        self._program = program
-        self.model_matrix = model_matrix
-        self.view_matrix = view_matrix
-        self._points = np.concatenate([corners(mesh.bounds) for mesh in meshes])
-        self._triangles = np.concatenate([mesh.triangles for mesh in meshes]).astype(
-            "f4"
+        self._alpha_renderee = AlphaRenderee(
+            ctx,
+            program,
+            np.concatenate([mesh.triangles for mesh in meshes]).astype("f4"),
+            np.concatenate([mesh.triangles_cross for mesh in meshes]).astype("f4"),
+            concat_colors(meshes),
+            model_matrix,
+            view_matrix,
         )
-        self._triangles_cross = np.concatenate(
-            [mesh.triangles_cross for mesh in meshes]
-        ).astype("f4")
-        colors_list = []
-        for mesh in meshes:
-            color = get_metadata_color(mesh)
-            n_triangles = mesh.triangles.shape[0]
-            colors_list.append(np.tile(color, (n_triangles, 3)))
-        self._colors_arr = np.concatenate(colors_list, axis=0).astype("f4")
-        self.model_matrix = model_matrix
-        self.view_matrix = view_matrix
-        self._resort_verts = True
-        self._sort_buffers()
+
+        self._points = np.concatenate([corners(mesh.bounds) for mesh in meshes])
+
+    @property
+    def points(self):
+        return self._points
+
+    def subscribe_to_updates(self, updates: Observable):
+        updates.subscribe(self._alpha_renderee.update_matrix)
+
+    def render(self):
+        self._alpha_renderee.render()
 
 
 class TrimeshListRenderee(TrimeshRenderee):

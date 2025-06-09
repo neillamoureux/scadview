@@ -17,13 +17,13 @@ def create_mesh():
     solid_mesh = box_mesh.difference(sphere_mesh)
     print(solid_mesh.metadata)
     return [
-        # box_mesh,
-        # # sphere_mesh2.apply_translation([scale / 2, 0, 0]),
-        sphere_mesh,
-        # box_mesh2.apply_translation([scale / 2, scale / 2, scale / 2]),
         box_mesh,
-        # final_mesh,
-        solid_mesh,
+        # sphere_mesh2.apply_translation([scale / 2, 0, 0]),
+        sphere_mesh,
+        box_mesh2.apply_translation([scale / 2, scale / 2, scale / 2]),
+        box_mesh,
+        final_mesh,
+        # solid_mesh,
     ]
     # return sphere_mesh
     # return box_mesh
