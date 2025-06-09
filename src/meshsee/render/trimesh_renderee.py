@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import moderngl
 import numpy as np
@@ -24,11 +24,19 @@ def create_vao_from_mesh(
     )
 
 
+def create_colors_array_from_mesh(mesh: Trimesh) -> np.ndarray:
+    return create_colors_array(get_metadata_color(mesh), mesh.triangles.shape[0])
+
+
 def get_metadata_color(mesh: Trimesh) -> np.ndarray:
     if "meshsee" in mesh.metadata:
         if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
             return np.array(mesh.metadata["meshsee"]["color"])
     return DEFAULT_COLOR
+
+
+def create_colors_array(color: np.ndarray, triangle_count: int) -> np.ndarray:
+    return np.tile(color, triangle_count * 3).astype("f4").reshape(-1, 3, 4)
 
 
 def create_vao_from_arrays(
@@ -44,10 +52,6 @@ def create_vao_from_arrays(
     )
     colors = ctx.buffer(data=colors_arr.astype("f4").tobytes())
     return create_vao(ctx, program, vertices, normals, colors)
-
-
-def create_colors_array(color: np.ndarray, triangle_count: int) -> np.ndarray:
-    return np.tile(color, triangle_count * 3).astype("f4").reshape(-1, 3, 4)
 
 
 def create_vao(
@@ -69,10 +73,6 @@ def create_vao(
         )
     except Exception as e:
         print(f"Error creating vertex array: {e}")
-
-
-def create_colors_array_from_mesh(mesh: Trimesh) -> np.ndarray:
-    return create_colors_array(get_metadata_color(mesh), mesh.triangles.shape[0])
 
 
 class TrimeshRenderee(Renderee):
