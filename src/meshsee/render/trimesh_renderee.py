@@ -29,7 +29,7 @@ def create_colors_array_from_mesh(mesh: Trimesh) -> np.ndarray:
 
 
 def get_metadata_color(mesh: Trimesh) -> np.ndarray:
-    if "meshsee" in mesh.metadata:
+    if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
         if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
             return np.array(mesh.metadata["meshsee"]["color"])
     return DEFAULT_COLOR
@@ -128,7 +128,7 @@ class TrimeshNullRenderee(TrimeshRenderee):
         pass
 
 
-class TrimeshAlphaRenderee(TrimeshOpaqueRenderee):
+class TrimeshAlphaRenderee(TrimeshRenderee):
     def __init__(
         self,
         ctx: moderngl.Context,
@@ -138,6 +138,8 @@ class TrimeshAlphaRenderee(TrimeshOpaqueRenderee):
         view_matrix: np.ndarray,
     ):
         super().__init__(ctx, program, mesh)
+        self._ctx = ctx
+        self._program = program
         self._triangles = mesh.triangles.astype("f4")
         self._triangles_cross = mesh.triangles_cross
         self._points = corners(mesh.bounds)
@@ -292,7 +294,7 @@ def create_trimesh_renderee(
     mesh: Trimesh | list[Trimesh],
     model_matrix: np.ndarray,
     view_matrix: np.ndarray,
-):
+) -> TrimeshRenderee:
     if isinstance(mesh, list):
         if not all(isinstance(m, Trimesh) for m in mesh):
             raise TypeError("All elements in the mesh list must be Trimesh instances.")

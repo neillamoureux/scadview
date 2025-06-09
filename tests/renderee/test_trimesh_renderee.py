@@ -3,6 +3,7 @@ from unittest import mock
 import numpy as np
 import pytest
 
+from trimesh.creation import box, icosphere
 from meshsee.render.trimesh_renderee import (
     DEFAULT_COLOR,
     TrimeshNullRenderee,
@@ -14,6 +15,8 @@ from meshsee.render.trimesh_renderee import (
     TrimeshListAlphaRenderee,
     get_metadata_color,
     is_alpha,
+    create_colors_array,
+    create_trimesh_renderee,
 )
 
 from meshsee.shader_program import ShaderVar
@@ -80,6 +83,124 @@ def dummy_trimesh_list_renderee(dummy_trimesh_renderee, dummy_trimesh_alpha_rend
         dummy_trimesh_renderee,
         dummy_trimesh_alpha_renderee,
     )
+
+
+def test_get_metadata_color(dummy_trimesh):
+    expected_color = [0.1, 0.2, 0.3, 0.4]
+    dummy_trimesh.metadata["meshsee"] = {"color": expected_color}
+    assert np.all(get_metadata_color(dummy_trimesh) == expected_color)
+
+
+def test_get_metadata_color_empty_dict(dummy_trimesh):
+    dummy_trimesh.metadata = {}
+    assert np.all(get_metadata_color(dummy_trimesh) == DEFAULT_COLOR)
+
+
+def test_get_metadata_color_none(dummy_trimesh):
+    dummy_trimesh.metadata = None
+    assert np.all(get_metadata_color(dummy_trimesh) == DEFAULT_COLOR)
+
+
+def test_get_metadata_color_missing(dummy_trimesh):
+    del dummy_trimesh.metadata["meshsee"]["color"]
+    assert np.all(get_metadata_color(dummy_trimesh) == DEFAULT_COLOR)
+
+
+def test_create_colors_array():
+    color = np.array([0.1, 0.3, 0.7, 0.5])
+    triangle_count = 5
+    colors_arr = create_colors_array(color, triangle_count)
+    assert colors_arr.shape == (triangle_count, 3, 4)
+    colors = colors_arr.reshape(-1, 4)
+    for c in colors:
+        print(c)
+        assert np.all(c == color.astype("f4"))
+
+
+def test_create_trimesh_renderee_no_color():
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    trimesh = box()
+    model_matrix = np.eye(4)
+    view_matrix = np.eye(4)
+    renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
+    assert type(renderee) == TrimeshOpaqueRenderee
+
+
+def test_create_trimesh_renderee_opaque():
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    trimesh = box()
+    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 1.0]}
+    model_matrix = np.eye(4)
+    view_matrix = np.eye(4)
+    renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
+    assert type(renderee) == TrimeshOpaqueRenderee
+
+
+def test_create_trimesh_renderee_alpha():
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    trimesh = box()
+    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 0.5]}
+    model_matrix = np.eye(4)
+    view_matrix = np.eye(4)
+    renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
+    assert type(renderee) == TrimeshAlphaRenderee
+
+
+@mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")
+def test_create_trimesh_renderee_list_opaque_only(TrimeshListRenderee):
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    trimesh = box()
+    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 1.0]}
+    model_matrix = np.eye(4)
+    view_matrix = np.eye(4)
+    expected_opaques = [trimesh]
+    expected_alphas = []
+    create_trimesh_renderee(ctx, program, [trimesh], model_matrix, view_matrix)
+    assert TrimeshListRenderee.called_once_with(expected_opaques, expected_alphas)
+
+
+@mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")
+def test_create_trimesh_renderee_list_alpha_only(TrimeshListRenderee):
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    trimesh = box()
+    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 0.5]}
+    model_matrix = np.eye(4)
+    view_matrix = np.eye(4)
+    expected_opaques = []
+    expected_alphas = [trimesh]
+    create_trimesh_renderee(ctx, program, [trimesh], model_matrix, view_matrix)
+    assert TrimeshListRenderee.called_once_with(expected_opaques, expected_alphas)
+
+
+@mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")
+def test_create_trimesh_renderee_list(TrimeshListRenderee):
+    ctx = mock.MagicMock()
+    program = mock.MagicMock()
+    trimesh_op1 = box()
+    trimesh_op1.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 1.0]}
+    trimesh_op2 = box()
+    trimesh_op2.metadata["meshsee"] = {"color": [0.0, 0.0, 1.0, 1.0]}
+    trimesh_al1 = box()
+    trimesh_al1.metadata["meshsee"] = {"color": [0.0, 0.0, 1.0, 0.99]}
+    trimesh_al2 = box()
+    trimesh_al2.metadata["meshsee"] = {"color": [0.0, 1.0, 1.0, 0.9]}
+    model_matrix = np.eye(4)
+    view_matrix = np.eye(4)
+    expected_opaques = [trimesh_op1, trimesh_op2]
+    expected_alphas = [trimesh_al1, trimesh_al2]
+    create_trimesh_renderee(
+        ctx,
+        program,
+        [trimesh_al1, trimesh_op1, trimesh_op2, trimesh_al2],
+        model_matrix,
+        view_matrix,
+    )
+    assert TrimeshListRenderee.called_once_with(expected_opaques, expected_alphas)
 
 
 def test_trimesh_renderee_init_and_properties(dummy_trimesh_renderee):
