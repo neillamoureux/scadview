@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from meshsee.render.trimesh_renderee import (
+    DEFAULT_COLOR,
     TrimeshNullRenderee,
     TrimeshRenderee,
     TrimeshAlphaRenderee,
@@ -111,30 +112,27 @@ def test_get_metadata_color_with_meshsee_color():
 def test_get_metadata_color_with_meshsee_no_color():
     mesh = DummyMesh(metadata={"meshsee": {}})
     result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, TrimeshAlphaRenderee.DEFAULT_COLOR)
+    np.testing.assert_array_equal(result, DEFAULT_COLOR)
 
 
 def test_get_metadata_color_no_meshsee():
     mesh = DummyMesh(metadata={})
     result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, TrimeshAlphaRenderee.DEFAULT_COLOR)
+    np.testing.assert_array_equal(result, DEFAULT_COLOR)
 
 
 def test_get_metadata_color_meshsee_not_dict():
     mesh = DummyMesh(metadata={"meshsee": None})
     result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, TrimeshAlphaRenderee.DEFAULT_COLOR)
+    np.testing.assert_array_equal(result, DEFAULT_COLOR)
 
 
-def test_trimesh_opaque_renderee_init_sets_buffers_and_vao(dummy_trimesh):
+def test_trimesh_opaque_renderee_init_sets_vao(dummy_trimesh):
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     ctx.buffer.return_value = mock.MagicMock()
     ctx.vertex_array.return_value = mock.MagicMock()
     renderee = TrimeshOpaqueRenderee(ctx, program, dummy_trimesh)
-    assert hasattr(renderee, "_vertices")
-    assert hasattr(renderee, "_normals")
-    assert hasattr(renderee, "_color_buff")
     assert hasattr(renderee, "_vao")
     assert isinstance(renderee.points, np.ndarray)
     ctx.buffer.assert_called()  # At least once
@@ -207,7 +205,7 @@ def test_trimesh_alpha_renderee_init_sets_attributes(
     assert np.array_equal(
         dummy_trimesh_alpha_renderee.view_matrix, np.eye(4, dtype="f4")
     )
-    assert dummy_trimesh_alpha_renderee._resort_verts is True
+    assert dummy_trimesh_alpha_renderee._resort_verts is False
 
 
 def test_trimesh_alpha_renderee_points_property(dummy_trimesh_alpha_renderee):

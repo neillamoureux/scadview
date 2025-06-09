@@ -9,6 +9,46 @@ from meshsee.observable import Observable
 from meshsee.render.label_renderee import Renderee
 from meshsee.shader_program import ShaderVar
 
+DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
+
+
+def create_vao_from_mesh(
+    ctx: moderngl.Context, program: moderngl.Program, mesh: Trimesh
+) -> moderngl.VertexArray:
+    return create_vao_from_arrays(
+        ctx,
+        program,
+        mesh.triangles,
+        mesh.triangles_cross,
+        create_colors_array_from_mesh(mesh),
+    )
+
+
+def get_metadata_color(mesh: Trimesh) -> np.ndarray:
+    if "meshsee" in mesh.metadata:
+        if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
+            return np.array(mesh.metadata["meshsee"]["color"])
+    return DEFAULT_COLOR
+
+
+def create_vao_from_arrays(
+    ctx: moderngl.Context,
+    program: moderngl.Program,
+    triangles: np.ndarray,
+    triangles_cross: np.ndarray,
+    colors_arr: np.ndarray,
+) -> moderngl.VertexArray:
+    vertices = ctx.buffer(data=triangles.astype("f4").tobytes())
+    normals = ctx.buffer(
+        data=np.array([[v] * 3 for v in triangles_cross]).astype("f4").tobytes()
+    )
+    colors = ctx.buffer(data=colors_arr.astype("f4").tobytes())
+    return create_vao(ctx, program, vertices, normals, colors)
+
+
+def create_colors_array(color: np.ndarray, triangle_count: int) -> np.ndarray:
+    return np.tile(color, triangle_count * 3).astype("f4").reshape(-1, 3, 4)
+
 
 def create_vao(
     ctx: moderngl.Context,
@@ -17,47 +57,35 @@ def create_vao(
     normals: moderngl.Buffer,
     colors: moderngl.Buffer,
 ) -> moderngl.VertexArray:
-    return ctx.vertex_array(
-        program,
-        [
-            (vertices, "3f4", "in_position"),
-            (normals, "3f4", "in_normal"),
-            (colors, "4f4", "in_color"),
-        ],
-        mode=moderngl.TRIANGLES,
-    )
+    try:
+        return ctx.vertex_array(
+            program,
+            [
+                (vertices, "3f4", "in_position"),
+                (normals, "3f4", "in_normal"),
+                (colors, "4f4", "in_color"),
+            ],
+            mode=moderngl.TRIANGLES,
+        )
+    except Exception as e:
+        print(f"Error creating vertex array: {e}")
+
+
+def create_colors_array_from_mesh(mesh: Trimesh) -> np.ndarray:
+    return create_colors_array(get_metadata_color(mesh), mesh.triangles.shape[0])
 
 
 class TrimeshRenderee(Renderee):
-    # def __init__(self, ctx: moderngl.Context, program: moderngl.Program):
-    #     super().__init__(ctx, program)
-    #     self._ctx = ctx
-    #     self._program = program
-    #     self._vertices = self._ctx.buffer(data=np.empty((1, 3)))
-    #     self._normals = self._ctx.buffer(data=np.empty((1, 3)))
-    #     self._color_buff = self._ctx.buffer(data=np.empty((1, 4)))
 
     @property
     @abstractmethod
     def points(self) -> np.ndarray: ...
-
-    # def _create_vao(self) -> moderngl.VertexArray:
-    #     return self._ctx.vertex_array(
-    #         self._program,
-    #         [
-    #             (self._vertices, "3f4", "in_position"),
-    #             (self._normals, "3f4", "in_normal"),
-    #             (self._color_buff, "4f4", "in_color"),
-    #         ],
-    #         mode=moderngl.TRIANGLES,
-    #     )
 
     @abstractmethod
     def subscribe_to_updates(self, updates: Observable): ...
 
 
 class TrimeshOpaqueRenderee(TrimeshRenderee):
-    DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 
     def __init__(
         self,
@@ -68,27 +96,8 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         super().__init__(ctx, program)
         self._ctx = ctx
         self._program = program
-        self._triangles = mesh.triangles.astype("f4")
-        self._triangles_cross = mesh.triangles_cross
+        self._vao = create_vao_from_mesh(ctx, program, mesh)
         self._points = corners(mesh.bounds)
-        self._vertices = ctx.buffer(data=mesh.triangles.astype("f4"))
-        self._normals = ctx.buffer(
-            data=np.array([[v] * 3 for v in mesh.triangles_cross])
-            .astype("f4")
-            .tobytes()
-        )
-        self._colors = (
-            np.tile(get_metadata_color(mesh), self._triangles.shape[0] * 3)
-            .astype("f4")
-            .reshape(-1, 3, 4)
-        )
-        self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
-        try:
-            self._vao = create_vao(
-                ctx, program, self._vertices, self._normals, self._color_buff
-            )
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
 
     @property
     def points(self) -> np.ndarray:
@@ -129,9 +138,14 @@ class TrimeshAlphaRenderee(TrimeshOpaqueRenderee):
         view_matrix: np.ndarray,
     ):
         super().__init__(ctx, program, mesh)
+        self._triangles = mesh.triangles.astype("f4")
+        self._triangles_cross = mesh.triangles_cross
+        self._points = corners(mesh.bounds)
+        self._colors_arr = create_colors_array_from_mesh(mesh)
         self.model_matrix = model_matrix
         self.view_matrix = view_matrix
         self._resort_verts = True
+        self._sort_buffers()
 
     @property
     def points(self) -> np.ndarray:
@@ -172,26 +186,19 @@ class TrimeshAlphaRenderee(TrimeshOpaqueRenderee):
         )
         sorted_triangles = self._triangles[sorted_indices]
         sorted_triangles_cross = self._triangles_cross[sorted_indices]
-        sorted_colors = self._colors[sorted_indices]
-        self._vertices = self._ctx.buffer(data=sorted_triangles)
-        self._normals = self._ctx.buffer(
-            data=np.array([[v] * 3 for v in sorted_triangles_cross])
-            .astype("f4")
-            .tobytes()
+        sorted_colors = self._colors_arr[sorted_indices]
+        self._vao = create_vao_from_arrays(
+            self._ctx,
+            self._program,
+            sorted_triangles,
+            sorted_triangles_cross,
+            sorted_colors,
         )
-        self._color_buff = self._ctx.buffer(data=sorted_colors.tobytes())
         self._resort_verts = False
 
     def render(self):
         if self._resort_verts:
             self._sort_buffers()
-            self._vao = create_vao(
-                self._ctx,
-                self._program,
-                self._vertices,
-                self._normals,
-                self._color_buff,
-            )
         self._ctx.blend_func = moderngl.DEFAULT_BLENDING
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.enable(moderngl.BLEND)
@@ -244,30 +251,16 @@ class TrimeshListAlphaRenderee(TrimeshAlphaRenderee):
         self._triangles_cross = np.concatenate(
             [mesh.triangles_cross for mesh in meshes]
         ).astype("f4")
-        self._vertices = ctx.buffer(data=self._triangles.tobytes())
-        self._normals = ctx.buffer(
-            data=np.array([[v] * 3 for v in self._triangles_cross])
-            .astype("f4")
-            .tobytes()
-        )
         colors_list = []
         for mesh in meshes:
             color = get_metadata_color(mesh)
             n_triangles = mesh.triangles.shape[0]
             colors_list.append(np.tile(color, (n_triangles, 3)))
-        self._colors = np.concatenate(colors_list, axis=0).astype("f4")
-        self._color_buff = self._ctx.buffer(data=self._colors.tobytes())
-        try:
-            self._vao = create_vao(
-                self._ctx,
-                self._program,
-                self._vertices,
-                self._normals,
-                self._color_buff,
-            )
-        except Exception as e:
-            print(f"Error creating vertex array: {e}")
+        self._colors_arr = np.concatenate(colors_list, axis=0).astype("f4")
+        self.model_matrix = model_matrix
+        self.view_matrix = view_matrix
         self._resort_verts = True
+        self._sort_buffers()
 
 
 class TrimeshListRenderee(TrimeshRenderee):
@@ -348,13 +341,6 @@ def split_opaque_alpha(meshes: list[Trimesh]):
 
 def is_alpha(mesh: Trimesh) -> bool:
     return get_metadata_color(mesh)[3] < 1.0
-
-
-def get_metadata_color(mesh: Trimesh) -> np.ndarray:
-    if "meshsee" in mesh.metadata:
-        if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
-            return np.array(mesh.metadata["meshsee"]["color"])
-    return TrimeshOpaqueRenderee.DEFAULT_COLOR
 
 
 def create_trimesh_list_opaque_renderee(
