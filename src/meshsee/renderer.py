@@ -11,7 +11,13 @@ from meshsee.label_atlas import LabelAtlas
 
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderProgram, ShaderVar
-from meshsee.render.renderee import LabelSetRenderee, TrimeshRenderee
+from meshsee.render.label_renderee import (
+    LabelSetRenderee,
+)
+from meshsee.render.trimesh_renderee import (
+    create_trimesh_renderee,
+    TrimeshOpaqueRenderee,
+)
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.01
@@ -38,7 +44,7 @@ def _make_axes() -> Trimesh:
 
 
 class Renderer:
-    BACKGROUND_COLOR = (0.5, 0.3, 0.2)
+    BACKGROUND_COLOR = (0.7, 0.7, 1.0)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._camera = None
@@ -46,20 +52,26 @@ class Renderer:
         self._ctx = context
         self._create_shaders()
         self.camera = camera
-        self._create_renderees()
         self._init_shaders()
+        self._create_renderees()
         self._ctx.clear(*self.BACKGROUND_COLOR)
         self.load_mesh(_make_default_mesh())
         self.frame()
 
     def _create_shaders(self):
         self.on_program_value_change = Observable()
-        self._prog = self._create_main_shader_program(self.on_program_value_change)
+        self._main_prog = self._create_main_shader_program(self.on_program_value_change)
         self._num_prog = self._create_num_shader_program(self.on_program_value_change)
+        self._axis_prog = self._create_axis_shader_program(self.on_program_value_change)
 
     def _create_renderees(self):
         self._axes = _make_axes()
-        self._axes_renderee = TrimeshRenderee(self._ctx, self._prog.program, self._axes)
+        self._axes_renderee = TrimeshOpaqueRenderee(
+            self._ctx,
+            self._axis_prog.program,
+            self._axes,
+        )
+        self._axes_renderee.subscribe_to_updates(self.on_program_value_change)
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_set_renderee = LabelSetRenderee(
             self._ctx,
@@ -87,7 +99,7 @@ class Renderer:
         self._camera = camera
 
     def _init_shaders(self):
-        self._m_model = Matrix44.identity(dtype="f4")
+        self._m_model = np.array(Matrix44.identity(), dtype="f4")
         self.show_grid = True
         self._update_program_value(ShaderVar.MODEL_MATRIX, self._m_model)
         self._update_program_value(ShaderVar.MESH_COLOR, MESH_COLOR)
@@ -119,11 +131,21 @@ class Renderer:
             ShaderVar.MODEL_MATRIX: "m_model",
             ShaderVar.VIEW_MATRIX: "m_camera",
             ShaderVar.PROJECTION_MATRIX: "m_proj",
-            ShaderVar.MESH_COLOR: "color",
             ShaderVar.SHOW_GRID: "show_grid",
         }
         return self._create_shader_program(
-            "vertex.glsl", "fragment.glsl", program_vars, observable
+            "vertex_main.glsl", "fragment_main.glsl", program_vars, observable
+        )
+
+    def _create_axis_shader_program(self, observable: Observable) -> ShaderProgram:
+        program_vars = {
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.VIEW_MATRIX: "m_camera",
+            ShaderVar.PROJECTION_MATRIX: "m_proj",
+            ShaderVar.SHOW_GRID: "show_grid",
+        }
+        return self._create_shader_program(
+            "vertex_main.glsl", "fragment_main.glsl", program_vars, observable
         )
 
     def _create_shader_program(
@@ -151,9 +173,16 @@ class Renderer:
 
     def load_mesh(
         self,
-        mesh: Trimesh,
+        mesh: Trimesh | list[Trimesh],
     ):
-        self._main_renderee = TrimeshRenderee(self._ctx, self._prog.program, mesh)
+        self._main_renderee = create_trimesh_renderee(
+            self._ctx,
+            self._main_prog.program,
+            mesh,
+            self._m_model,
+            self._camera.view_matrix,
+        )
+        self._main_renderee.subscribe_to_updates(self.on_program_value_change)
         self._camera.points = self._main_renderee.points
 
     def frame(self, direction=None, up=None):
@@ -181,7 +210,9 @@ class Renderer:
         self._camera.move_to_screen(ndx, ndy, distance)
 
     def render(self, show_grid: bool):  # override
-        self._ctx.enable_only(moderngl.DEPTH_TEST)
+        # self._ctx.enable_only(moderngl.DEPTH_TEST)
+        self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+
         # self.ctx.enable_only(moderngl.BLEND)
         # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self.show_grid = True
