@@ -3,9 +3,9 @@ from trimesh.creation import box, icosphere
 
 def create_mesh():
     scale = 100.0
-    box_mesh = box([scale, scale, scale])
+    box_mesh = box([scale, scale, scale]).subdivide()
     box_mesh.metadata = {"meshsee": {"color": [1.0, 0.0, 1.0, 0.5]}}
-    box_mesh2 = box([scale, scale, scale])
+    box_mesh2 = box([scale, scale, scale]).subdivide()
     box_mesh2.metadata = {"meshsee": {"color": [1.0, 0.0, 1.0, 0.5]}}
     sphere_mesh = icosphere(radius=0.4 * scale, subdivisions=3)
     sphere_mesh.metadata = {"meshsee": {"color": [1.0, 1.0, 0.0, 0.5]}}
