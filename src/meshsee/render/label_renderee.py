@@ -39,7 +39,9 @@ class LabelRenderee(Renderee):
         except Exception as e:
             print(f"Error creating vertex array: {e}")
 
-        self._program["atlas"].value = self.ATLAS_SAMPLER_LOCATION
+        self._program["atlas"].value = (  # pyright: ignore [reportAttributeAccessIssue]
+            self.ATLAS_SAMPLER_LOCATION
+        )
         self._translate_to_origin = Matrix44.from_translation(
             [-self._number, 0.0, 0.0], dtype="f4"
         )
@@ -116,7 +118,9 @@ class LabelRenderee(Renderee):
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         m_base_scale_at_label = self._calc_base_scale_at_label_matrix()
         m_scale = self._calc_scale_matrix_for_axis(m_base_scale_at_label)
-        self._program["m_scale"].write(m_scale)
+        self._program["m_scale"].write(  # pyright: ignore [reportAttributeAccessIssue]
+            m_scale
+        )
         self._vao.render(moderngl.TRIANGLE_STRIP)
         self._ctx.disable(moderngl.BLEND)
 
@@ -171,18 +175,31 @@ class LabelSetRenderee(Renderee):
         visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
         if len(visible_ranges) == 0:
             return
-        spans = [range[1][1] - range[1][0] for range in visible_ranges]
+        spans = [
+            rng[1][1] - rng[1][0]  # pyright: ignore [reportOptionalSubscript]
+            for rng in visible_ranges
+        ]
         max_span = max(spans)
         step = label_step(max_span, self._max_labels_per_axis)
-        min_value = min([visible_range[1][0] for visible_range in visible_ranges])
-        max_value = max([visible_range[1][1] for visible_range in visible_ranges])
+        min_value = min(
+            [
+                visible_range[1][0]  # pyright: ignore [reportOptionalSubscript]
+                for visible_range in visible_ranges
+            ]
+        )
+        max_value = max(
+            [
+                visible_range[1][1]  # pyright: ignore [reportOptionalSubscript]
+                for visible_range in visible_ranges
+            ]
+        )
         char_width = label_char_width(
             min_value, max_value, step, self._max_label_frac_of_step
         )
         for visible in visible_ranges:
             axis = visible[0]
-            min_value = visible[1][0]
-            max_value = visible[1][1]
+            min_value = visible[1][0]  # pyright: ignore [reportOptionalSubscript]
+            max_value = visible[1][1]  # pyright: ignore [reportOptionalSubscript]
             show = labels_to_show(min_value, max_value, step)
             for label in show:
                 if label not in self._label_renderees.keys():
