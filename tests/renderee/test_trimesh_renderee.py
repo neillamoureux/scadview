@@ -1,6 +1,7 @@
 from unittest import mock
 
 import numpy as np
+from pyrr import matrix44
 import pytest
 from trimesh.creation import box, icosphere
 
@@ -15,10 +16,11 @@ from meshsee.render.trimesh_renderee import (
     TrimeshOpaqueRenderee,
     TrimeshRenderee,
     concat_colors,
+    create_colors_array,
     create_colors_array_from_mesh,
     create_trimesh_renderee,
     get_metadata_color,
-    is_alpha,
+    sort_triangles,
 )
 from meshsee.shader_program import ShaderVar
 
@@ -153,6 +155,32 @@ def test_concat_colors():
             assert np.all(color[0:4] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
             assert np.all(color[4:8] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
             assert np.all(color[8:12] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
+
+
+def test_sort_vertices():
+    mesh = icosphere()
+    view_matrix = matrix44.create_look_at(
+        eye=[1.0, 2.0, 3.0],
+        target=[-3.0, -4.0, -2.0],
+        up=[0.1, 0.2, 1.0],
+        dtype="f4",
+    )
+    model_matrix = np.eye(4, dtype="f4")
+    sorted_indices = sort_triangles(mesh.triangles, model_matrix, view_matrix)
+    assert sorted_indices.shape[0] == mesh.triangles.shape[0]
+    sorted_centers = mesh.triangles_center[sorted_indices]
+    sorted_centers = np.hstack(
+        [
+            sorted_centers,
+            np.ones((sorted_centers.shape[0], 1), dtype=sorted_centers.dtype),
+        ]
+    )
+    sorted_centers = sorted_centers @ model_matrix @ view_matrix
+    for i in range(1, sorted_indices.shape[0]):
+        assert (
+            sorted_centers[i, 2] / sorted_centers[i, 3]
+            >= sorted_centers[i - 1, 2] / sorted_centers[i - 1, 3]
+        )
 
 
 def test_create_trimesh_renderee_no_color():
