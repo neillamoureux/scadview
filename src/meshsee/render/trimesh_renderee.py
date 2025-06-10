@@ -85,7 +85,6 @@ def concat_colors(meshes: list[Trimesh]) -> np.ndarray:
 
 
 class TrimeshRenderee(Renderee):
-
     @property
     @abstractmethod
     def points(self) -> np.ndarray: ...
@@ -95,7 +94,6 @@ class TrimeshRenderee(Renderee):
 
 
 class TrimeshOpaqueRenderee(TrimeshRenderee):
-
     def __init__(
         self,
         ctx: moderngl.Context,

@@ -40,7 +40,7 @@ class Controller:
             self.current_mesh = mesh
             yield mesh
         t1 = time()
-        print(f"Took {(t1-t0)*1000:.1f}ms")
+        print(f"Took {(t1 - t0) * 1000:.1f}ms")
 
     def export(self, file_path: str):
         if not self.current_mesh:

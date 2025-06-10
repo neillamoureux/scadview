@@ -56,9 +56,9 @@ def check_mesh_heights(mesh, expected_heights, base, offset=0):
     __tracebackhide__ = True
     # Check if the mesh vertices have the expected heights
     for i, height in enumerate(expected_heights):
-        assert np.isclose(
-            mesh.vertices[i + offset, 2], height + base
-        ), f"Vertex {i} height mismatch"
+        assert np.isclose(mesh.vertices[i + offset, 2], height + base), (
+            f"Vertex {i} height mismatch"
+        )
 
 
 @pytest.mark.parametrize(
