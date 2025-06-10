@@ -1,8 +1,9 @@
 from typing import IO
 
 import numpy as np
-from PIL import Image
 import trimesh
+from numpy.typing import NDArray
+from PIL import Image
 
 
 def surface(
@@ -93,8 +94,11 @@ def _solid_from_heightmap(
 
 
 def _create_top_vertices(
-    heightmap: np.ndarray, scale: tuple, base: float = 0.0, invert: bool = False
-) -> np.ndarray:
+    heightmap: NDArray[np.float32],
+    scale: tuple,
+    base: float = 0.0,
+    invert: bool = False,
+) -> NDArray[np.float32]:
     y_span, x_span = heightmap.shape
     xs = np.arange(x_span) * scale[0]
     ys = np.arange(y_span) * scale[1]
@@ -105,13 +109,13 @@ def _create_top_vertices(
     return np.column_stack([xx.ravel(), yy.ravel(), top_z.ravel()])
 
 
-def _create_bottom_vertices(verts_top: np.ndarray) -> np.ndarray:
+def _create_bottom_vertices(verts_top: NDArray[np.float32]) -> NDArray[np.float32]:
     verts_bot = verts_top.copy()
     verts_bot[:, 2] = 0.0
     return verts_bot
 
 
-def _create_faces(y_span: int, x_span: int) -> np.ndarray:
+def _create_faces(y_span: int, x_span: int) -> NDArray[np.float32]:
     faces = []
     for i in range(y_span - 1):
         for j in range(x_span - 1):
@@ -125,7 +129,7 @@ def _create_faces(y_span: int, x_span: int) -> np.ndarray:
     return np.array(faces)
 
 
-def _create_side_faces(y_span: int, x_span: int, v_count: int) -> list:
+def _create_side_faces(y_span: int, x_span: int, v_count: int) -> NDArray[np.float32]:
     side_faces = []
 
     # helper to add two tris between a top edge (i→j) and bottom (i+N→j+N)
@@ -149,15 +153,15 @@ def _create_side_faces(y_span: int, x_span: int, v_count: int) -> list:
         idx = i * x_span
         wall(idx, idx - x_span)
 
-    return np.array(side_faces)
+    return np.array(side_faces, dtype="f4")
 
 
 def _assemble_solid(
-    verts_top: np.ndarray,
-    verts_bot: np.ndarray,
-    faces: np.ndarray,
-    faces_bot: np.ndarray,
-    side_faces: np.ndarray,
+    verts_top: NDArray[np.float32],
+    verts_bot: NDArray[np.float32],
+    faces: NDArray[np.float32],
+    faces_bot: NDArray[np.float32],
+    side_faces: NDArray[np.float32],
 ) -> trimesh.Trimesh:
     """
     Assemble the solid mesh from top vertices, bottom vertices, faces, bottom faces, and side faces.
@@ -168,14 +172,14 @@ def _assemble_solid(
 
 
 def mesh_from_heightmap(
-    heightmap: np.ndarray, scale: tuple = (1.0, 1.0, 1.0)
+    heightmap: NDArray[np.float32], scale: tuple = (1.0, 1.0, 1.0)
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh from a heightmap.
 
     Parameters
     ----------
-    heightmap : np.ndarray
+    heightmap : NDArray[np.float32]
         A 2D numpy array representing the heightmap, where each value corresponds to the height at that point.
     scale : tuple
         A tuple of three values (X, Y, Z) to scale the mesh in the respective dimensions.
