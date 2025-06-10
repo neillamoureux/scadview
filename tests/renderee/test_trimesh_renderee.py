@@ -2,25 +2,24 @@ from unittest import mock
 
 import numpy as np
 import pytest
-
 from trimesh.creation import box, icosphere
+
 from meshsee.render.trimesh_renderee import (
     DEFAULT_COLOR,
-    TrimeshNullRenderee,
-    TrimeshRenderee,
+    AlphaRenderee,
     TrimeshAlphaRenderee,
-    TrimeshOpaqueRenderee,
-    TrimeshListRenderee,
-    TrimeshListOpaqueRenderee,
     TrimeshListAlphaRenderee,
-    get_metadata_color,
-    is_alpha,
-    create_colors_array,
+    TrimeshListOpaqueRenderee,
+    TrimeshListRenderee,
+    TrimeshNullRenderee,
+    TrimeshOpaqueRenderee,
+    TrimeshRenderee,
+    concat_colors,
     create_colors_array_from_mesh,
     create_trimesh_renderee,
-    AlphaRenderee,
+    get_metadata_color,
+    is_alpha,
 )
-
 from meshsee.shader_program import ShaderVar
 
 
@@ -136,6 +135,24 @@ def test_create_colors_array():
     for c in colors:
         print(c)
         assert np.all(c == color.astype("f4"))
+
+
+def test_concat_colors():
+    mesh1 = box()
+    mesh1.metadata["meshsee"] = {"color": [0.1, 0.2, 0.3, 0.4]}
+    mesh2 = box()
+    mesh2.metadata["meshsee"] = {"color": [0.5, 0.6, 0.7, 0.8]}
+    colors = concat_colors([mesh1, mesh2])
+    assert colors.shape == (2 * 12, 3 * 4)
+    for i, color in enumerate(colors):
+        if i < 12:
+            assert np.all(color[0:4] == np.array([0.1, 0.2, 0.3, 0.4], dtype="f4"))
+            assert np.all(color[4:8] == np.array([0.1, 0.2, 0.3, 0.4], dtype="f4"))
+            assert np.all(color[8:12] == np.array([0.1, 0.2, 0.3, 0.4], dtype="f4"))
+        else:
+            assert np.all(color[0:4] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
+            assert np.all(color[4:8] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
+            assert np.all(color[8:12] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
 
 
 def test_create_trimesh_renderee_no_color():
