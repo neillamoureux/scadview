@@ -420,13 +420,10 @@ def create_single_trimesh_renderee(
 def sort_triangles(
     triangles: np.ndarray, model_matrix: np.ndarray, view_matrix: np.ndarray
 ) -> list[int]:
-    triangle_centers = np.mean(
-        triangles,
-        axis=1,
-    )
-    triangle_centers = np.hstack(
-        [triangle_centers, np.ones((triangle_centers.shape[0], 1), dtype="f4")]
-    )
-    eye_verts = triangle_centers @ model_matrix @ view_matrix
+    vertices = triangles.reshape(-1, 3)
+    print(vertices.shape)
+    vertices = np.hstack([vertices, np.ones((vertices.shape[0], 1), dtype="f4")])
+    eye_verts = vertices @ model_matrix @ view_matrix
     depths = eye_verts[:, 2] / eye_verts[:, 3]
-    return np.argsort(depths)
+    max_depths = np.max(depths.reshape(-1, 3), axis=1)
+    return np.argsort(max_depths)

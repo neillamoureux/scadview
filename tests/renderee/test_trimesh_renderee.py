@@ -168,19 +168,21 @@ def test_sort_vertices():
     model_matrix = np.eye(4, dtype="f4")
     sorted_indices = sort_triangles(mesh.triangles, model_matrix, view_matrix)
     assert sorted_indices.shape[0] == mesh.triangles.shape[0]
-    sorted_centers = mesh.triangles_center[sorted_indices]
-    sorted_centers = np.hstack(
+    sorted_triangles = mesh.triangles[sorted_indices]
+    sorted_vertices = sorted_triangles.reshape(-1, 3)
+    sorted_vertices = np.hstack(
         [
-            sorted_centers,
-            np.ones((sorted_centers.shape[0], 1), dtype=sorted_centers.dtype),
+            sorted_vertices,
+            np.ones((sorted_vertices.shape[0], 1), dtype=sorted_vertices.dtype),
         ]
     )
-    sorted_centers = sorted_centers @ model_matrix @ view_matrix
-    for i in range(1, sorted_indices.shape[0]):
-        assert (
-            sorted_centers[i, 2] / sorted_centers[i, 3]
-            >= sorted_centers[i - 1, 2] / sorted_centers[i - 1, 3]
-        )
+    sorted_vertices = sorted_vertices @ model_matrix @ view_matrix
+    depths = sorted_vertices[:, 2] / sorted_vertices[:, 3]
+    depths = depths.reshape(-1, 3)
+    for i in range(1, depths.shape[0]):
+        max_depth_prev = max(depths[i - 1])
+        max_depth_curr = max(depths[i])
+        assert max_depth_curr >= max_depth_prev
 
 
 def test_create_trimesh_renderee_no_color():
