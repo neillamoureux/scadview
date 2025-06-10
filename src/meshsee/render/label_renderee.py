@@ -193,7 +193,7 @@ class LabelSetRenderee(Renderee):
                         self.camera,
                         label,
                     )
-                l = self._label_renderees[label]
-                l.char_width = char_width
-                l.axis = axis
-                l.render()
+                renderee = self._label_renderees[label]
+                renderee.char_width = char_width
+                renderee.axis = axis
+                renderee.render()

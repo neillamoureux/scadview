@@ -39,7 +39,7 @@ def list_system_fonts() -> dict[str:str]:
             if ft.style_name == "Regular":
                 # also add the font without style
                 fonts.setdefault(f"{ft.family_name}", fp)
-        except Exception as e:
+        except Exception:
             # corrupted font? skip
             continue
     for font in sorted(fonts.keys()):

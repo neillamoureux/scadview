@@ -9,8 +9,6 @@ from meshsee.render.trimesh_renderee import (
     DEFAULT_COLOR,
     AlphaRenderee,
     TrimeshAlphaRenderee,
-    TrimeshListAlphaRenderee,
-    TrimeshListOpaqueRenderee,
     TrimeshListRenderee,
     TrimeshNullRenderee,
     TrimeshOpaqueRenderee,
@@ -192,7 +190,7 @@ def test_create_trimesh_renderee_no_color():
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
-    assert type(renderee) == TrimeshOpaqueRenderee
+    assert isinstance(renderee, TrimeshOpaqueRenderee)
 
 
 def test_create_trimesh_renderee_opaque():
@@ -203,7 +201,7 @@ def test_create_trimesh_renderee_opaque():
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
-    assert type(renderee) == TrimeshOpaqueRenderee
+    assert isinstance(renderee, TrimeshOpaqueRenderee)
 
 
 def test_create_trimesh_renderee_alpha():
@@ -214,7 +212,7 @@ def test_create_trimesh_renderee_alpha():
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
-    assert type(renderee) == TrimeshAlphaRenderee
+    assert isinstance(renderee, TrimeshAlphaRenderee)
 
 
 @mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")

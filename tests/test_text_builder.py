@@ -3,7 +3,6 @@ import numpy as np
 from meshsee import text_builder
 from shapely.geometry import Polygon
 import trimesh
-import trimesh
 
 
 def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):

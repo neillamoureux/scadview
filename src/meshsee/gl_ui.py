@@ -1,5 +1,4 @@
 from importlib.resources import as_file, files
-import os
 import sys
 
 from PySide6.QtCore import Qt

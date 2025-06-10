@@ -38,12 +38,6 @@ def test_reload_for_function_that_yields():
     assert list(loader.run_function(None)) == [1, 2]
 
 
-def test_reload_for_function_that_yields():
-    loader = ModuleLoader("func_that_returns")
-    assert list(loader.run_function(__file__)) == [3]
-    assert list(loader.run_function(None)) == [3]
-
-
 def test_run_function_no_file():
     loader = ModuleLoader("func_that_returns")
     with pytest.raises(ValueError):

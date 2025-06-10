@@ -1,4 +1,3 @@
-import pytest
 from meshsee.observable import Observable
 
 

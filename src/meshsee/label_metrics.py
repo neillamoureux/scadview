@@ -1,7 +1,5 @@
 from math import ceil, floor, log10
 
-from meshsee.camera import Camera
-
 LABEL_TENS_BREAK = 1.0
 LABEL_FIVES_BREAK = log10(5)
 LABEL_TWOS_BREAK = log10(2)
