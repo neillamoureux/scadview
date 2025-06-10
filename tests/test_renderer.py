@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 from meshsee.camera import Camera
 from meshsee.renderer import Renderer

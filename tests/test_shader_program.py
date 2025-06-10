@@ -20,6 +20,7 @@ def shader_program(mock_context):
     }
     with (
         patch("meshsee.shader_program.as_file") as mock_as_file,
+        patch("meshsee.shader_program.moderngl.Uniform") as Uniform,
     ):
         mock_as_file.return_value.__enter__.return_value.read_text.return_value = (
             "shader code"

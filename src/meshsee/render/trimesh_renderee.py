@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 import moderngl
 import numpy as np
+from numpy.typing import NDArray
 from trimesh import Trimesh
 from trimesh.bounds import corners
 
@@ -24,27 +25,29 @@ def create_vao_from_mesh(
     )
 
 
-def create_colors_array_from_mesh(mesh: Trimesh) -> np.ndarray:
+def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.float32]:
     return create_colors_array(get_metadata_color(mesh), mesh.triangles.shape[0])
 
 
-def get_metadata_color(mesh: Trimesh) -> np.ndarray:
+def get_metadata_color(mesh: Trimesh) -> NDArray[np.float32]:
     if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
         if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
             return np.array(mesh.metadata["meshsee"]["color"])
     return DEFAULT_COLOR
 
 
-def create_colors_array(color: np.ndarray, triangle_count: int) -> np.ndarray:
+def create_colors_array(
+    color: NDArray[np.float32], triangle_count: int
+) -> NDArray[np.float32]:
     return np.tile(color, triangle_count * 3).astype("f4").reshape(-1, 3, 4)
 
 
 def create_vao_from_arrays(
     ctx: moderngl.Context,
     program: moderngl.Program,
-    triangles: np.ndarray,
-    triangles_cross: np.ndarray,
-    colors_arr: np.ndarray,
+    triangles: NDArray[np.float32],
+    triangles_cross: NDArray[np.float32],
+    colors_arr: NDArray[np.float32],
 ) -> moderngl.VertexArray:
     vertices = ctx.buffer(data=triangles.astype("f4").tobytes())
     normals = ctx.buffer(
@@ -73,9 +76,10 @@ def create_vao(
         )
     except Exception as e:
         print(f"Error creating vertex array: {e}")
+        raise e
 
 
-def concat_colors(meshes: list[Trimesh]) -> np.ndarray:
+def concat_colors(meshes: list[Trimesh]) -> NDArray[np.float32]:
     colors_list = []
     for mesh in meshes:
         color = get_metadata_color(mesh)
@@ -87,7 +91,7 @@ def concat_colors(meshes: list[Trimesh]) -> np.ndarray:
 class TrimeshRenderee(Renderee):
     @property
     @abstractmethod
-    def points(self) -> np.ndarray: ...
+    def points(self) -> NDArray[np.float32]: ...
 
     @abstractmethod
     def subscribe_to_updates(self, updates: Observable): ...
@@ -107,8 +111,8 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         self._points = corners(mesh.bounds)
 
     @property
-    def points(self) -> np.ndarray:
-        return self._points
+    def points(self) -> NDArray[np.float32]:
+        return self._points.astype("f4")
 
     def subscribe_to_updates(self, updates: Observable):
         pass
@@ -116,16 +120,16 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
     def render(self):
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
-        self._ctx.depth_mask = True
+        self._ctx.depth_mask = True  # type: ignore[attr-defined]
         self._vao.render()
 
 
 class TrimeshNullRenderee(TrimeshRenderee):
     def __init__(self):
-        self._points = np.empty((1, 3))
+        self._points = np.empty((1, 3), dtype="f4")
 
     @property
-    def points(self) -> np.ndarray:
+    def points(self) -> NDArray[np.float32]:
         return self._points
 
     def subscribe_to_updates(self, updates: Observable):
@@ -140,11 +144,11 @@ class AlphaRenderee(Renderee):
         self,
         ctx: moderngl.Context,
         program: moderngl.Program,
-        triangles: np.ndarray,
-        triangles_cross: np.ndarray,
-        colors_arr: np.ndarray,
-        model_matrix: np.ndarray,
-        view_matrix: np.ndarray,
+        triangles: NDArray[np.float32],
+        triangles_cross: NDArray[np.float32],
+        colors_arr: NDArray[np.float32],
+        model_matrix: NDArray[np.float32],
+        view_matrix: NDArray[np.float32],
     ):
         super().__init__(ctx, program)
         self._triangles = triangles
@@ -156,16 +160,16 @@ class AlphaRenderee(Renderee):
         self._sort_buffers()
 
     @property
-    def model_matrix(self) -> np.ndarray:
+    def model_matrix(self) -> NDArray[np.float32]:
         return self._model_matrix
 
     @model_matrix.setter
-    def model_matrix(self, value: np.ndarray):
+    def model_matrix(self, value: NDArray[np.float32]):
         self._model_matrix = value
         self._resort_verts = True
 
     @property
-    def view_matrix(self) -> np.ndarray:
+    def view_matrix(self) -> NDArray[np.float32]:
         return self._view_matrix
 
     @view_matrix.setter
@@ -176,7 +180,7 @@ class AlphaRenderee(Renderee):
     def subscribe_to_updates(self, updates: Observable):
         updates.subscribe(self.update_matrix)
 
-    def update_matrix(self, var: ShaderVar, matrix: np.ndarray):
+    def update_matrix(self, var: ShaderVar, matrix: NDArray[np.float32]):
         if var == ShaderVar.MODEL_MATRIX:
             self.model_matrix = matrix
         elif var == ShaderVar.VIEW_MATRIX:
@@ -201,10 +205,10 @@ class AlphaRenderee(Renderee):
     def render(self):
         if self._resort_verts:
             self._sort_buffers()
-        self._ctx.blend_func = moderngl.DEFAULT_BLENDING
+        self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.enable(moderngl.BLEND)
-        self._ctx.depth_mask = False
+        self._ctx.depth_mask = False  # type: ignore[attr-defined]
         self._vao.render()
 
 
@@ -214,8 +218,8 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         mesh: Trimesh,
-        model_matrix: np.ndarray,
-        view_matrix: np.ndarray,
+        model_matrix: NDArray[np.float32],
+        view_matrix: NDArray[np.float32],
     ):
         self._alpha_renderee = AlphaRenderee(
             ctx,
@@ -230,7 +234,7 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
 
     @property
     def points(self):
-        return self._points
+        return self._points.astype("f4")
 
     def subscribe_to_updates(self, updates: Observable):
         updates.subscribe(self._alpha_renderee.update_matrix)
@@ -250,12 +254,11 @@ class TrimeshListOpaqueRenderee(TrimeshRenderee):
         self._renderees = [TrimeshOpaqueRenderee(ctx, program, mesh) for mesh in meshes]
 
     @property
-    def points(self) -> np.ndarray:
+    def points(self) -> NDArray[np.float32]:
         if len(self._renderees) == 0:
-            return np.empty((1, 3))
-        return np.concatenate([r.points for r in self._renderees], axis=0)
+            return np.empty((1, 3), dtype="f4")
+        return np.concatenate([r.points for r in self._renderees], axis=0, dtype="f4")
 
-    @property
     def subscribe_to_updates(self, updates):
         pass
 
@@ -270,8 +273,8 @@ class TrimeshListAlphaRenderee(TrimeshRenderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         meshes: list[Trimesh],
-        model_matrix: np.ndarray,
-        view_matrix: np.ndarray,
+        model_matrix: NDArray[np.float32],
+        view_matrix: NDArray[np.float32],
     ):
         self._alpha_renderee = AlphaRenderee(
             ctx,
@@ -283,7 +286,9 @@ class TrimeshListAlphaRenderee(TrimeshRenderee):
             view_matrix,
         )
 
-        self._points = np.concatenate([corners(mesh.bounds) for mesh in meshes])
+        self._points = np.concatenate([corners(mesh.bounds) for mesh in meshes]).astype(
+            "f4"
+        )
 
     @property
     def points(self):
@@ -299,14 +304,14 @@ class TrimeshListAlphaRenderee(TrimeshRenderee):
 class TrimeshListRenderee(TrimeshRenderee):
     def __init__(
         self,
-        opaques_renderee: TrimeshListOpaqueRenderee,
-        alphas_renderee: TrimeshListAlphaRenderee,
+        opaques_renderee: TrimeshListOpaqueRenderee | TrimeshNullRenderee,
+        alphas_renderee: TrimeshListAlphaRenderee | TrimeshNullRenderee,
     ):
         self._opaques_renderee = opaques_renderee
         self._alphas_renderee = alphas_renderee
 
     @property
-    def points(self) -> np.ndarray:
+    def points(self) -> NDArray[np.float32]:
         return np.concatenate(
             [self._opaques_renderee.points, self._alphas_renderee.points], axis=0
         )
@@ -323,8 +328,8 @@ def create_trimesh_renderee(
     ctx: moderngl.Context,
     program: moderngl.Program,
     mesh: Trimesh | list[Trimesh],
-    model_matrix: np.ndarray,
-    view_matrix: np.ndarray,
+    model_matrix: NDArray[np.float32],
+    view_matrix: NDArray[np.float32],
 ) -> TrimeshRenderee:
     if isinstance(mesh, list):
         if not all(isinstance(m, Trimesh) for m in mesh):
@@ -348,8 +353,8 @@ def create_trimesh_list_renderee(
     ctx: moderngl.Context,
     program: moderngl.Program,
     meshes: list[Trimesh],
-    model_matrix: np.ndarray,
-    view_matrix: np.ndarray,
+    model_matrix: NDArray[np.float32],
+    view_matrix: NDArray[np.float32],
 ) -> TrimeshListRenderee:
     if not all(isinstance(m, Trimesh) for m in meshes):
         raise TypeError("All elements in the mesh list must be Trimesh instances.")
@@ -388,8 +393,8 @@ def create_trimesh_list_alpha_renderee(
     ctx: moderngl.Context,
     program: moderngl.Program,
     alphas: list[Trimesh],
-    model_matrix: np.ndarray,
-    view_matrix: np.ndarray,
+    model_matrix: NDArray[np.float32],
+    view_matrix: NDArray[np.float32],
 ):
     if len(alphas) == 0:
         return TrimeshNullRenderee()
@@ -400,8 +405,8 @@ def create_single_trimesh_renderee(
     ctx: moderngl.Context,
     program: moderngl.Program,
     mesh: Trimesh,
-    model_matrix: np.ndarray,
-    view_matrix: np.ndarray,
+    model_matrix: NDArray[np.float32],
+    view_matrix: NDArray[np.float32],
 ) -> TrimeshRenderee:
     if is_alpha(mesh):
         return TrimeshAlphaRenderee(
@@ -416,8 +421,10 @@ def create_single_trimesh_renderee(
 
 
 def sort_triangles(
-    triangles: np.ndarray, model_matrix: np.ndarray, view_matrix: np.ndarray
-) -> list[int]:
+    triangles: NDArray[np.float32],
+    model_matrix: NDArray[np.float32],
+    view_matrix: NDArray[np.float32],
+) -> NDArray[np.intp]:
     vertices = triangles.reshape(-1, 3)
     print(vertices.shape)
     vertices = np.hstack([vertices, np.ones((vertices.shape[0], 1), dtype="f4")])
