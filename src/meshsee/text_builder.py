@@ -8,6 +8,7 @@ import trimesh
 from matplotlib import font_manager, ft2font
 from matplotlib.font_manager import FontProperties
 from matplotlib.textpath import TextPath, TextToPath
+from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 from trimesh import Trimesh
 from trimesh.creation import extrude_polygon
@@ -22,7 +23,7 @@ SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
 
 
 @cache
-def list_system_fonts() -> dict[str:str]:
+def list_system_fonts() -> dict[str, str]:
     """
     Returns a dict mapping font family names -> font file paths
     (only TrueType/OpenType fonts).
@@ -42,8 +43,8 @@ def list_system_fonts() -> dict[str:str]:
         except Exception:
             # corrupted font? skip
             continue
-    for font in sorted(fonts.keys()):
-        print(f"Font: {font}")
+    # for font in sorted(fonts.keys()):
+    #     print(f"Font: {font}")
     return fonts
 
 
@@ -96,7 +97,7 @@ def text(
 
 def _loops_from_text(
     text: str, font_path: str, size: float, halign: str, valign: str
-) -> np.ndarray:
+) -> list[NDArray[np.float32]]:
     # Note: to implement spacing, we need to call ft2font.FT2Font.get_kerning()
     # which requires a pair of glyphs indices, and a KERNING_DEFAULT mode.
     # For now, we will just ignore spacing.
@@ -107,8 +108,8 @@ def _loops_from_text(
     tp = TextPath((0, 0), text, prop=fp)
     loops = []
     for poly in tp.to_polygons():
-        verts = np.array(poly)
-        loops.append(verts + np.array([x_offset, y_offset]))
+        verts = np.array(poly, dtype="f4")
+        loops.append(verts + np.array([x_offset, y_offset], dtype="f4"))
     return loops
 
 
@@ -162,7 +163,7 @@ def _calc_x_offset(halign: str, width: float) -> float:
         raise ValueError(f"Invalid halign: {halign}")
 
 
-def _make_polys(loops: np.ndarray) -> list[Polygon]:
+def _make_polys(loops: list[NDArray[np.float32]]) -> list[Polygon]:
     """
     Create a list of shapely.Polygon objects from the given loops.
     Each loop is a list of points (x, y) representing the vertices of the loop.
@@ -174,7 +175,7 @@ def _make_polys(loops: np.ndarray) -> list[Polygon]:
     return _assemble_polys(loops, _track_containment(loops))
 
 
-def _track_containment(loops: np.ndarray) -> list[dict[str, Any]]:
+def _track_containment(loops: list[NDArray[np.float32]]) -> list[dict[str, Any]]:
     # Track containment relationships between loops
     loops_cont = [{"contains": [], "exterior": True} for _ in loops]
     simple_polys = [Polygon(loop) for loop in loops]
@@ -190,7 +191,9 @@ def _track_containment(loops: np.ndarray) -> list[dict[str, Any]]:
     return loops_cont
 
 
-def _assemble_polys(loops: np.ndarray, loops_cont: dict[str, Any]) -> list[Polygon]:
+def _assemble_polys(
+    loops: list[NDArray[np.float32]], loops_cont: list[dict[str, Any]]
+) -> list[Polygon]:
     # Determine which "contained" loops are contained by another loop and no others.
     # We only consider "exterior" loops
     for loop_cont in loops_cont:
