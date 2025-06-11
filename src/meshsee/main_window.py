@@ -55,12 +55,12 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(camera_buttons)
         return main_layout
 
-    def _create_graphics_widget(self):
+    def _create_graphics_widget(self) -> ModernglWidget:
         gl_widget = ModernglWidget(self._controller._gl_widget_adapter)
         gl_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         return gl_widget
 
-    def _create_file_buttons(self):
+    def _create_file_buttons(self) -> QWidget:
         file_button_strip = QWidget()
         file_button_layout = QHBoxLayout()
         file_button_strip.setLayout(file_button_layout)
@@ -70,9 +70,10 @@ class MainWindow(QMainWindow):
         load_file_btn.clicked.connect(self.load_file)
         file_button_layout.addWidget(load_file_btn)
 
-        reload_file_btn = QPushButton("Reload .py")
-        reload_file_btn.clicked.connect(self.reload)
-        file_button_layout.addWidget(reload_file_btn)
+        self._reload_file_btn = QPushButton("Reload .py")
+        self._reload_file_btn.setDisabled(True)
+        self._reload_file_btn.clicked.connect(self.reload)
+        file_button_layout.addWidget(self._reload_file_btn)
 
         self._export_btn = QPushButton("Export")
         self._export_btn.setDisabled(True)
@@ -81,7 +82,7 @@ class MainWindow(QMainWindow):
 
         return file_button_strip
 
-    def _create_camera_buttons(self):
+    def _create_camera_buttons(self) -> QWidget:
         camera_button_strip = QWidget()
         camera_button_layout = QHBoxLayout()
         camera_button_strip.setLayout(camera_button_layout)
@@ -136,6 +137,7 @@ class MainWindow(QMainWindow):
         self._load_mesh(None)
 
     def _load_mesh(self, file_path: str | None):
+        self._reload_file_btn.setEnabled(True)
         worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
             self._start_worker(worker)
@@ -148,10 +150,11 @@ class MainWindow(QMainWindow):
         self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
         self._mesh_loading_worker.signals.load_start.connect(self._start_load)
         self._mesh_loading_worker.signals.stopped.connect(self._start_next_worker)
+        self._mesh_loading_worker.signals.error.connect(self._load_error)
+        self._export_btn.setEnabled(True)
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
 
     def _start_next_worker(self):
-        self._export_btn.setEnabled(True)
         self._mesh_loading_worker = None
         if self._next_mesh_loading_worker is not None:
             self._start_worker(self._next_mesh_loading_worker)
@@ -161,6 +164,7 @@ class MainWindow(QMainWindow):
         self._first_mesh = True
 
     def _update_mesh(self, mesh: Trimesh):
+        print("Getting latest mesh from queue for viewing")
         try:
             if self._mesh_loading_worker is None:
                 raise ValueError("There is no worker to update the mesh")
@@ -171,6 +175,9 @@ class MainWindow(QMainWindow):
                 self._gl_widget.frame()
         except queue.Empty:
             pass
+
+    def _load_error(self):
+        self._export_btn.setDisabled(True)
 
     def export(self):
         filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
@@ -183,6 +190,7 @@ class MeshUpdateSignals(QObject):
     mesh_update = Signal(Trimesh)
     load_start = Signal()
     stopped = Signal()
+    error = Signal()
 
 
 class LoadMeshRunnable(QRunnable):
@@ -205,28 +213,36 @@ class LoadMeshRunnable(QRunnable):
         self._mesh_queue = queue.Queue(maxsize=1)
 
     def run(self):
+        print("Mesh loading about to start")
         if self._file_path is not None:
             self.signals.load_start.emit()
         if self._stop_requested:
             self.signal_stop()
             return
-        for mesh in self._controller.load_mesh(self._file_path):
-            if self._stop_requested:
-                self.signal_stop()
-                return
-            self._update_if_time(mesh)
-        if self._latest_unloaded_mesh is not None:
-            self._update_mesh(self._latest_unloaded_mesh)
-        self.signal_stop()
+        try:
+            for mesh in self._controller.load_mesh(self._file_path):
+                if self._stop_requested:
+                    self.signal_stop()
+                    return
+                self._update_if_time(mesh)
+        except Exception:
+            self.signals.error.emit()
+            if self._latest_unloaded_mesh is not None:
+                self._update_mesh(self._latest_unloaded_mesh)
+        finally:
+            self.signal_stop()
 
     def stop(self):
         self._stop_requested = True
-        if self._stopped:  # Signal stop immediately if already stopped
-            self.signal_stop()
+        print("Current mesh loading stop requested")
+        # if self._stopped:  # Signal stop immediately if already stopped
+        #     self.signal_stop()
 
     def signal_stop(self):
-        self._stopped = True
-        self.signals.stopped.emit()
+        if not self._stopped:
+            self._stopped = True
+            self.signals.stopped.emit()
+            print("Current mesh loading stopping")
 
     def _update_if_time(self, mesh: Trimesh):
         if self._first_mesh:
@@ -244,9 +260,11 @@ class LoadMeshRunnable(QRunnable):
             mesh2 = manifold_to_trimesh(mesh)
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None
+        print("Placing latest mesh in queue for viewing")
         try:
             self._mesh_queue.put_nowait(mesh2)
         except queue.Full:
             _ = self._mesh_queue.get_nowait()
             self._mesh_queue.put_nowait(mesh2)
-        self.signals.mesh_update.emit(mesh2)
+        if not self._stopped:
+            self.signals.mesh_update.emit(mesh2)

@@ -426,7 +426,6 @@ def sort_triangles(
     view_matrix: NDArray[np.float32],
 ) -> NDArray[np.intp]:
     vertices = triangles.reshape(-1, 3)
-    print(vertices.shape)
     vertices = np.hstack([vertices, np.ones((vertices.shape[0], 1), dtype="f4")])
     eye_verts = vertices @ model_matrix @ view_matrix
     depths = eye_verts[:, 2] / eye_verts[:, 3]

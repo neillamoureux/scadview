@@ -14,8 +14,7 @@ def create_mesh():
     # return box_mesh.difference(sphere_mesh)
     final_mesh = box_mesh.difference(sphere_mesh)
     final_mesh.metadata = {"meshsee": {"color": [1.0, 0.0, 1.0, 0.5]}}
-    solid_mesh = box_mesh.difference(sphere_mesh)
-    print(solid_mesh.metadata)
+    # solid_mesh = box_mesh.difference(sphere_mesh)
     return [
         box_mesh,
         sphere_mesh2.apply_translation([scale / 2, 0, 0]),
