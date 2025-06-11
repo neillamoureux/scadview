@@ -174,7 +174,7 @@ class Camera:
         view_points = view_points / view_points[:, 3][:, np.newaxis]
         return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
 
-    def _frustum_planes(self):
+    def _frustum_planes(self) -> NDArray[np.float32]:
         """
         Compute the frustum planes as a shape (6,4) matrix
         Each row (a, b, c, d) where (a, b, c) is the normal vector of the plane
@@ -206,7 +206,7 @@ class Camera:
 
         return planes
 
-    def axis_visible_range(self, axis: int):
+    def axis_visible_range(self, axis: int) -> tuple[float, float] | None:
         """
         Compute the visible range of the axis in world space.
         The result is a tuple (min, max) where min and max are the

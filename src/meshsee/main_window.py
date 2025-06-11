@@ -36,7 +36,6 @@ class MainWindow(QMainWindow):
         self._controller = controller
         self.setWindowTitle(title)
         self.resize(*size)
-        # self._export_btn = None
         self._main_layout = self._create_main_layout()
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None

@@ -39,22 +39,6 @@ def test_shader_program_initialization(shader_program, mock_context):
     assert shader_program.program is not None
 
 
-# def test_update_program_var_boolean_with_uniform(shader_program):
-#     class DummyUniform:
-#         gl_type = ShaderProgram.BOOLEAN
-
-#         def __init__(self):
-#             self.value = None
-#             self.write = MagicMock()
-
-#     mock_uniform = DummyUniform()
-#     shader_program.program = {"u_showGrid": mock_uniform}
-
-#     shader_program.update_program_var(ShaderVar.SHOW_GRID, True)
-#     assert mock_uniform.value is True
-#     mock_uniform.write.assert_not_called()
-
-
 def test_update_program_var_boolean(shader_program):
     mock_uniform = MagicMock()
     mock_uniform.gl_type = ShaderProgram.BOOLEAN

@@ -47,7 +47,6 @@ class Renderer:
     BACKGROUND_COLOR = (0.7, 0.7, 1.0)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
-        # self._camera = None
         self._aspect_ratio = aspect_ratio
         self._ctx = context
         self._create_shaders()
