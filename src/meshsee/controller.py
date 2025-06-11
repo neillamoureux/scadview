@@ -1,7 +1,7 @@
 from typing import Generator
 from time import time
 
-import trimesh
+from trimesh.exchange import export
 from trimesh import Trimesh
 
 from meshsee.gl_widget_adapter import GlWidgetAdapter
@@ -9,7 +9,7 @@ from meshsee.module_loader import ModuleLoader
 
 
 def export_formats() -> list[str]:
-    return list(trimesh.exchange.export._mesh_exporters.keys())
+    return list(export._mesh_exporters.keys())
 
 
 class Controller:

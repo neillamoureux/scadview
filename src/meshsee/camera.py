@@ -1,11 +1,14 @@
 import numpy as np
+from numpy.typing import NDArray
 from pyrr import matrix33, matrix44
 
 from meshsee.observable import Observable
 from meshsee.shader_program import ShaderVar
 
 
-def intersection(range1: tuple[float], range2: tuple[float]) -> tuple[float] | None:
+def intersection(
+    range1: tuple[float, float] | None, range2: tuple[float, float] | None
+) -> tuple[float, float] | None:
     """
     Compute the intersection of two ranges.
     The result is a tuple (min, max) where min and max are the
@@ -18,18 +21,6 @@ def intersection(range1: tuple[float], range2: tuple[float]) -> tuple[float] | N
     if result[0] > result[1]:
         return None
     return result
-
-
-class Camera:  # forward declaration for functions
-    pass
-
-
-def copy_camera_state(from_camera: Camera, to_camera: Camera):
-    to_camera.points = from_camera.points
-    to_camera.look_at = from_camera.look_at
-    to_camera.position = from_camera.position
-    to_camera.up = from_camera.up
-    to_camera.aspect_ratio = from_camera.aspect_ratio
 
 
 class Camera:
@@ -59,7 +50,7 @@ class Camera:
         self.on_program_value_change = Observable()
 
     @property
-    def direction(self):
+    def direction(self) -> NDArray[np.float32]:
         return self.look_at - self.position
 
     @property
@@ -95,14 +86,14 @@ class Camera:
         return vm
 
     @property
-    def projection_matrix(self) -> np.ndarray: ...
+    def projection_matrix(self) -> NDArray[np.float32]: ...
 
     @property
-    def points(self) -> np.ndarray:
+    def points(self) -> NDArray[np.float32]:
         return self._points
 
     @points.setter
-    def points(self, value: np.ndarray):
+    def points(self, value: NDArray[np.float32]):
         self._points = value
 
     def update_matrices(self):
@@ -139,8 +130,8 @@ class Camera:
 
     def frame(
         self,
-        direction: np.ndarray | None = None,
-        up: np.ndarray | None = None,
+        direction: NDArray[np.float32] | None = None,
+        up: NDArray[np.float32] | None = None,
     ):
         """
         Frame the points with the camera.
@@ -174,7 +165,7 @@ class Camera:
         self.far = max(1.0, self.far)
         self.near = self.far / self.FAR_NEAR_RATIO
 
-    def _bounding_box_in_cam_space(self) -> np.ndarray:
+    def _bounding_box_in_cam_space(self) -> NDArray[np.float32]:
         """
         Find the bounding box of the points.
         """
@@ -183,7 +174,7 @@ class Camera:
         view_points = view_points / view_points[:, 3][:, np.newaxis]
         return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
 
-    def _frustum_planes(self):
+    def _frustum_planes(self) -> NDArray[np.float32]:
         """
         Compute the frustum planes as a shape (6,4) matrix
         Each row (a, b, c, d) where (a, b, c) is the normal vector of the plane
@@ -215,7 +206,7 @@ class Camera:
 
         return planes
 
-    def axis_visible_range(self, axis: int):
+    def axis_visible_range(self, axis: int) -> tuple[float, float] | None:
         """
         Compute the visible range of the axis in world space.
         The result is a tuple (min, max) where min and max are the
@@ -283,7 +274,7 @@ class CameraPerspective(Camera):
         super().__init__()
 
     @property
-    def projection_matrix(self) -> np.ndarray:
+    def projection_matrix(self) -> NDArray[np.float32]:
         pm = matrix44.create_perspective_projection(
             self.fovy, self.aspect_ratio, self.near, self.far, dtype="f4"
         )
@@ -328,7 +319,7 @@ class CameraOrthogonal(Camera):
         return self.top * self.aspect_ratio
 
     @property
-    def projection_matrix(self) -> np.ndarray:
+    def projection_matrix(self) -> NDArray[np.float32]:
         pm = matrix44.create_orthogonal_projection(
             -self.right,
             self.right,
@@ -380,3 +371,11 @@ class CameraOrthogonal(Camera):
         # correct distance after scaling.
 
         self.move_along(perp_direction * (s - 1.0) / s)
+
+
+def copy_camera_state(from_camera: Camera, to_camera: Camera):
+    to_camera.points = from_camera.points
+    to_camera.look_at = from_camera.look_at
+    to_camera.position = from_camera.position
+    to_camera.up = from_camera.up
+    to_camera.aspect_ratio = from_camera.aspect_ratio

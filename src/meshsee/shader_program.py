@@ -3,6 +3,7 @@ from importlib.resources import as_file, files
 from typing import Any
 
 import moderngl
+from moderngl import Uniform
 
 from meshsee.observable import Observable
 import meshsee.shaders
@@ -47,7 +48,9 @@ class ShaderProgram:
             return
         var_name = self.register[var]
         uniform = self.program[var_name]
-        if uniform.gl_type == self.BOOLEAN:
+        if not isinstance(uniform, Uniform):
+            raise TypeError(f"{var_name!r} is not a uniform")
+        if uniform.gl_type == self.BOOLEAN:  # type: ignore[attr-defined]
             uniform.value = value
         else:
             uniform.write(value)

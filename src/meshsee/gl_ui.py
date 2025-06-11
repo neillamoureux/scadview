@@ -20,7 +20,7 @@ def prepare_surface_format(gl_version: tuple[int, int]):
     # In macos, the surface format must be set before creating the application
     fmt = QtGui.QSurfaceFormat()
     fmt.setVersion(*gl_version)
-    fmt.setProfile(QtGui.QSurfaceFormat.CoreProfile)
+    fmt.setProfile(QtGui.QSurfaceFormat.OpenGLContextProfile.CoreProfile)
     QtGui.QSurfaceFormat.setDefaultFormat(fmt)
 
 
@@ -50,7 +50,9 @@ class GlUi:
             splash.show()
             splash.raise_()
             self._app.processEvents()
-            splash.showMessage("Meshsee is initializing...", Qt.AlignCenter)
+            splash.showMessage(
+                "Meshsee is initializing...", Qt.AlignmentFlag.AlignCenter
+            )
             return splash
 
     def run(self):

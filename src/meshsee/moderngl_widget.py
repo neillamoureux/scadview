@@ -26,13 +26,13 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.resize(width, height)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._gl_widget_adapter.start_orbit(
                 event.position().x(), event.position().y()
             )
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._gl_widget_adapter.end_orbit()
 
     def mouseMoveEvent(self, event):
@@ -52,17 +52,17 @@ class ModernglWidget(QOpenGLWidget):
 
     def keyPressEvent(self, event):
         key = event.key()
-        if key == Qt.Key_W or key == Qt.Key_Up:
+        if key == Qt.Key.Key_W or key == Qt.Key.Key_Up:
             self._gl_widget_adapter.move(self.MOVE_STEP)
-        elif key == Qt.Key_S or key == Qt.Key_Down:
+        elif key == Qt.Key.Key_S or key == Qt.Key.Key_Down:
             self._gl_widget_adapter.move(-self.MOVE_STEP)
-        elif key == Qt.Key_A or key == Qt.Key_Left:
+        elif key == Qt.Key.Key_A or key == Qt.Key.Key_Left:
             self._gl_widget_adapter.move_right(-self.MOVE_STEP)
-        elif key == Qt.Key_D or key == Qt.Key_Right:
+        elif key == Qt.Key.Key_D or key == Qt.Key.Key_Right:
             self._gl_widget_adapter.move_right(self.MOVE_STEP)
-        elif key == Qt.Key_Q or key == Qt.Key_PageUp:
+        elif key == Qt.Key.Key_Q or key == Qt.Key.Key_PageUp:
             self._gl_widget_adapter.move_up(self.MOVE_STEP)
-        elif key == Qt.Key_E or key == Qt.Key_PageDown:
+        elif key == Qt.Key.Key_E or key == Qt.Key.Key_PageDown:
             self._gl_widget_adapter.move_up(-self.MOVE_STEP)
         self.update()
 

@@ -47,7 +47,6 @@ class Renderer:
     BACKGROUND_COLOR = (0.7, 0.7, 1.0)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
-        self._camera = None
         self._aspect_ratio = aspect_ratio
         self._ctx = context
         self._create_shaders()
@@ -88,9 +87,11 @@ class Renderer:
 
     @camera.setter
     def camera(self, camera: Camera):
-        if self._camera == camera:
-            return
-        old_camera = self._camera
+        old_camera = None
+        if hasattr(self, "_camera"):
+            if self._camera == camera:
+                return
+            old_camera = self._camera
         camera.on_program_value_change.subscribe(self._update_program_value)
         if old_camera is not None:
             old_camera.on_program_value_change.unsubscribe(self._update_program_value)
