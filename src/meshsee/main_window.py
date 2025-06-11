@@ -235,8 +235,6 @@ class LoadMeshRunnable(QRunnable):
     def stop(self):
         self._stop_requested = True
         print("Current mesh loading stop requested")
-        # if self._stopped:  # Signal stop immediately if already stopped
-        #     self.signal_stop()
 
     def signal_stop(self):
         if not self._stopped:
