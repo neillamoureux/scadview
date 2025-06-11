@@ -50,7 +50,9 @@ class GlUi:
             splash.show()
             splash.raise_()
             self._app.processEvents()
-            splash.showMessage("Meshsee is initializing...", Qt.AlignCenter)
+            splash.showMessage(
+                "Meshsee is initializing...", Qt.AlignmentFlag.AlignCenter
+            )
             return splash
 
     def run(self):
