@@ -19,28 +19,40 @@ class Controller:
         self._module_loader = ModuleLoader(self.CREATE_MESH_FUNCTION_NAME)
         self._gl_widget_adapter = gl_widget_adapter
         self.current_mesh = None
+        self._last_module_path = None
 
     @property
-    def gl_widget_adapter(self):
+    def gl_widget_adapter(self) -> GlWidgetAdapter:
         return self._gl_widget_adapter
 
     @property
-    def current_mesh(self):
+    def current_mesh(self) -> Trimesh | None:
         return self._current_mesh
 
     @current_mesh.setter
-    def current_mesh(self, mesh):
+    def current_mesh(self, mesh: Trimesh | None):
         self._current_mesh = mesh
 
     def load_mesh(
         self, module_path: str | None = None
     ) -> Generator[Trimesh, None, None]:
+        if module_path is None:
+            module_path = self._last_module_path
+        if module_path is None:
+            raise ValueError("No module path selected for load")
+        self._last_module_path = module_path
+        print(f"Starting load of {module_path}")
         t0 = time()
-        for mesh in self._module_loader.run_function(module_path):
-            self.current_mesh = mesh
-            yield mesh
-        t1 = time()
-        print(f"Took {(t1 - t0) * 1000:.1f}ms")
+        try:
+            for i, mesh in enumerate(self._module_loader.run_function(module_path)):
+                self.current_mesh = mesh
+                print(f"Loading mesh #{i + 1}")
+                yield mesh
+            t1 = time()
+            print(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
+        except Exception as e:
+            print(f"Error while loading {module_path}: {e}")
+            raise e
 
     def export(self, file_path: str):
         if not self.current_mesh:
