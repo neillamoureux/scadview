@@ -32,7 +32,6 @@ dev = [
     "pytest-cov>=6.1.1",
     "pytest-mock>=3.14.0",
     "ruff>=0.9.2",
-    "ty>=0.0.1a8",
 ]
 
 [tool.uv.sources]
