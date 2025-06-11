@@ -52,4 +52,4 @@ lint: check-venv
 
 type: check-venv
 	@echo "Type checking the code..."
-	@pyright src/meshsee
+	@pyright
