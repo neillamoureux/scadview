@@ -8,7 +8,6 @@ IS_PLATE = False
 
 
 class LegoBrick:
-
     # Lego constants
     P = 8.0  # multiplier for the peg size
     h = 3.2  # height of a plate

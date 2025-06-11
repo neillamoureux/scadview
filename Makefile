@@ -1,13 +1,14 @@
 help:
 	@echo "Available commands:"
-	@echo "  shell   - Activate the virtual environment"
-	@echo "            This creates the virtual environment if it does not already exist"
+	@echo "  shell   	- Activate the virtual environment"
+	@echo "            	This creates the virtual environment if it does not already exist"
 	@echo "The following require you have run make shell first"
-	@echo "  test    - Run tests"
-	@echo "  run     - Run the application"
-	@echo "  format  - Format the code"
-	@echo "  lint    - Lint the code"
-	@echo "  type	 - Type check the code"
+	@echo "  test    	- Run tests"
+	@echo "  run     	- Run the application"
+	@echo "  format  	- Format the code"
+	@echo "  lint    	- Lint the code"
+	@echo "  type		- Type check the code"
+	@echo "  preflight	- format, lint and type"
 
 VENV_DIR := .venv
 
@@ -53,3 +54,5 @@ lint: check-venv
 type: check-venv
 	@echo "Type checking the code..."
 	@pyright
+
+preflight: format lint type
