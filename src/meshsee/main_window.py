@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self._controller = controller
         self.setWindowTitle(title)
         self.resize(*size)
-        self._export_btn = None
+        # self._export_btn = None
         self._main_layout = self._create_main_layout()
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
 
     def _create_graphics_widget(self):
         gl_widget = ModernglWidget(self._controller._gl_widget_adapter)
-        gl_widget.setFocusPolicy(Qt.StrongFocus)
+        gl_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         return gl_widget
 
     def _create_file_buttons(self):
@@ -163,6 +163,8 @@ class MainWindow(QMainWindow):
 
     def _update_mesh(self, mesh: Trimesh):
         try:
+            if self._mesh_loading_worker is None:
+                raise ValueError("There is no worker to update the mesh")
             mesh = self._mesh_loading_worker._mesh_queue.get_nowait()
             self._gl_widget.load_mesh(mesh)
             if self._first_mesh:
@@ -190,7 +192,7 @@ class LoadMeshRunnable(QRunnable):
     def __init__(
         self,
         controller: Controller,
-        file_path: str,
+        file_path: str | None,
     ):
         super().__init__()
         self._controller = controller
@@ -215,7 +217,7 @@ class LoadMeshRunnable(QRunnable):
                 return
             self._update_if_time(mesh)
         if self._latest_unloaded_mesh is not None:
-            self._update_mesh(mesh)
+            self._update_mesh(self._latest_unloaded_mesh)
         self.signal_stop()
 
     def stop(self):
