@@ -39,23 +39,41 @@ def test_shader_program_initialization(shader_program, mock_context):
     assert shader_program.program is not None
 
 
+# def test_update_program_var_boolean_with_uniform(shader_program):
+#     class DummyUniform:
+#         gl_type = ShaderProgram.BOOLEAN
+
+#         def __init__(self):
+#             self.value = None
+#             self.write = MagicMock()
+
+#     mock_uniform = DummyUniform()
+#     shader_program.program = {"u_showGrid": mock_uniform}
+
+#     shader_program.update_program_var(ShaderVar.SHOW_GRID, True)
+#     assert mock_uniform.value is True
+#     mock_uniform.write.assert_not_called()
+
+
 def test_update_program_var_boolean(shader_program):
     mock_uniform = MagicMock()
     mock_uniform.gl_type = ShaderProgram.BOOLEAN
     shader_program.program = {"u_showGrid": mock_uniform}
-
-    shader_program.update_program_var(ShaderVar.SHOW_GRID, True)
-    mock_uniform.value = True
-    mock_uniform.write.assert_not_called()
+    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+        mock_isinstance.return_value = True
+        shader_program.update_program_var(ShaderVar.SHOW_GRID, True)
+        mock_uniform.value = True
+        mock_uniform.write.assert_not_called()
 
 
 def test_update_program_var_non_boolean(shader_program):
     mock_uniform = MagicMock()
     mock_uniform.gl_type = "non_boolean_type"
     shader_program.program = {"u_meshColor": mock_uniform}
-
-    shader_program.update_program_var(ShaderVar.MESH_COLOR, b"color_data")
-    mock_uniform.write.assert_called_once_with(b"color_data")
+    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+        mock_isinstance.return_value = True
+        shader_program.update_program_var(ShaderVar.MESH_COLOR, b"color_data")
+        mock_uniform.write.assert_called_once_with(b"color_data")
 
 
 def test_update_program_var_invalid_var(shader_program):

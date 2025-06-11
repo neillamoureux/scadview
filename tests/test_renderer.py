@@ -17,18 +17,22 @@ def test_aspect_ratio():
     context.program = Mock(return_value=shader_vars)
     camera = Camera()
     aspect_ratio = 0.5
-    renderer = Renderer(context, camera, aspect_ratio)
-    assert renderer.aspect_ratio == aspect_ratio
-    new_aspect_ratio = 1.6
-    renderer.aspect_ratio = new_aspect_ratio
-    assert renderer.aspect_ratio == new_aspect_ratio
-    assert camera.aspect_ratio == new_aspect_ratio
+    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+        mock_isinstance.return_value = True
+        renderer = Renderer(context, camera, aspect_ratio)
+        assert renderer.aspect_ratio == aspect_ratio
+        new_aspect_ratio = 1.6
+        renderer.aspect_ratio = new_aspect_ratio
+        assert renderer.aspect_ratio == new_aspect_ratio
+        assert camera.aspect_ratio == new_aspect_ratio
 
 
 def test_frame():
     context = MagicMock()
     camera = Mock()
     aspect_ratio = 1.6
-    renderer = Renderer(context, camera, aspect_ratio)
-    renderer.frame()
-    camera.frame.assert_called()
+    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+        mock_isinstance.return_value = True
+        renderer = Renderer(context, camera, aspect_ratio)
+        renderer.frame()
+        camera.frame.assert_called()
