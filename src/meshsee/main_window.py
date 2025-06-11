@@ -138,6 +138,7 @@ class MainWindow(QMainWindow):
 
     def _load_mesh(self, file_path: str | None):
         self._reload_file_btn.setEnabled(True)
+        self._export_btn.setDisabled(True)
         worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
             self._start_worker(worker)
@@ -150,8 +151,7 @@ class MainWindow(QMainWindow):
         self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
         self._mesh_loading_worker.signals.load_start.connect(self._start_load)
         self._mesh_loading_worker.signals.stopped.connect(self._start_next_worker)
-        self._mesh_loading_worker.signals.error.connect(self._load_error)
-        self._export_btn.setEnabled(True)
+        self._mesh_loading_worker.signals.load_successful.connect(self._load_successful)
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
 
     def _start_next_worker(self):
@@ -176,8 +176,8 @@ class MainWindow(QMainWindow):
         except queue.Empty:
             pass
 
-    def _load_error(self):
-        self._export_btn.setDisabled(True)
+    def _load_successful(self):
+        self._export_btn.setEnabled(True)
 
     def export(self):
         filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
@@ -190,7 +190,7 @@ class MeshUpdateSignals(QObject):
     mesh_update = Signal(Trimesh)
     load_start = Signal()
     stopped = Signal()
-    error = Signal()
+    load_successful = Signal()
 
 
 class LoadMeshRunnable(QRunnable):
@@ -225,8 +225,8 @@ class LoadMeshRunnable(QRunnable):
                     self.signal_stop()
                     return
                 self._update_if_time(mesh)
+            self.signals.load_successful.emit()
         except Exception:
-            self.signals.error.emit()
             if self._latest_unloaded_mesh is not None:
                 self._update_mesh(self._latest_unloaded_mesh)
         finally:
