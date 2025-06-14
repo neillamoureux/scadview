@@ -3,7 +3,7 @@ from trimesh.creation import box, cylinder
 from trimesh.transformations import translation_matrix
 
 # Dimensions of the brick (H)/ plate (h)
-DIMS = (10, 20)
+DIMS = (3, 5)
 IS_PLATE = False
 
 
