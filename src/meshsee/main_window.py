@@ -164,12 +164,12 @@ class MainWindow(QMainWindow):
     def _start_load(self):
         self._first_mesh = True
 
-    def _update_mesh(self, meshx: Trimesh):
+    def _update_mesh(self):
         print("Getting latest mesh from queue for viewing")
         try:
             if self._mesh_loading_worker is None:
                 raise ValueError("There is no worker to update the mesh")
-            mesh = self._mesh_loading_worker._mesh_queue.get_nowait()
+            mesh = self._mesh_loading_worker.mesh_queue.get_nowait()
             self._gl_widget.load_mesh(mesh)
             if self._first_mesh:
                 self._first_mesh = False
@@ -289,7 +289,7 @@ class MeshLoader:
         controller: Controller,
         file_path: str | None,
         load_start_callback: Callable[[], None],
-        mesh_update_callback: Callable[[Trimesh], None],
+        mesh_update_callback: Callable[[], None],
         load_successful_callback: Callable[[], None],
         stopped_callback=Callable[[], None],
     ):
@@ -360,4 +360,4 @@ class MeshLoader:
             _ = self.mesh_queue.get_nowait()
             self.mesh_queue.put_nowait(mesh2)
         if not self._stopped:
-            self._mesh_update_callback(mesh2)
+            self._mesh_update_callback()
