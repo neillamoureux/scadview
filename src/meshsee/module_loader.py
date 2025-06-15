@@ -1,8 +1,11 @@
 import importlib
+import logging
 import os
 import sys
 from types import GeneratorType
 from typing import Any, Generator
+
+logger = logging.getLogger(__name__)
 
 
 def yield_if_return(result: Any) -> Generator[Any, None, None]:
@@ -46,7 +49,7 @@ class ModuleLoader:
             try:
                 yield from yield_if_return(func())
             except Exception as e:
-                print(f"Error while executing function: {e}")
+                logger.error(f"Error while executing function: {e}")
         except Exception as e:
-            print(f"Error while loading function: {e}")
+            logger.error(f"Error while loading function: {e}")
             raise e

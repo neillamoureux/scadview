@@ -1,3 +1,4 @@
+import logging
 from math import pi
 
 import moderngl
@@ -9,6 +10,7 @@ from meshsee.render.label_atlas import LabelAtlas
 from meshsee.render.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.render.renderee import Renderee
 
+logger = logging.getLogger(__name__)
 AXIS_WIDTH = 0.01
 
 
@@ -37,7 +39,7 @@ class LabelRenderee(Renderee):
         try:
             self._vao = self._create_vao()
         except Exception as e:
-            print(f"Error creating vertex array: {e}")
+            logger.error(f"Error creating vertex array: {e}")
 
         self._program["atlas"].value = (  # pyright: ignore [reportAttributeAccessIssue]
             self.ATLAS_SAMPLER_LOCATION

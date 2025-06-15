@@ -1,3 +1,4 @@
+import logging
 import os
 from copy import copy
 from functools import cache
@@ -12,6 +13,8 @@ from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 from trimesh import Trimesh
 from trimesh.creation import extrude_polygon
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_FONT = "DejaVuSansMono"  # Default font to use if not specified
 RELATIVE_PATH_TO_FONT = "../resources/"
@@ -28,6 +31,7 @@ def list_system_fonts() -> dict[str, str]:
     Returns a dict mapping font family names -> font file paths
     (only TrueType/OpenType fonts).
     """
+    logger.info("Finding system fonts - this can take some time")
     # findSystemFonts returns absolute paths to .ttf/.otf files
     font_paths = font_manager.findSystemFonts(fontpaths=None, fontext="ttf")
     # also add OpenType fonts
@@ -43,8 +47,10 @@ def list_system_fonts() -> dict[str, str]:
         except Exception:
             # corrupted font? skip
             continue
-    # for font in sorted(fonts.keys()):
-    #     print(f"Font: {font}")
+    if logger.isEnabledFor(logging.DEBUG):
+        for font in sorted(fonts.keys()):
+            logger.debug(f"Font: {font}")
+    logger.info("Found system fonts")
     return fonts
 
 
@@ -83,7 +89,7 @@ def text(
         raise ValueError("direction must be ltr or rtl")
     font_path = list_system_fonts().get(font, None)
     if not font_path:
-        print(
+        logger.warning(
             f"Font '{font}' not found in system fonts. Using default font: {DEFAULT_FONT_PATH}"
         )
         # Use the default font if the specified font is not found

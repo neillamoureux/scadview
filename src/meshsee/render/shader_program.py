@@ -1,3 +1,4 @@
+import logging
 from enum import Enum, auto
 from importlib.resources import as_file, files
 from typing import Any
@@ -5,8 +6,10 @@ from typing import Any
 import moderngl
 from moderngl import Uniform
 
-from meshsee.observable import Observable
 import meshsee.resources.shaders
+from meshsee.observable import Observable
+
+logger = logging.getLogger(__name__)
 
 
 class ShaderVar(Enum):
@@ -45,7 +48,7 @@ class ShaderProgram:
                     fragment_shader=fs_f.read_text(),
                 )
             except Exception as e:
-                print(f"Error creating shader program: {e}")
+                logger.error(f"Error creating shader program: {e}")
 
     def update_program_var(self, var: ShaderVar, value: Any):
         if var not in self.register:
