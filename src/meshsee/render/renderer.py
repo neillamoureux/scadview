@@ -184,10 +184,10 @@ class Renderer:
             self._camera.view_matrix,
         )
         self._main_renderee.subscribe_to_updates(self.on_program_value_change)
-        self._camera.points = self._main_renderee.points
+        self._framing_points = self._main_renderee.points
 
     def frame(self, direction=None, up=None):
-        self._camera.frame(direction, up)
+        self._camera.frame(self._framing_points, direction, up)
 
     def orbit(self, angle_from_up, rotation_angle):
         self._camera.orbit(angle_from_up, rotation_angle)
