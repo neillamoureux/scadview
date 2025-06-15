@@ -39,7 +39,7 @@ class LabelRenderee(Renderee):
         try:
             self._vao = self._create_vao()
         except Exception as e:
-            logger.error(f"Error creating vertex array: {e}")
+            logger.exception(f"Error creating vertex array: {e}")
 
         self._program["atlas"].value = (  # pyright: ignore [reportAttributeAccessIssue]
             self.ATLAS_SAMPLER_LOCATION

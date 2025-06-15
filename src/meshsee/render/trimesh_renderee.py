@@ -78,7 +78,7 @@ def create_vao(
             mode=moderngl.TRIANGLES,
         )
     except Exception as e:
-        logger.error(f"Error creating vertex array: {e}")
+        logger.exception(f"Error creating vertex array: {e}")
         raise e
 
 
