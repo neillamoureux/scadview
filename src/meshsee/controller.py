@@ -48,7 +48,7 @@ class Controller:
             t1 = time()
             logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
         except Exception as e:
-            logger.error(f"Error while loading {module_path}: {e}")
+            logger.exception(f"Error while loading {module_path}: {e}")
             raise e
 
     def export(self, file_path: str):

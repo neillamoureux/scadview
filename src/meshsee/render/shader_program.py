@@ -48,7 +48,7 @@ class ShaderProgram:
                     fragment_shader=fs_f.read_text(),
                 )
             except Exception as e:
-                logger.error(f"Error creating shader program: {e}")
+                logger.exception(f"Error creating shader program: {e}")
 
     def update_program_var(self, var: ShaderVar, value: Any):
         if var not in self.register:
