@@ -1,4 +1,4 @@
-from meshsee.gl_widget_adapter import GlWidgetAdapter
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 from PySide6.QtCore import Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget

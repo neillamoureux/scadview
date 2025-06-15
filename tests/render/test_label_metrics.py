@@ -1,7 +1,7 @@
 import pytest
 from pytest import approx
 
-from meshsee.label_metrics import (
+from meshsee.render.label_metrics import (
     label_char_width,
     label_decimals,
     label_format,

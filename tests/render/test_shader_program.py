@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from meshsee.shader_program import ShaderProgram, ShaderVar
+
+import pytest
+
 from meshsee.observable import Observable
+from meshsee.render.shader_program import ShaderProgram, ShaderVar
 
 
 @pytest.fixture
@@ -18,7 +20,7 @@ def shader_program(mock_context):
         ShaderVar.MESH_COLOR: "u_meshColor",
         ShaderVar.SHOW_GRID: "u_showGrid",
     }
-    with patch("meshsee.shader_program.as_file") as mock_as_file:
+    with patch("meshsee.render.shader_program.as_file") as mock_as_file:
         mock_as_file.return_value.__enter__.return_value.read_text.return_value = (
             "shader code"
         )
@@ -40,7 +42,7 @@ def test_update_program_var_boolean(shader_program):
     mock_uniform = MagicMock()
     mock_uniform.gl_type = ShaderProgram.BOOLEAN
     shader_program.program = {"u_showGrid": mock_uniform}
-    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+    with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         shader_program.update_program_var(ShaderVar.SHOW_GRID, True)
         mock_uniform.value = True
@@ -51,7 +53,7 @@ def test_update_program_var_non_boolean(shader_program):
     mock_uniform = MagicMock()
     mock_uniform.gl_type = "non_boolean_type"
     shader_program.program = {"u_meshColor": mock_uniform}
-    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+    with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         shader_program.update_program_var(ShaderVar.MESH_COLOR, b"color_data")
         mock_uniform.write.assert_called_once_with(b"color_data")

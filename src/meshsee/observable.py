@@ -1,5 +1,5 @@
-from typing import Callable, Any
 import weakref
+from typing import Any, Callable
 
 
 class Observable:

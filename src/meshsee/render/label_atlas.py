@@ -10,7 +10,7 @@ LABEL_CHARS = "0123456789-."
 # DOT_INDEX = LABEL_CHARS.index(".")
 FONT_SIZE = 100  # defines the resolution of the font
 FONT_FILE = "DejaVuSansMono.ttf"
-RELATIVE_PATH_TO_FONT = "."
+RELATIVE_PATH_TO_FONT = "../resources/"
 
 
 def _load_font() -> ImageFont.FreeTypeFont:

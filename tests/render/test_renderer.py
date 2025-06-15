@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
-from meshsee.camera import Camera
-from meshsee.renderer import Renderer
+from meshsee.render.camera import Camera
+from meshsee.render.renderer import Renderer
 
 
 def test_aspect_ratio():
@@ -17,7 +17,7 @@ def test_aspect_ratio():
     context.program = Mock(return_value=shader_vars)
     camera = Camera()
     aspect_ratio = 0.5
-    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+    with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         renderer = Renderer(context, camera, aspect_ratio)
         assert renderer.aspect_ratio == aspect_ratio
@@ -31,7 +31,7 @@ def test_frame():
     context = MagicMock()
     camera = Mock()
     aspect_ratio = 1.6
-    with patch("meshsee.shader_program.isinstance") as mock_isinstance:
+    with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         renderer = Renderer(context, camera, aspect_ratio)
         renderer.frame()

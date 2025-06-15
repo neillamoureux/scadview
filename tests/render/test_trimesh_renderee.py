@@ -1,10 +1,11 @@
 from unittest import mock
 
 import numpy as np
-from pyrr import matrix44
 import pytest
+from pyrr import matrix44
 from trimesh.creation import box, icosphere
 
+from meshsee.render.shader_program import ShaderVar
 from meshsee.render.trimesh_renderee import (
     DEFAULT_COLOR,
     AlphaRenderee,
@@ -20,7 +21,6 @@ from meshsee.render.trimesh_renderee import (
     get_metadata_color,
     sort_triangles,
 )
-from meshsee.shader_program import ShaderVar
 
 
 @pytest.fixture

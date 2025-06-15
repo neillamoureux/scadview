@@ -4,9 +4,9 @@ import moderngl
 import numpy as np
 from pyrr import Matrix44
 
-from meshsee.camera import Camera
-from meshsee.label_atlas import LabelAtlas
-from meshsee.label_metrics import label_char_width, label_step, labels_to_show
+from meshsee.render.camera import Camera
+from meshsee.render.label_atlas import LabelAtlas
+from meshsee.render.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.render.renderee import Renderee
 
 AXIS_WIDTH = 0.01
