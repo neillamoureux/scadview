@@ -1,2 +1,2 @@
 def create_mesh():
-    x = prin(x)
+    prin()  # noqa F821
