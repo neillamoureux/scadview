@@ -1,9 +1,8 @@
-import numpy as np
 from trimesh.creation import box, cylinder
 from trimesh.transformations import translation_matrix
 
 # Dimensions of the brick (H)/ plate (h)
-DIMS = (3, 5)
+DIMS = (10, 20)
 IS_PLATE = False
 
 
@@ -35,8 +34,6 @@ class LegoBrick:
         brk_dims = self.brick_dims()
         brick = box(brk_dims)
         yield brick
-        colors = np.tile([128, 0, 0, 255], (len(brick.vertices), 1))
-        brick.visual.vertex_colors = colors
         # Move bottom of the box to the origin
         bx_translation = translation_matrix([dim / 2 for dim in brk_dims])
         inner_brk_dims = self.inner_brick_dims()

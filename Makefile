@@ -55,4 +55,4 @@ type: check-venv
 	@echo "Type checking the code..."
 	@pyright
 
-preflight: format lint type
+preflight: format lint test type

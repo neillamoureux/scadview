@@ -13,8 +13,8 @@ def main_ui():
     if ui is None:
         renderer_factory = RendererFactory(Camera())
         gl_widget_adapter = GlWidgetAdapter(renderer_factory)
-        controller = Controller(gl_widget_adapter)
-        ui = GlUi(controller)
+        controller = Controller()
+        ui = GlUi(controller, gl_widget_adapter)
     yield ui
 
 
@@ -22,9 +22,12 @@ def test_ui_instance(main_ui):
     assert main_ui is GlUi.instance()
 
 
-def test_ui_instance_singleton():
+def test_ui_instance_singleton(main_ui):
+    renderer_factory = RendererFactory(Camera())
+    gl_widget_adapter = GlWidgetAdapter(renderer_factory)
+    controller = Controller()
     with pytest.raises(RuntimeError):
-        GlUi(RendererFactory(Camera()))
+        GlUi(controller, gl_widget_adapter)
 
 
 # def test_main(mocker):

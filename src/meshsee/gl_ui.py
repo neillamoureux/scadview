@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
 import meshsee
 from meshsee.controller import Controller
 
-# from meshsee.gl_widget_adapter import GlWidgetAdapter
+from meshsee.gl_widget_adapter import GlWidgetAdapter
+from meshsee.moderngl_widget import ModernglWidget
 from meshsee.main_window import MainWindow
 
 
@@ -24,6 +25,12 @@ def prepare_surface_format(gl_version: tuple[int, int]):
     QtGui.QSurfaceFormat.setDefaultFormat(fmt)
 
 
+def create_graphics_widget(gl_widget_adapter: GlWidgetAdapter) -> ModernglWidget:
+    gl_widget = ModernglWidget(gl_widget_adapter)
+    gl_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+    return gl_widget
+
+
 class GlUi:
     MAIN_WINDOW_TITLE = "Meshsee"
     MAIN_WINDOW_SIZE = (800, 600)
@@ -31,15 +38,16 @@ class GlUi:
     GL_VERSION = (3, 3)
     _instance = None
 
-    def __init__(self, controller: Controller):
+    def __init__(self, controller: Controller, gl_widget_adapter: GlWidgetAdapter):
         if self.__class__._instance is not None:
             raise RuntimeError("Only one instance of App is allowed")
         self.__class__._instance = self
         prepare_surface_format(self.GL_VERSION)
         self._app = QApplication(sys.argv)
         self._show_splash()
+        gl_widget = create_graphics_widget(gl_widget_adapter)
         self._main_window = MainWindow(
-            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, controller
+            self.MAIN_WINDOW_TITLE, self.MAIN_WINDOW_SIZE, controller, gl_widget
         )
 
     def _show_splash(self):

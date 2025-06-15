@@ -1,10 +1,9 @@
-from typing import Generator
 from time import time
+from typing import Generator
 
-from trimesh.exchange import export
 from trimesh import Trimesh
+from trimesh.exchange import export
 
-from meshsee.gl_widget_adapter import GlWidgetAdapter
 from meshsee.module_loader import ModuleLoader
 
 
@@ -15,15 +14,10 @@ def export_formats() -> list[str]:
 class Controller:
     CREATE_MESH_FUNCTION_NAME = "create_mesh"
 
-    def __init__(self, gl_widget_adapter: GlWidgetAdapter):
+    def __init__(self):
         self._module_loader = ModuleLoader(self.CREATE_MESH_FUNCTION_NAME)
-        self._gl_widget_adapter = gl_widget_adapter
         self.current_mesh = None
         self._last_module_path = None
-
-    @property
-    def gl_widget_adapter(self) -> GlWidgetAdapter:
-        return self._gl_widget_adapter
 
     @property
     def current_mesh(self) -> Trimesh | None:

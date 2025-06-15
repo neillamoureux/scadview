@@ -1,8 +1,9 @@
-from typing import Callable
-from time import time
 import queue
+from time import time
+from typing import Callable
 
-from PySide6.QtCore import Signal, QObject, Qt, QRunnable, QThreadPool
+from manifold3d import Manifold
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -11,15 +12,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from manifold3d import Manifold
 from trimesh import Trimesh
 
 from meshsee.controller import Controller, export_formats
-from meshsee.moderngl_widget import (
-    ModernglWidget,
-)
-
+from meshsee.moderngl_widget import ModernglWidget
 from meshsee.utils import manifold_to_trimesh
 
 
@@ -32,9 +28,11 @@ class MainWindow(QMainWindow):
         title: str,
         size: tuple[int, int],
         controller: Controller,
+        gl_widget: ModernglWidget,
     ):
         super().__init__()
         self._controller = controller
+        self._gl_widget = gl_widget
         self.setWindowTitle(title)
         self.resize(*size)
         self._main_layout = self._create_main_layout()
@@ -49,18 +47,12 @@ class MainWindow(QMainWindow):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        self._gl_widget = self._create_graphics_widget()
         main_layout.addWidget(self._gl_widget)
         file_buttons = self._create_file_buttons()
         main_layout.addWidget(file_buttons)
         camera_buttons = self._create_camera_buttons()
         main_layout.addWidget(camera_buttons)
         return main_layout
-
-    def _create_graphics_widget(self) -> ModernglWidget:
-        gl_widget = ModernglWidget(self._controller._gl_widget_adapter)
-        gl_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        return gl_widget
 
     def _create_file_buttons(self) -> QWidget:
         file_button_strip = QWidget()
@@ -292,9 +284,10 @@ class MeshLoader:
                 self._update_if_time(mesh)
             self._load_successful_callback()
         except Exception:
+            pass
+        finally:
             if self._latest_unloaded_mesh is not None:
                 self._update_mesh(self._latest_unloaded_mesh)
-        finally:
             self._signal_stop()
 
     def stop(self):
