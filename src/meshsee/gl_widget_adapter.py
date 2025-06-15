@@ -79,7 +79,7 @@ class GlWidgetAdapter:
         self._renderer.move_to_screen(ndx, ndy, distance)
 
     def view_from_xyz(self):
-        direction = np.array([-1, -1, -1])
+        direction = np.array([-1, 1, -1])
         up = np.array([0, 0, 1])
         self._renderer.frame(direction, up)
 
