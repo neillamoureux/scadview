@@ -1,3 +1,4 @@
+import logging
 from time import time
 from typing import Generator
 
@@ -5,6 +6,8 @@ from trimesh import Trimesh
 from trimesh.exchange import export
 
 from meshsee.module_loader import ModuleLoader
+
+logger = logging.getLogger(__name__)
 
 
 def export_formats() -> list[str]:
@@ -35,22 +38,22 @@ class Controller:
         if module_path is None:
             raise ValueError("No module path selected for load")
         self._last_module_path = module_path
-        print(f"Starting load of {module_path}")
+        logger.info(f"Starting load of {module_path}")
         t0 = time()
         try:
             for i, mesh in enumerate(self._module_loader.run_function(module_path)):
                 self.current_mesh = mesh
-                print(f"Loading mesh #{i + 1}")
+                logger.info(f"Loading mesh #{i + 1}")
                 yield mesh
             t1 = time()
-            print(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
+            logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
         except Exception as e:
-            print(f"Error while loading {module_path}: {e}")
+            logger.error(f"Error while loading {module_path}: {e}")
             raise e
 
     def export(self, file_path: str):
         if not self.current_mesh:
-            print("No mesh to export")
+            logger.info("No mesh to export")
             return
         if isinstance(self.current_mesh, list):
             export_mesh = self.current_mesh[-1]

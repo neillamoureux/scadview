@@ -1,3 +1,4 @@
+import logging
 import queue
 from time import time
 from typing import Callable
@@ -17,6 +18,8 @@ from trimesh import Trimesh
 from meshsee.api.utils import manifold_to_trimesh
 from meshsee.controller import Controller, export_formats
 from meshsee.ui.moderngl_widget import ModernglWidget
+
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
@@ -196,7 +199,7 @@ class MeshHandler:
         self._first_mesh = True
 
     def _update_mesh(self):
-        print("Getting latest mesh from queue for viewing")
+        logger.debug("Getting latest mesh from queue for viewing")
         try:
             if self._mesh_loading_worker is None:
                 raise ValueError("There is no worker to update the mesh")
@@ -270,7 +273,7 @@ class MeshLoader:
         self.mesh_queue = queue.Queue(maxsize=1)
 
     def run(self):
-        print("Mesh loading about to start")
+        logger.info("Mesh loading about to start")
         if self._file_path is not None:
             self._load_start_callback()
         if self._stop_requested:
@@ -292,13 +295,13 @@ class MeshLoader:
 
     def stop(self):
         self._stop_requested = True
-        print("Current mesh loading stop requested")
+        logger.debug("Current mesh loading stop requested")
 
     def _signal_stop(self):
         if not self._stopped:
             self._stopped = True
             self._stopped_callback()
-            print("Current mesh loading stopping")
+            logger.info("Current mesh loading stopping")
 
     def _update_if_time(self, mesh: Trimesh):
         if self._first_mesh:
@@ -316,7 +319,7 @@ class MeshLoader:
             mesh2 = manifold_to_trimesh(mesh)
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None
-        print("Placing latest mesh in queue for viewing")
+        logger.debug("Placing latest mesh in queue for viewing")
         try:
             self.mesh_queue.put_nowait(mesh2)
         except queue.Full:

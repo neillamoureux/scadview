@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 
 import moderngl
@@ -9,6 +10,8 @@ from trimesh.bounds import corners
 from meshsee.observable import Observable
 from meshsee.render.label_renderee import Renderee
 from meshsee.render.shader_program import ShaderVar
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 
@@ -75,7 +78,7 @@ def create_vao(
             mode=moderngl.TRIANGLES,
         )
     except Exception as e:
-        print(f"Error creating vertex array: {e}")
+        logger.error(f"Error creating vertex array: {e}")
         raise e
 
 
