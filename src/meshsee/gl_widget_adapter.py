@@ -11,7 +11,7 @@ class GlWidgetAdapter:
         self._renderer_factory = renderer_factory
         self._gl_initialized = False
         self._orbiting = False
-        self.show_grid = True
+        self.show_grid = False
 
     @property
     def show_grid(self):
