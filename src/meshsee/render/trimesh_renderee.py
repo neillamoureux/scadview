@@ -8,7 +8,7 @@ from trimesh.bounds import corners
 
 from meshsee.observable import Observable
 from meshsee.render.label_renderee import Renderee
-from meshsee.shader_program import ShaderVar
+from meshsee.render.shader_program import ShaderVar
 
 DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 

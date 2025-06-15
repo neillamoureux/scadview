@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from meshsee import text_builder
+from meshsee.api import text_builder
 from shapely.geometry import Polygon
 import trimesh
 

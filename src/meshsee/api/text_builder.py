@@ -14,7 +14,7 @@ from trimesh import Trimesh
 from trimesh.creation import extrude_polygon
 
 DEFAULT_FONT = "DejaVuSansMono"  # Default font to use if not specified
-RELATIVE_PATH_TO_FONT = "./"
+RELATIVE_PATH_TO_FONT = "../resources/"
 FONT_FILE = "DejaVuSansMono.ttf"  # Default font file name
 DEFAULT_FONT_PATH = os.path.join(
     os.path.dirname(__file__), RELATIVE_PATH_TO_FONT, FONT_FILE

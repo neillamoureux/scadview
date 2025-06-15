@@ -1,8 +1,8 @@
-from meshsee.camera import CameraPerspective
+from meshsee.render.camera import CameraPerspective
 from meshsee.controller import Controller
-from meshsee.gl_ui import GlUi
-from meshsee.gl_widget_adapter import GlWidgetAdapter
-from meshsee.renderer import RendererFactory
+from meshsee.ui.gl_ui import GlUi
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
+from meshsee.render.renderer import RendererFactory
 
 
 def main():

@@ -6,11 +6,11 @@ from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import box
 
-from meshsee.camera import Camera, copy_camera_state
-from meshsee.label_atlas import LabelAtlas
+from meshsee.render.camera import Camera, copy_camera_state
+from meshsee.render.label_atlas import LabelAtlas
 
 from meshsee.observable import Observable
-from meshsee.shader_program import ShaderProgram, ShaderVar
+from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.label_renderee import (
     LabelSetRenderee,
 )
@@ -20,8 +20,8 @@ from meshsee.render.trimesh_renderee import (
 )
 
 AXIS_LENGTH = 1000.0
-AXIS_WIDTH = 0.01
-AXIS_DEPTH = 0.01
+AXIS_WIDTH = 0.5
+AXIS_DEPTH = 0.5
 MESH_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 MAX_LABEL_FRAC_OF_STEP = 0.5
 MAX_LABELS_PER_AXIS = 20

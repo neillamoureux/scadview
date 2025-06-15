@@ -6,7 +6,7 @@ import moderngl
 from moderngl import Uniform
 
 from meshsee.observable import Observable
-import meshsee.shaders
+import meshsee.resources.shaders
 
 
 class ShaderVar(Enum):
@@ -29,8 +29,12 @@ class ShaderProgram:
     ):
         self._ctx = ctx
         self.register = register
-        vertex_shader_source = files(meshsee.shaders).joinpath(vertex_shader_loc)
-        fragment_shader_source = files(meshsee.shaders).joinpath(fragment_shader_loc)
+        vertex_shader_source = files(meshsee.resources.shaders).joinpath(
+            vertex_shader_loc
+        )
+        fragment_shader_source = files(meshsee.resources.shaders).joinpath(
+            fragment_shader_loc
+        )
         with (
             as_file(vertex_shader_source) as vs_f,
             as_file(fragment_shader_source) as fs_f,

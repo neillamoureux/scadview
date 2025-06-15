@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 from pyrr import matrix33, matrix44
 
 from meshsee.observable import Observable
-from meshsee.shader_program import ShaderVar
+from meshsee.render.shader_program import ShaderVar
 
 
 def intersection(

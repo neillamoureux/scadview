@@ -1,9 +1,8 @@
-from types import GeneratorType
-from typing import Any, Generator
-
 import importlib
 import os
 import sys
+from types import GeneratorType
+from typing import Any, Generator
 
 
 def yield_if_return(result: Any) -> Generator[Any, None, None]:

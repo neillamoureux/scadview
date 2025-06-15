@@ -1,20 +1,17 @@
-from importlib.resources import as_file, files
 import sys
+from importlib.resources import as_file, files
 
-from PySide6.QtCore import Qt
 from PySide6 import QtGui
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (
-    QApplication,
-    QSplashScreen,
-)
+from PySide6.QtWidgets import QApplication, QSplashScreen
 
 import meshsee
+import meshsee.resources
 from meshsee.controller import Controller
-
-from meshsee.gl_widget_adapter import GlWidgetAdapter
-from meshsee.moderngl_widget import ModernglWidget
-from meshsee.main_window import MainWindow
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
+from meshsee.ui.main_window import MainWindow
+from meshsee.ui.moderngl_widget import ModernglWidget
 
 
 def prepare_surface_format(gl_version: tuple[int, int]):
@@ -51,7 +48,7 @@ class GlUi:
         )
 
     def _show_splash(self):
-        splash_image = files(meshsee).joinpath("splash.png")
+        splash_image = files(meshsee.resources).joinpath("splash.png")
         with as_file(splash_image) as splash_f:
             splash_pix = QPixmap(splash_f)
             splash = QSplashScreen(splash_pix)

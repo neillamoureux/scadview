@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
 )
 from trimesh import Trimesh
 
+from meshsee.api.utils import manifold_to_trimesh
 from meshsee.controller import Controller, export_formats
-from meshsee.moderngl_widget import ModernglWidget
-from meshsee.utils import manifold_to_trimesh
+from meshsee.ui.moderngl_widget import ModernglWidget
 
 
 class MainWindow(QMainWindow):
