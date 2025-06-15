@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
+import numpy as np
+
 from meshsee.render.camera import Camera
 from meshsee.render.renderer import Renderer
 
@@ -34,5 +36,5 @@ def test_frame():
     with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         renderer = Renderer(context, camera, aspect_ratio)
-        renderer.frame()
+        renderer.frame(np.array([[1, 0, 0]]))
         camera.frame.assert_called()

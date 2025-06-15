@@ -36,7 +36,7 @@ class Camera:
     def __init__(self):
         self.position = self.POSITION_INIT
         self.look_at = np.array([0.0, 0.0, 0.0], dtype="f4")
-        self.points = np.array(
+        self._last_framing_points = np.array(
             [
                 [1.0, 1.0, 1.0],
             ],
@@ -97,7 +97,7 @@ class Camera:
         self._points = value
 
     def update_matrices(self):
-        self._update_far_near()
+        self._update_far_near(self._last_framing_points)
         self.view_matrix
         self.projection_matrix
 
@@ -130,6 +130,7 @@ class Camera:
 
     def frame(
         self,
+        framing_points: NDArray[np.float32],
         direction: NDArray[np.float32] | None = None,
         up: NDArray[np.float32] | None = None,
     ):
@@ -142,11 +143,11 @@ class Camera:
             up = self.up
         else:
             self.up = up
-        center = np.mean(self.points, axis=0)
+        center = np.mean(framing_points, axis=0)
         self.look_at = center
         self.position = center - direction
         norm_direction = direction / np.linalg.norm(direction)
-        bb = self._bounding_box_in_cam_space()
+        bb = self._bounding_box_in_cam_space(framing_points)
         abs_x_max = np.max(np.abs(bb[:, 0]))
         abs_y_max = np.max(np.abs(bb[:, 1]))
         max_z = np.max(
@@ -156,20 +157,24 @@ class Camera:
         y_dist = abs_y_max / np.tan(np.radians(self.fovy) / 2)
         dist = max(x_dist, y_dist)
         self.position = center - direction - norm_direction * (max_z + dist)
-        self._update_far_near()
+        self._last_framing_points = framing_points
         self.update_matrices()
 
-    def _update_far_near(self):
-        bb = self._bounding_box_in_cam_space()
+    def _update_far_near(self, framing_points: NDArray[np.float32]):
+        bb = self._bounding_box_in_cam_space(framing_points)
         self.far = -np.min(bb[:, 2]) * self.FAR_MULTIPLIER
         self.far = max(1.0, self.far)
         self.near = self.far / self.FAR_NEAR_RATIO
 
-    def _bounding_box_in_cam_space(self) -> NDArray[np.float32]:
+    def _bounding_box_in_cam_space(
+        self, framing_points: NDArray[np.float32]
+    ) -> NDArray[np.float32]:
         """
         Find the bounding box of the points.
         """
-        points_4d = np.append(self.points, np.ones((self.points.shape[0], 1)), axis=1)
+        points_4d = np.append(
+            framing_points, np.ones((framing_points.shape[0], 1)), axis=1
+        )
         view_points = points_4d.dot(self.view_matrix)
         view_points = view_points / view_points[:, 3][:, np.newaxis]
         return np.array([np.min(view_points, axis=0), np.max(view_points, axis=0)])
@@ -374,7 +379,6 @@ class CameraOrthogonal(Camera):
 
 
 def copy_camera_state(from_camera: Camera, to_camera: Camera):
-    to_camera.points = from_camera.points
     to_camera.look_at = from_camera.look_at
     to_camera.position = from_camera.position
     to_camera.up = from_camera.up
