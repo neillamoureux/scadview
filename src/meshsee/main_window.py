@@ -38,9 +38,15 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(title)
         self.resize(*size)
         self._main_layout = self._create_main_layout()
-        self._mesh_loading_worker = None
-        self._next_mesh_loading_worker = None
-        self._first_mesh = False
+        # self._mesh_loading_worker = None
+        # self._next_mesh_loading_worker = None
+        # self._first_mesh = False
+        self._mesh_handler = MeshHandler(
+            controller=controller,
+            gl_widget=self._gl_widget,
+            reload_file_btn=self._reload_file_btn,
+            export_btn=self._export_btn,
+        )
         # self._last_mesh_update = time()
         # self._latest_unloaded_mesh = None
 
@@ -138,6 +144,86 @@ class MainWindow(QMainWindow):
         self._load_mesh(None)
 
     def _load_mesh(self, file_path: str | None):
+        self._mesh_handler.load_mesh(file_path)
+
+    #     self._reload_file_btn.setEnabled(True)
+    #     self._export_btn.setDisabled(True)
+    #     worker = LoadMeshRunnable(self._controller, file_path)
+    #     if self._mesh_loading_worker is None:
+    #         self._start_worker(worker)
+    #     else:
+    #         self._next_mesh_loading_worker = worker
+    #         self._mesh_loading_worker.stop()
+
+    # def _start_worker(self, worker):
+    #     self._mesh_loading_worker = worker
+    #     self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
+    #     self._mesh_loading_worker.signals.load_start.connect(self._start_load)
+    #     self._mesh_loading_worker.signals.stopped.connect(self._start_next_worker)
+    #     self._mesh_loading_worker.signals.load_successful.connect(self._load_successful)
+    #     QThreadPool.globalInstance().start(self._mesh_loading_worker)
+
+    # def _start_next_worker(self):
+    #     self._mesh_loading_worker = None
+    #     if self._next_mesh_loading_worker is not None:
+    #         self._start_worker(self._next_mesh_loading_worker)
+    #         self._next_mesh_loading_worker = None
+
+    # def _start_load(self):
+    #     self._first_mesh = True
+
+    # def _update_mesh(self):
+    #     print("Getting latest mesh from queue for viewing")
+    #     try:
+    #         if self._mesh_loading_worker is None:
+    #             raise ValueError("There is no worker to update the mesh")
+    #         mesh = self._mesh_loading_worker.mesh_queue.get_nowait()
+    #         self._gl_widget.load_mesh(mesh)
+    #         if self._first_mesh:
+    #             self._first_mesh = False
+    #             self._gl_widget.frame()
+    #     except queue.Empty:
+    #         pass
+
+    # def _load_successful(self):
+    #     self._export_btn.setEnabled(True)
+
+    def export(self):
+        filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
+        file_path, _ = QFileDialog.getSaveFileName(self, "Export File", filter=filt)
+        if file_path:
+            self._controller.export(file_path)
+
+
+class MeshUpdateSignals(QObject):
+    load_start = Signal()
+    mesh_update = Signal()
+    load_successful = Signal()
+    stopped = Signal()
+
+
+class MeshHandler:
+    """
+    Handle logic of starting thread to load a mesh,
+    as well as enabling / disabling reload and export widgets.
+    """
+
+    def __init__(
+        self,
+        controller: Controller,
+        gl_widget: ModernglWidget,
+        reload_file_btn: QWidget,
+        export_btn: QWidget,
+    ):
+        self._controller = controller
+        self._gl_widget = gl_widget
+        self._reload_file_btn = reload_file_btn
+        self._export_btn = export_btn
+        self._mesh_loading_worker = None
+        self._next_mesh_loading_worker = None
+        self._first_mesh = False
+
+    def load_mesh(self, file_path: str | None):
         self._reload_file_btn.setEnabled(True)
         self._export_btn.setDisabled(True)
         worker = LoadMeshRunnable(self._controller, file_path)
@@ -179,19 +265,6 @@ class MainWindow(QMainWindow):
 
     def _load_successful(self):
         self._export_btn.setEnabled(True)
-
-    def export(self):
-        filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export File", filter=filt)
-        if file_path:
-            self._controller.export(file_path)
-
-
-class MeshUpdateSignals(QObject):
-    load_start = Signal()
-    mesh_update = Signal()
-    load_successful = Signal()
-    stopped = Signal()
 
 
 class LoadMeshRunnable(QRunnable):
@@ -245,9 +318,10 @@ class LoadMeshRunnable(QRunnable):
         # finally:
         #     self.signal_stop()
 
-    # def stop(self):
-    #     self._stop_requested = True
-    #     print("Current mesh loading stop requested")
+    def stop(self):
+        self._mesh_loader.stop()
+        # self._stop_requested = True
+        # print("Current mesh loading stop requested")
 
     # def signal_stop(self):
     #     if not self._stopped:
@@ -312,12 +386,12 @@ class MeshLoader:
         if self._file_path is not None:
             self._load_start_callback()
         if self._stop_requested:
-            self.signal_stop()
+            self._signal_stop()
             return
         try:
             for mesh in self._controller.load_mesh(self._file_path):
                 if self._stop_requested:
-                    self.signal_stop()
+                    self._signal_stop()
                     return
                 self._update_if_time(mesh)
             self._load_successful_callback()
@@ -325,13 +399,13 @@ class MeshLoader:
             if self._latest_unloaded_mesh is not None:
                 self._update_mesh(self._latest_unloaded_mesh)
         finally:
-            self.signal_stop()
+            self._signal_stop()
 
     def stop(self):
         self._stop_requested = True
         print("Current mesh loading stop requested")
 
-    def signal_stop(self):
+    def _signal_stop(self):
         if not self._stopped:
             self._stopped = True
             self._stopped_callback()
