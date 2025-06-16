@@ -15,6 +15,7 @@ from meshsee.render.trimesh_renderee import (
     TrimeshOpaqueRenderee,
     TrimeshRenderee,
     concat_colors,
+    convert_color_to_uint8,
     create_colors_array,
     create_colors_array_from_mesh,
     create_trimesh_renderee,
@@ -105,36 +106,50 @@ def dummy_trimesh_list_renderee(dummy_trimesh_renderee, dummy_trimesh_alpha_rend
     )
 
 
+def test_convert_color_to_uint8():
+    color = [0.1, 0.2, 0.3, 1.0]
+    expected = np.array([26, 51, 76, 255], dtype=np.uint8)
+    result = convert_color_to_uint8(color)
+    assert np.array_equal(result, expected)
+
+
 def test_get_metadata_color(dummy_trimesh):
-    expected_color = [0.1, 0.2, 0.3, 0.4]
-    dummy_trimesh.metadata["meshsee"] = {"color": expected_color}
+    metadata_color = [0.1, 0.2, 0.3, 0.4]
+    expected_color = convert_color_to_uint8(metadata_color)
+    dummy_trimesh.metadata["meshsee"] = {"color": metadata_color}
     assert np.all(get_metadata_color(dummy_trimesh) == expected_color)
 
 
 def test_get_metadata_color_empty_dict(dummy_trimesh):
     dummy_trimesh.metadata = {}
-    assert np.all(get_metadata_color(dummy_trimesh) == DEFAULT_COLOR)
+    assert np.all(
+        get_metadata_color(dummy_trimesh) == convert_color_to_uint8(DEFAULT_COLOR)
+    )
 
 
 def test_get_metadata_color_none(dummy_trimesh):
     dummy_trimesh.metadata = None
-    assert np.all(get_metadata_color(dummy_trimesh) == DEFAULT_COLOR)
+    assert np.all(
+        get_metadata_color(dummy_trimesh) == convert_color_to_uint8(DEFAULT_COLOR)
+    )
 
 
 def test_get_metadata_color_missing(dummy_trimesh):
     del dummy_trimesh.metadata["meshsee"]["color"]
-    assert np.all(get_metadata_color(dummy_trimesh) == DEFAULT_COLOR)
+    assert np.all(
+        get_metadata_color(dummy_trimesh) == convert_color_to_uint8(DEFAULT_COLOR)
+    )
 
 
 def test_create_colors_array():
-    color = np.array([0.1, 0.3, 0.7, 0.5])
+    color = convert_color_to_uint8([0.1, 0.3, 0.7, 0.5])
     triangle_count = 5
     colors_arr = create_colors_array(color, triangle_count)
     assert colors_arr.shape == (triangle_count, 3, 4)
     colors = colors_arr.reshape(-1, 4)
     for c in colors:
         print(c)
-        assert np.all(c == color.astype("f4"))
+        assert np.all(c == color.astype(np.uint8))
 
 
 def test_concat_colors():
@@ -146,13 +161,13 @@ def test_concat_colors():
     assert colors.shape == (2 * 12, 3 * 4)
     for i, color in enumerate(colors):
         if i < 12:
-            assert np.all(color[0:4] == np.array([0.1, 0.2, 0.3, 0.4], dtype="f4"))
-            assert np.all(color[4:8] == np.array([0.1, 0.2, 0.3, 0.4], dtype="f4"))
-            assert np.all(color[8:12] == np.array([0.1, 0.2, 0.3, 0.4], dtype="f4"))
+            assert np.all(color[0:4] == convert_color_to_uint8([0.1, 0.2, 0.3, 0.4]))
+            assert np.all(color[4:8] == convert_color_to_uint8([0.1, 0.2, 0.3, 0.4]))
+            assert np.all(color[8:12] == convert_color_to_uint8([0.1, 0.2, 0.3, 0.4]))
         else:
-            assert np.all(color[0:4] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
-            assert np.all(color[4:8] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
-            assert np.all(color[8:12] == np.array([0.5, 0.6, 0.7, 0.8], dtype="f4"))
+            assert np.all(color[0:4] == convert_color_to_uint8([0.5, 0.6, 0.7, 0.8]))
+            assert np.all(color[4:8] == convert_color_to_uint8([0.5, 0.6, 0.7, 0.8]))
+            assert np.all(color[8:12] == convert_color_to_uint8([0.5, 0.6, 0.7, 0.8]))
 
 
 def test_sort_vertices():
@@ -282,36 +297,6 @@ def test_trimesh_renderee_subscribe_to_updates(dummy_trimesh_renderee):
         hasattr(dummy_trimesh_renderee, "subscribed")
         and dummy_trimesh_renderee.subscribed
     )
-
-
-class DummyMesh:
-    def __init__(self, metadata=None):
-        self.metadata = metadata or {}
-
-
-def test_get_metadata_color_with_meshsee_color():
-    color = [0.1, 0.2, 0.3, 0.4]
-    mesh = DummyMesh(metadata={"meshsee": {"color": color}})
-    result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, np.array(color))
-
-
-def test_get_metadata_color_with_meshsee_no_color():
-    mesh = DummyMesh(metadata={"meshsee": {}})
-    result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, DEFAULT_COLOR)
-
-
-def test_get_metadata_color_no_meshsee():
-    mesh = DummyMesh(metadata={})
-    result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, DEFAULT_COLOR)
-
-
-def test_get_metadata_color_meshsee_not_dict():
-    mesh = DummyMesh(metadata={"meshsee": None})
-    result = get_metadata_color(mesh)
-    np.testing.assert_array_equal(result, DEFAULT_COLOR)
 
 
 def test_trimesh_opaque_renderee_init_sets_vao(dummy_trimesh):
