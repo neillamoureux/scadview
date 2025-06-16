@@ -43,4 +43,10 @@ class ModuleLoader:
                 f"Function '{self._function_name}' not found in '{file_path}'"
             )
         func = getattr(module, self._function_name)
-        yield from yield_if_return(func())
+        try:
+            yield from yield_if_return(func())
+        except Exception as e:
+            logger.exception(
+                f"Error while running {self._function_name} in {file_path}: {e}"
+            )
+            raise e
