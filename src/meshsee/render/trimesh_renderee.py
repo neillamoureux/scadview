@@ -13,7 +13,7 @@ from meshsee.render.shader_program import ShaderVar
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
+DEFAULT_COLOR = [0.5, 0.5, 0.5, 1.0]
 
 
 def create_vao_from_mesh(
@@ -28,21 +28,25 @@ def create_vao_from_mesh(
     )
 
 
-def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.float32]:
+def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.uint8]:
     return create_colors_array(get_metadata_color(mesh), mesh.triangles.shape[0])
 
 
-def get_metadata_color(mesh: Trimesh) -> NDArray[np.float32]:
+def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
     if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
         if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
-            return np.array(mesh.metadata["meshsee"]["color"])
-    return DEFAULT_COLOR
+            return convert_color_to_uint8(mesh.metadata["meshsee"]["color"])
+    return convert_color_to_uint8(DEFAULT_COLOR)
+
+
+def convert_color_to_uint8(color: list[float]) -> NDArray[np.uint8]:
+    return (np.array(color) * 255).round().astype(np.uint8)
 
 
 def create_colors_array(
-    color: NDArray[np.float32], triangle_count: int
-) -> NDArray[np.float32]:
-    return np.tile(color, triangle_count * 3).astype("f4").reshape(-1, 3, 4)
+    color: NDArray[np.uint8], triangle_count: int
+) -> NDArray[np.uint8]:
+    return np.tile(color, triangle_count * 3).astype(np.uint8).reshape(-1, 3, 4)
 
 
 def create_vao_from_arrays(
@@ -50,13 +54,13 @@ def create_vao_from_arrays(
     program: moderngl.Program,
     triangles: NDArray[np.float32],
     triangles_cross: NDArray[np.float32],
-    colors_arr: NDArray[np.float32],
+    colors_arr: NDArray[np.uint8],
 ) -> moderngl.VertexArray:
     vertices = ctx.buffer(data=triangles.astype("f4").tobytes())
     normals = ctx.buffer(
         data=np.array([[v] * 3 for v in triangles_cross]).astype("f4").tobytes()
     )
-    colors = ctx.buffer(data=colors_arr.astype("f4").tobytes())
+    colors = ctx.buffer(data=colors_arr.tobytes())
     return create_vao(ctx, program, vertices, normals, colors)
 
 
@@ -73,7 +77,7 @@ def create_vao(
             [
                 (vertices, "3f4", "in_position"),
                 (normals, "3f4", "in_normal"),
-                (colors, "4f4", "in_color"),
+                (colors, "4f1", "in_color"),
             ],
             mode=moderngl.TRIANGLES,
         )
@@ -82,13 +86,13 @@ def create_vao(
         raise e
 
 
-def concat_colors(meshes: list[Trimesh]) -> NDArray[np.float32]:
+def concat_colors(meshes: list[Trimesh]) -> NDArray[np.uint8]:
     colors_list = []
     for mesh in meshes:
         color = get_metadata_color(mesh)
         n_triangles = mesh.triangles.shape[0]
         colors_list.append(np.tile(color, (n_triangles, 3)))
-    return np.concatenate(colors_list, axis=0).astype("f4")
+    return np.concatenate(colors_list, axis=0).astype(np.uint8)
 
 
 class TrimeshRenderee(Renderee):
@@ -149,7 +153,7 @@ class AlphaRenderee(Renderee):
         program: moderngl.Program,
         triangles: NDArray[np.float32],
         triangles_cross: NDArray[np.float32],
-        colors_arr: NDArray[np.float32],
+        colors_arr: NDArray[np.uint8],
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
     ):
@@ -381,7 +385,7 @@ def split_opaque_alpha(meshes: list[Trimesh]):
 
 
 def is_alpha(mesh: Trimesh) -> bool:
-    return get_metadata_color(mesh)[3] < 1.0
+    return get_metadata_color(mesh)[3] < 255
 
 
 def create_trimesh_list_opaque_renderee(
