@@ -148,6 +148,7 @@ class MeshUpdateSignals(QObject):
     mesh_update = Signal()
     load_successful = Signal()
     stopped = Signal()
+    error = Signal()
 
 
 class MeshHandler:
@@ -187,6 +188,8 @@ class MeshHandler:
         self._mesh_loading_worker.signals.load_start.connect(self._start_load)
         self._mesh_loading_worker.signals.stopped.connect(self._start_next_worker)
         self._mesh_loading_worker.signals.load_successful.connect(self._load_successful)
+        self._mesh_loading_worker.signals.error.connect(self._indicate_error)
+        self._gl_widget.indicate_load_state("loading")
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
 
     def _start_next_worker(self):
@@ -212,7 +215,11 @@ class MeshHandler:
             pass
 
     def _load_successful(self):
+        self._gl_widget.indicate_load_state("success")
         self._export_btn.setEnabled(True)
+
+    def _indicate_error(self):
+        self._gl_widget.indicate_load_state("error")
 
 
 class LoadMeshRunnable(QRunnable):
@@ -232,6 +239,7 @@ class LoadMeshRunnable(QRunnable):
             mesh_update_callback=signals.mesh_update.emit,
             load_successful_callback=signals.load_successful.emit,
             stopped_callback=signals.stopped.emit,
+            error_callback=signals.error.emit,
         )
         self.signals = signals
         self.mesh_queue = self._mesh_loader.mesh_queue
@@ -258,6 +266,7 @@ class MeshLoader:
         mesh_update_callback: Callable[[], None],
         load_successful_callback: Callable[[], None],
         stopped_callback=Callable[[], None],
+        error_callback=Callable[[], None],
     ):
         self._controller = controller
         self._file_path = file_path
@@ -265,6 +274,7 @@ class MeshLoader:
         self._mesh_update_callback = mesh_update_callback
         self._load_successful_callback = load_successful_callback
         self._stopped_callback = stopped_callback
+        self._error_callback = error_callback
         self._stop_requested = False
         self._stopped = False
         self._first_mesh = True
@@ -287,7 +297,7 @@ class MeshLoader:
                 self._update_if_time(mesh)
             self._load_successful_callback()
         except Exception:
-            pass
+            self._error_callback()
         finally:
             if self._latest_unloaded_mesh is not None:
                 self._update_mesh(self._latest_unloaded_mesh)
