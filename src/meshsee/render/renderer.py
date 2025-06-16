@@ -16,6 +16,7 @@ from meshsee.render.label_renderee import (
 )
 from meshsee.render.trimesh_renderee import (
     create_trimesh_renderee,
+    TrimeshListRenderee,
     TrimeshOpaqueRenderee,
 )
 import logging
@@ -47,10 +48,11 @@ def _make_axes() -> Trimesh:
 
 
 class Renderer:
-    DEFAULT_BACKGROUND_COLOR = (0.7, 0.7, 1.0, 1.0)
-    LOADING_BACKGROUND_COLOR = (0.5, 0.5, 0.8, 1.0)
-    SUCCESS_BACKGROUND_COLOR = (0.5, 0.6, 0.5, 1.0)
-    ERROR_BACKGROUND_COLOR = (0.5, 0.1, 0.1, 1.0)
+    DEFAULT_BACKGROUND_COLOR = (0.552, 0.770, 0.770, 1.0)  # cyan
+    LOADING_BACKGROUND_COLOR = (0.741, 0.781, 0.996, 1.0)  # blue
+    SUCCESS_BACKGROUND_COLOR = (0.720, 0.964, 0.720, 1.0)  # green
+    DEBUG_BACKGROUND_COLOR = (0.980, 0.980, 0.690, 1.0)  # yellow
+    ERROR_BACKGROUND_COLOR = (0.976, 0.765, 0.765, 1.0)  #  red
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._aspect_ratio = aspect_ratio
@@ -197,7 +199,10 @@ class Renderer:
         if state == "loading":
             self.background_color = self.LOADING_BACKGROUND_COLOR
         elif state == "success":
-            self.background_color = self.SUCCESS_BACKGROUND_COLOR
+            if isinstance(self._main_renderee, TrimeshListRenderee):
+                self.background_color = self.DEBUG_BACKGROUND_COLOR
+            else:
+                self.background_color = self.SUCCESS_BACKGROUND_COLOR
         elif state == "error":
             self.background_color = self.ERROR_BACKGROUND_COLOR
         else:

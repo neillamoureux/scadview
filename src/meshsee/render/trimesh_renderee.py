@@ -348,7 +348,7 @@ def create_trimesh_renderee(
         return create_single_trimesh_renderee(
             ctx, program, mesh, model_matrix, view_matrix
         )
-    elif not isinstance(mesh, Trimesh):
+    else:
         raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
 
 
