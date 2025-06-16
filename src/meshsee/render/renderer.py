@@ -18,6 +18,9 @@ from meshsee.render.trimesh_renderee import (
     create_trimesh_renderee,
     TrimeshOpaqueRenderee,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 AXIS_LENGTH = 1000.0
 AXIS_WIDTH = 0.5
@@ -44,7 +47,10 @@ def _make_axes() -> Trimesh:
 
 
 class Renderer:
-    BACKGROUND_COLOR = (0.7, 0.7, 1.0)
+    DEFAULT_BACKGROUND_COLOR = (0.7, 0.7, 1.0, 1.0)
+    LOADING_BACKGROUND_COLOR = (0.5, 0.5, 0.8, 1.0)
+    SUCCESS_BACKGROUND_COLOR = (0.5, 0.6, 0.5, 1.0)
+    ERROR_BACKGROUND_COLOR = (0.5, 0.1, 0.1, 1.0)
 
     def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
         self._aspect_ratio = aspect_ratio
@@ -53,7 +59,10 @@ class Renderer:
         self.camera = camera
         self._init_shaders()
         self._create_renderees()
-        self._ctx.clear(*self.BACKGROUND_COLOR)
+        self._clear_background = True
+        self._last_background_color = self.ERROR_BACKGROUND_COLOR
+        self.background_color = self.DEFAULT_BACKGROUND_COLOR
+        self._ctx.clear(*self._background_color)
         self.load_mesh(_make_default_mesh())
         self.frame()
 
@@ -104,6 +113,18 @@ class Renderer:
         self.show_grid = True
         self._update_program_value(ShaderVar.MODEL_MATRIX, self._m_model)
         self._update_program_value(ShaderVar.MESH_COLOR, MESH_COLOR)
+
+    @property
+    def background_color(self):
+        return self._background_color
+
+    @background_color.setter
+    def background_color(self, color: tuple[float, float, float, float]):
+        self._background_color = color
+        if self._last_background_color != self._background_color:
+            logger.debug("Background color changed)")
+            self._clear_background = True
+        self._last_background_color = self._background_color
 
     @property
     def aspect_ratio(self):
@@ -172,6 +193,16 @@ class Renderer:
             "label_vertex.glsl", "label_fragment.glsl", program_vars, observable
         )
 
+    def indicate_load_state(self, state: str):
+        if state == "loading":
+            self.background_color = self.LOADING_BACKGROUND_COLOR
+        elif state == "success":
+            self.background_color = self.SUCCESS_BACKGROUND_COLOR
+        elif state == "error":
+            self.background_color = self.ERROR_BACKGROUND_COLOR
+        else:
+            self.background_color = self.DEFAULT_BACKGROUND_COLOR
+
     def load_mesh(
         self,
         mesh: Trimesh | list[Trimesh],
@@ -211,16 +242,16 @@ class Renderer:
         self._camera.move_to_screen(ndx, ndy, distance)
 
     def render(self, show_grid: bool):  # override
-        # self._ctx.enable_only(moderngl.DEPTH_TEST)
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-
-        # self.ctx.enable_only(moderngl.BLEND)
-        # self._ctx.clear(0.5, 0.3, 0.2, 1.0)
         self.show_grid = True
         self._axes_renderee.render()
         self.show_grid = show_grid
         self._main_renderee.render()
         self._label_set_renderee.render()
+        if self._clear_background:
+            logger.debug(f"Clearing with color {self._background_color}")
+            self._ctx.clear(*self._background_color)
+            self._clear_background = False
 
 
 class RendererFactory:

@@ -33,6 +33,7 @@ class Controller:
     def load_mesh(
         self, module_path: str | None = None
     ) -> Generator[Trimesh, None, None]:
+        self.current_mesh = None
         if module_path is None:
             module_path = self._last_module_path
         if module_path is None:

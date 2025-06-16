@@ -14,6 +14,8 @@ class ModernglWidget(QOpenGLWidget):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter
         self._gl_initialized = False
+        self._render_twice = False
+        self._last_error_indicator = False
 
     def initializeGL(self):  # override
         self._gl_widget_adapter.init_gl(self.width(), self.height())
@@ -21,6 +23,12 @@ class ModernglWidget(QOpenGLWidget):
 
     def paintGL(self):  # override
         self._gl_widget_adapter.render()
+        self._double_render_if_needed()
+
+    def _double_render_if_needed(self):
+        if self._render_twice:
+            self._render_twice = False
+            self.update()
 
     def resizeGL(self, width, height):  # override
         self._gl_widget_adapter.resize(width, height)
@@ -80,6 +88,12 @@ class ModernglWidget(QOpenGLWidget):
 
     def view_from_z(self):
         self._gl_widget_adapter.view_from_z()
+        self.update()
+
+    def indicate_load_state(self, state: str):
+        # Changing the background color seems to require two renders
+        self._gl_widget_adapter.indicate_load_state(state)
+        self._render_twice = True
         self.update()
 
     def frame(self):
