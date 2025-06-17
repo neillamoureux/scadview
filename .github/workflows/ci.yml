@@ -18,13 +18,9 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        uses: supplypike/setup-bin@v3
-        with:
-          uri: https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz
-          name: uv
-          version: latest
-
+      - name: Install uv 
+        uses: astral-sh/setup-uv@v1
+      
       - name: Install dependencies
         run: |
           uv sync --system
