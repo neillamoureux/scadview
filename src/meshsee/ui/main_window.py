@@ -137,8 +137,11 @@ class MainWindow(QMainWindow):
         self._mesh_handler.load_mesh(file_path)
 
     def export(self):
+        default_export_path = self._controller.default_export_path()
         filt = ";;".join([f"{fmt.upper()} (*.{fmt})" for fmt in export_formats()])
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export File", filter=filt)
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Export File", dir=default_export_path, filter=filt
+        )
         if file_path:
             self._controller.export(file_path)
 
