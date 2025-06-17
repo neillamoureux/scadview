@@ -11,6 +11,7 @@ help:
 	@echo "  preflight	- format, lint and type"
 
 VENV_DIR := .venv
+SCRIPTS_DIR := scripts
 
 venv:
 	@if [ ! -d "$(VENV_DIR)" ]; then \
@@ -37,7 +38,7 @@ check-venv:
 
 test: check-venv
 	@echo "Running tests..."
-	@pytest
+	@"$(SCRIPTS_DIR)/test.sh"
 
 run: check-venv
 	@echo "Running the application..."
@@ -45,14 +46,14 @@ run: check-venv
 
 format: check-venv
 	@echo "Formatting the code..."
-	@ruff format
+	@"$(SCRIPTS_DIR)/format.sh"
 
 lint: check-venv
 	@echo "Linting the code..."
-	@ruff check
+	@"$(SCRIPTS_DIR)/lint.sh"
 
 type: check-venv
 	@echo "Type checking the code..."
-	@pyright
+	@"$(SCRIPTS_DIR)/type.sh"
 
 preflight: format lint test type
