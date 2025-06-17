@@ -35,7 +35,7 @@ jobs:
         run: uv run ./scripts/lint.sh
 
       - name: Run type checker
-        run: uv run ./scripts/typecheck.sh
+        run: uv run ./scripts/type.sh
 
       - name: Run tests
         run: uv run ./scripts/test.sh
