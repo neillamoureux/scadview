@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          uv sync --system
+          uv sync --frozen
 
       - name: Run formatter check
         run: ./scripts/format.sh
