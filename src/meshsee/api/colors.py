@@ -1,0 +1,46 @@
+from trimesh import Trimesh
+from enum import Enum
+
+
+class Color(Enum):
+    RED = (1.0, 0.0, 0.0)
+    GREEN = (0.0, 1.0, 0.0)
+    BLUE = (0.0, 0.0, 1.0)
+    YELLOW = (1.0, 1.0, 0.0)
+    CYAN = (0.0, 1.0, 1.0)
+    MAGENTA = (1.0, 0.0, 1.0)
+    ORANGE = (1.0, 0.65, 0.0)
+    PURPLE = (0.5, 0.0, 0.5)
+    PINK = (1.0, 0.75, 0.8)
+    BROWN = (0.6, 0.4, 0.2)
+    GRAY = (0.5, 0.5, 0.5)
+    BLACK = (0.0, 0.0, 0.0)
+    WHITE = (1.0, 1.0, 1.0)
+    NAVY = (0.0, 0.0, 0.5)
+    TEAL = (0.0, 0.5, 0.5)
+    OLIVE = (0.5, 0.5, 0.0)
+    MAROON = (0.5, 0.0, 0.0)
+    LIME = (0.75, 1.0, 0.0)
+    INDIGO = (0.29, 0.0, 0.51)
+    TURQUOISE = (0.25, 0.88, 0.82)
+    GOLD = (1.0, 0.84, 0.0)
+    SILVER = (0.75, 0.75, 0.75)
+    BEIGE = (0.96, 0.96, 0.86)
+    CORAL = (1.0, 0.5, 0.31)
+    SALMON = (0.98, 0.5, 0.45)
+    CRIMSON = (0.86, 0.08, 0.24)
+    KHAKI = (0.76, 0.69, 0.57)
+    LAVENDER = (0.9, 0.9, 0.98)
+    MINT = (0.74, 1.0, 0.79)
+    SKY_BLUE = (0.53, 0.81, 0.92)
+
+
+def set_mesh_color(
+    mesh: Trimesh,
+    color: tuple[float, float, float] | list[float] | Color,
+    alpha: float = 1.0,
+) -> Trimesh:
+    if isinstance(color, Color):
+        color = color.value
+    mesh.metadata["meshsee"] = {"color": [color[0], color[1], color[2], alpha]}
+    return mesh
