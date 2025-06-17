@@ -1,0 +1,41 @@
+name: CI Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x ./scripts/*.sh; ls -l ./scripts
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv 
+        uses: astral-sh/setup-uv@v1
+      
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+
+      - name: Run formatter check
+        run: uv run ./scripts/format.sh --check
+
+      - name: Run linter
+        run: uv run ./scripts/lint.sh
+
+      - name: Run type checker
+        run: uv run ./scripts/type.sh
+
+      - name: Run tests
+        run: uv run ./scripts/test.sh --ignore=tests/ui
