@@ -11,7 +11,7 @@ from meshsee.render.label_metrics import label_char_width, label_step, labels_to
 from meshsee.render.renderee import Renderee
 
 logger = logging.getLogger(__name__)
-AXIS_WIDTH = 0.01
+DEFAULT_SHIFT_UP = 0.01
 
 
 class LabelRenderee(Renderee):
@@ -32,7 +32,7 @@ class LabelRenderee(Renderee):
         self.camera = camera
         self.char_width = self.NUMBER_WIDTH
         self.axis = 0
-        self.shift_up = AXIS_WIDTH
+        self.shift_up = DEFAULT_SHIFT_UP
         self._vertices = self._create_vertices(len(label))
         self._uv = self._create_uvs(label, label_atlas)
         self._sampler = label_atlas.sampler
@@ -133,8 +133,8 @@ class LabelRenderee(Renderee):
     def _calc_base_scale_at_label_matrix(self) -> Matrix44:
         m_shift_up = Matrix44.from_translation([0.0, self.shift_up, 0.0], dtype="f4")
         m_base_scale_at_label = (
-            self._translate_from_origin
-            * m_shift_up
+            m_shift_up
+            * self._translate_from_origin
             * self._m_base_scale
             * self._translate_to_origin
         )
@@ -171,6 +171,7 @@ class LabelSetRenderee(Renderee):
         self._max_labels_per_axis = max_labels_per_axis
         self._max_label_frac_of_step = max_label_frac_of_step
         self._label_renderees = {}
+        self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):
         axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
@@ -213,6 +214,7 @@ class LabelSetRenderee(Renderee):
                         label,
                     )
                 renderee = self._label_renderees[label]
+                renderee.shift_up = self.shift_up
                 renderee.char_width = char_width
                 renderee.axis = axis
                 renderee.render()
