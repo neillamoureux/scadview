@@ -1,4 +1,5 @@
 from typing import Any
+from copy import deepcopy
 
 import moderngl
 import numpy as np
@@ -24,8 +25,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 AXIS_LENGTH = 1000.0
-AXIS_WIDTH = 0.5
-AXIS_DEPTH = 0.5
+AXIS_WIDTH = 1.0
+AXIS_DEPTH = 1.0
+AXIS_SCALE_FACTOR = 0.005
 MESH_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 MAX_LABEL_FRAC_OF_STEP = 0.5
 MAX_LABELS_PER_AXIS = 20
@@ -36,7 +38,7 @@ def _make_default_mesh() -> Trimesh:
     return box([50.0, 40.0, 30.0])
 
 
-def _make_axes() -> Trimesh:
+def _make_base_axes() -> Trimesh:
     return (
         box([AXIS_LENGTH, AXIS_DEPTH, AXIS_WIDTH])
         .union(box([AXIS_LENGTH, AXIS_WIDTH, AXIS_DEPTH]))
@@ -45,6 +47,15 @@ def _make_axes() -> Trimesh:
         .union(box([AXIS_DEPTH, AXIS_WIDTH, AXIS_LENGTH]))
         .union(box([AXIS_WIDTH, AXIS_DEPTH, AXIS_LENGTH]))
     )
+
+
+def _scale_axes(base_axes: Trimesh, scale: float) -> Trimesh:
+    """
+    Scale the axes by the given scale factor.
+    """
+    axes = base_axes.copy()
+    axes.apply_scale(scale)
+    return axes
 
 
 class Renderer:
@@ -60,6 +71,7 @@ class Renderer:
         self._create_shaders()
         self.camera = camera
         self._init_shaders()
+        self._scale = 1.0
         self._create_renderees()
         self._clear_background = True
         self._last_background_color = self.ERROR_BACKGROUND_COLOR
@@ -75,13 +87,8 @@ class Renderer:
         self._axis_prog = self._create_axis_shader_program(self.on_program_value_change)
 
     def _create_renderees(self):
-        self._axes = _make_axes()
-        self._axes_renderee = TrimeshOpaqueRenderee(
-            self._ctx,
-            self._axis_prog.program,
-            self._axes,
-        )
-        self._axes_renderee.subscribe_to_updates(self.on_program_value_change)
+        self._base_axes = _make_base_axes()
+        self._axes_renderee = self._create_axes_renderee()
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_set_renderee = LabelSetRenderee(
             self._ctx,
@@ -91,6 +98,27 @@ class Renderer:
             MAX_LABEL_FRAC_OF_STEP,
             self._camera,
         )
+
+    def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
+        axes = _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
+        axes_renderee = TrimeshOpaqueRenderee(
+            self._ctx,
+            self._axis_prog.program,
+            axes,
+        )
+        axes_renderee.subscribe_to_updates(self.on_program_value_change)
+        return axes_renderee
+
+    @property
+    def scale(self):
+        return self._scale
+
+    @scale.setter
+    def scale(self, value):
+        if self.scale != value:
+            self._scale = value
+            self._axes_renderee = self._create_axes_renderee()
+            self._label_set_renderee.shift_up = value * AXIS_SCALE_FACTOR / 2.0
 
     @property
     def camera(self):
@@ -219,6 +247,10 @@ class Renderer:
             self._m_model,
             self._camera.view_matrix,
         )
+        if isinstance(mesh, list):
+            self.scale = max([m.scale for m in mesh])
+        else:
+            self.scale = mesh.scale
         self._main_renderee.subscribe_to_updates(self.on_program_value_change)
         self._framing_points = self._main_renderee.points
 

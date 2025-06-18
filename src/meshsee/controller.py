@@ -7,6 +7,7 @@ from trimesh import Trimesh
 from trimesh.exchange import export
 
 from meshsee.module_loader import ModuleLoader
+from meshsee.observable import Observable
 
 logger = logging.getLogger(__name__)
 
