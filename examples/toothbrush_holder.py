@@ -2,42 +2,90 @@ import numpy as np
 from shapely.geometry import Polygon
 from trimesh import Trimesh, transformations
 from trimesh.creation import box, extrude_polygon
+from meshsee import text
 
-HEX_CELL_DIMS = (10, 15, 3)
-COLS = 12
-ROWS = 6
-WALL_WIDTH = 2
+NAMES = [
+    "NEIL",
+    "ADAM",
+    "SOPHIE",
+]
+
+FONT = "Helvetica"
+FONT_H = 3
+FONT_SIZE = 8
+
+
+#  Hole size for a toothbrush
+TUBE_INNER_R = 9
+TUBE_H = 100
+TILT = np.deg2rad(30)
+TUBE_COUNT = len(NAMES)
+TUBE_WALL = 2
+TUBE_BASE = 2
+
+
+COLS = 6
+GRID_DIV_WIDTH = 1
 
 
 def create_mesh() -> Trimesh | list[Trimesh]:
-    # return rect_frame((10, 15, 5), 3, (0, 0))
-    # grid = hex_grid((10, 15, 1), 12, 6, 0.5).subdivide().subdivide().subdivide()
-    # grid = hex_grid((10, 15, 1), 12, 6, 0.5)
-    grid = hex_grid(HEX_CELL_DIMS, COLS, ROWS, WALL_WIDTH)
-    frame_dims = (
-        HEX_CELL_DIMS[0] * (COLS - 1) * 0.75 + HEX_CELL_DIMS[0] + 2 * WALL_WIDTH,
-        HEX_CELL_DIMS[1] * ROWS + 2 * WALL_WIDTH,
-        HEX_CELL_DIMS[2],
+    tubes = []
+    displacement_dirs = np.linspace(0, 2 * np.pi, len(NAMES) + 1)[:-1]
+    for name, direction in zip(NAMES, displacement_dirs):
+        name_mesh = text(name, FONT_SIZE, font=FONT).apply_scale([1, 1, FONT_H])
+
+        rot = transformations.rotation_matrix(-direction, (0, 1, 0), (0, 0, 0))
+        tilt_rot = transformations.rotation_matrix(TILT, (1, 0, 9), (0, 0, 0))
+        tubes.append(
+            tube(TUBE_INNER_R, TUBE_H, TUBE_WALL, COLS, GRID_DIV_WIDTH, name_mesh)
+            .apply_transform(tilt_rot)
+            .apply_transform(rot)
+            .apply_translation(
+                1.5 * TUBE_INNER_R * np.array([np.cos(direction), 0, np.sin(direction)])
+            )
+        )
+        yield tubes[-1]
+    yield tubes
+
+
+def tube(
+    tube_inner_r: float,
+    tube_h: float,
+    tube_wall: float,
+    grid_cols: int,
+    grid_div_width: float,
+    name_mesh: Trimesh,
+) -> Trimesh:
+    hex_cell_dims, rows = hex_cell_dims_for_tube(
+        tube_inner_r, tube_h, tube_wall, grid_cols
     )
+    grid = hex_grid(hex_cell_dims, grid_cols, rows, grid_div_width)
+    frame_dims = hex_grid_dims(hex_cell_dims, grid_cols, rows)
     bottom_frame = box(
-        (frame_dims[0], WALL_WIDTH / 2, frame_dims[2])
-    ).apply_translation((frame_dims[0] / 2, -WALL_WIDTH / 4, frame_dims[2] / 2))
-    top_frame = bottom_frame.copy().apply_translation(
-        (0, frame_dims[1] - WALL_WIDTH * 1.5, 0)
+        (frame_dims[0], grid_div_width, frame_dims[2])
+    ).apply_translation((frame_dims[0] / 2, 0, frame_dims[2] / 2))
+    top_frame = bottom_frame.copy().apply_translation((0, frame_dims[1], 0))
+    name_rot = transformations.rotation_matrix(
+        angle=-np.pi / 2.0,
+        direction=[0, 0, 1],
+        point=(0, 0, 0),
     )
+    name_mesh.apply_transform(name_rot).apply_translation(
+        (frame_dims[0] / 2, frame_dims[1], hex_cell_dims[2])
+    )
+
     grid = (
         grid.union(top_frame)
         .union(bottom_frame)
+        .union(name_mesh)
         .subdivide()
         .subdivide()
         .subdivide()
         .subdivide()
     )
-    return grid.apply_translation((10, 10, 0))
-    # return grid.union(bottom_frame)
     bend = 2 * np.pi
     bent_verts = bend_x(
-        grid.vertices, arc_radians=2 * np.pi, x_overlap=HEX_CELL_DIMS[0] * 0.5
+        grid.vertices, arc_radians=2 * np.pi, x_overlap=hex_cell_dims[0] * 0.25
     )
     curved_mesh = Trimesh(vertices=bent_verts, faces=grid.faces)
     # rotate about the y axis so curved mesh edges lie on the xy plane (90 degrees - curve in degreees / 2.0
@@ -46,9 +94,23 @@ def create_mesh() -> Trimesh | list[Trimesh]:
         direction=[0, 1, 0],
         point=(0, 0, 0),
     )
-    curved_mesh.apply_transform(rot)
+    curved_mesh.apply_transform(rot).apply_translation([0, 0, -tube_inner_r])
     return curved_mesh
-    return [grid, curved_mesh]
+    # return [grid, curved_mesh]
+
+
+def hex_cell_dims_for_tube(
+    tube_inner_r: float, tube_h: float, tube_wall: float, cols: int
+) -> tuple[tuple[float, float, float], int]:
+    # cols must be even for this to work and must satisfy
+
+    # 2 * pi * tube_inner_r = (cols - 1) * cell_dim_x * 0.75 + cell_dim_x,
+    # so cell_dim_x = 2 * pi * tube_inner_r / ((cols * .75 + .25)
+
+    cell_dim_x = 2 * np.pi * tube_inner_r / ((cols * 0.75) + 0.25)
+    rows = round(tube_h / cell_dim_x)
+    cell_dim_y = tube_h / rows
+    return (cell_dim_x, cell_dim_y, tube_wall), rows
 
 
 def hex_grid(
@@ -75,11 +137,12 @@ def hex_grid(
     Vertical walls thickness is along x direction
 
     """
-    base_dims = (
-        (cols - 1) * cell_dims[0] * 0.75 + cell_dims[0],
-        rows * cell_dims[1],
-        cell_dims[2],
-    )
+    base_dims = hex_grid_dims(cell_dims, cols, rows)
+    # base_dims = (
+    #     (cols - 1) * cell_dims[0] * 0.75 + cell_dims[0],
+    #     rows * cell_dims[1],
+    #     cell_dims[2],
+    # )
     grid = box(base_dims).apply_translation(
         (base_dims[0] / 2, base_dims[1] / 2, base_dims[2] / 2)
     )
@@ -110,44 +173,17 @@ def hex_grid(
             grid = grid.difference(inner_hex)
     return grid
 
-    # return base_box
-    # grid_dims = (
-    #     cols * cell_dims[0] * 1.5,
-    #     rows * cell_dims[1] * np.sqrt(3) / 2,
-    #     cell_dims[2],
-    # )
-    # grid = box(grid_dims).apply_translation(
-    #     (grid_dims[0] / 2, grid_dims[1] / 2, grid_dims[2] / 2)
-    # )
-    # # return grid
-    # cell_hole_dims = (
-    #     cell_dims[0] - wall_width,
-    #     cell_dims[1] - wall_width,
-    #     cell_dims[2],
-    # )
-    # cell_hole = box(cell_hole_dims).apply_translation(
-    #     (
-    #         cell_dims[0] / 2 - wall_width / 2,
-    #         cell_dims[1] / 2 - wall_width / 2,
-    #         cell_dims[2] / 2,
-    #     )
-    # )
-    # for row in range(rows):
-    #     for col in range(cols):
-    #         offset = (
-    #             col * cell_dims[0] * 1.5 + wall_width / 2,
-    #             row * cell_dims[1] * np.sqrt(3) / 2 + wall_width / 2,
-    #             0,
-    #         )
-    #         if col % 2 == 1:
-    #             offset = (
-    #                 offset[0],
-    #                 offset[1] + cell_dims[1] * np.sqrt(3) / 4,
-    #                 offset[2],
-    #             )
-    #         inner_box = cell_hole.copy().apply_translation(offset)
-    #         grid = grid.difference(inner_box)
-    # return grid
+
+def hex_grid_dims(
+    cell_dims: tuple[float, float, float],
+    cols: int,
+    rows: int,
+) -> tuple[float, float, float]:
+    return (
+        (cols - 1) * cell_dims[0] * 0.75 + cell_dims[0],
+        rows * cell_dims[1],
+        cell_dims[2],
+    )
 
 
 def hexagon(
@@ -163,41 +199,6 @@ def hexagon(
     points = points * np.array([x_scale, y_scale])
 
     return extrude_polygon(Polygon(points), cell_dims[2])
-
-
-def rect_grid(
-    cell_dims: tuple[float, float, float],
-    cols: int,
-    rows: int,
-    wall_width: float,
-) -> Trimesh:
-    grid_dims = (
-        cols * cell_dims[0],
-        rows * cell_dims[1],
-        cell_dims[2],
-    )
-    grid = box(grid_dims).apply_translation(
-        (grid_dims[0] / 2, grid_dims[1] / 2, grid_dims[2] / 2)
-    )
-    # return grid
-    cell_hole_dims = cell_dims[0] - wall_width, cell_dims[1] - wall_width, cell_dims[2]
-    cell_hole = box(cell_hole_dims).apply_translation(
-        (
-            cell_dims[0] / 2 - wall_width / 2,
-            cell_dims[1] / 2 - wall_width / 2,
-            cell_dims[2] / 2,
-        )
-    )
-    for row in range(rows):
-        for col in range(cols):
-            offset = (
-                col * cell_dims[0] + wall_width / 2,
-                row * cell_dims[1] + wall_width / 2,
-                0,
-            )
-            inner_box = cell_hole.copy().apply_translation(offset)
-            grid = grid.difference(inner_box)
-    return grid
 
 
 def bend_x(
@@ -216,31 +217,11 @@ def bend_x(
     y is unchanged.
     """
     x, y, z = vertices.T
-    print(np.shape(vertices), np.shape(x), np.shape(y), np.shape(z))
     x_min = np.min(x)
     x_max = np.max(x)
     x_span = x_max - x_min - x_overlap
-    print(f"x_min: {x_min}, x_max: {x_max}, x_span: {x_span}")
     inner_radius = x_span / arc_radians
     rad_x = arc_radians * (x - x_min) / x_span
     x_new = -(inner_radius + z) * np.cos(rad_x) + inner_radius
     z_new = (inner_radius + z) * np.sin(rad_x)
-    print(f"x_new: {np.shape(x_new)}, z_new: {np.shape(z_new)}")
     return np.stack((x_new, y, z_new), axis=-1)
-
-
-def rect_frame(
-    dims: tuple[float, float, float],
-    wall_width: float,
-    hole_offset: tuple[float, float] = (0, 0),
-) -> Trimesh:
-    """
-    Create a rectangular frame: a rectangle with a central rectangular hole.  The hole is centered by default,
-    aand is offset by the given hole_offset.
-    The frame lies flat in the XY plane, with the Z axis pointing up
-    """
-    outer_box = box(dims)
-    inner_box = box(
-        [dims[0] - 2 * wall_width, dims[1] - 2 * wall_width, dims[2]]
-    ).apply_translation([hole_offset[0], hole_offset[1], 0])
-    return outer_box.difference(inner_box)
