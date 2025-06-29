@@ -15,11 +15,6 @@ NAMES = [
     "SOPHIE",
 ]
 
-FONT = "Helvetica"
-FONT_H = 3
-FONT_SIZE = 8
-
-
 #  Hole size for a toothbrush
 TUBE_INNER_R = 9
 TUBE_H = 100
@@ -27,15 +22,19 @@ TWIST = np.pi / 2.0
 TILT = np.deg2rad(30)
 OUTWARD_ROT = np.deg2rad(50)
 TUBE_COUNT = len(NAMES)
-TUBE_WALL = 2
+TUBE_WALL = 4
 TUBE_BASE = 2
+
+FONT = "Helvetica"
+FONT_H = TUBE_WALL
+FONT_SIZE = 8
 
 BASE_R = 45
 BASE_H = 5
 
 
 COLS = 6
-GRID_DIV_WIDTH = 1
+GRID_DIV_WIDTH = 2
 
 
 def create_mesh() -> (
@@ -136,12 +135,11 @@ def add_name(
     grid_cols: int,
     name_mesh: Trimesh,
 ) -> Trimesh:
-    # return grid_mesh
     hex_cell_dims, rows = hex_cell_dims_for_tube(
         tube_inner_r, tube_h, tube_wall, grid_cols
     )
     frame_dims = hex_grid_dims(hex_cell_dims, grid_cols, rows)
-    name_mesh.apply_translation((frame_dims[0] / 2, frame_dims[1], hex_cell_dims[2]))
+    name_mesh.apply_translation((0, frame_dims[1], 0))
     return grid_mesh.union(name_mesh)
 
 
