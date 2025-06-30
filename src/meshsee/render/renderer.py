@@ -14,6 +14,7 @@ from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.label_renderee import (
     LabelSetRenderee,
 )
+from meshsee.render.renderee import GnomonRenderee
 from meshsee.render.trimesh_renderee import (
     create_trimesh_renderee,
     TrimeshListRenderee,
@@ -84,6 +85,9 @@ class Renderer:
         self._main_prog = self._create_main_shader_program(self.on_program_value_change)
         self._num_prog = self._create_num_shader_program(self.on_program_value_change)
         self._axis_prog = self._create_axis_shader_program(self.on_program_value_change)
+        self._gnomon_prog = self._create_gnomon_shader_program(
+            self.on_program_value_change
+        )
 
     def _create_renderees(self):
         self._base_axes = _make_base_axes()
@@ -97,6 +101,7 @@ class Renderer:
             MAX_LABEL_FRAC_OF_STEP,
             self._camera,
         )
+        self._gnomon_renderee = GnomonRenderee(self._ctx, self._gnomon_prog.program)
 
     def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
         axes = _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
@@ -200,6 +205,16 @@ class Renderer:
             "vertex_main.glsl", "fragment_main.glsl", program_vars, observable
         )
 
+    def _create_gnomon_shader_program(self, observable: Observable) -> ShaderProgram:
+        program_vars = {
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.VIEW_MATRIX: "m_camera",
+            ShaderVar.PROJECTION_MATRIX: "m_proj",
+        }
+        return self._create_shader_program(
+            "gnomon_vertex.glsl", "gnomon_fragment.glsl", program_vars, observable
+        )
+
     def _create_shader_program(
         self,
         vertex_shader_loc: str,
@@ -285,6 +300,7 @@ class Renderer:
         self.show_grid = show_grid
         self._main_renderee.render()
         self._label_set_renderee.render()
+        self._gnomon_renderee.render()
         if self._clear_background:
             logger.debug(f"Clearing with color {self._background_color}")
             self._ctx.clear(*self._background_color)
