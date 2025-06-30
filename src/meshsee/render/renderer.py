@@ -104,6 +104,7 @@ class Renderer:
             self._ctx,
             self._axis_prog.program,
             axes,
+            cull_back_face=True,
         )
         axes_renderee.subscribe_to_updates(self.on_program_value_change)
         return axes_renderee

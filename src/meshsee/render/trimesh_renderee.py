@@ -110,12 +110,14 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         mesh: Trimesh,
+        cull_back_face: bool = False,
     ):
         super().__init__(ctx, program)
         self._ctx = ctx
         self._program = program
         self._vao = create_vao_from_mesh(ctx, program, mesh)
         self._points = corners(mesh.bounds)
+        self._cull_back_face = cull_back_face
 
     @property
     def points(self) -> NDArray[np.float32]:
@@ -125,6 +127,12 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         pass
 
     def render(self):
+        if self._cull_back_face:
+            self._ctx.enable(moderngl.CULL_FACE)
+            self._ctx.front_face = "ccw"
+            self._ctx.cull_face = "back"  # Cull back-facing triangles
+        else:
+            self._ctx.disable(moderngl.CULL_FACE)
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
         self._ctx.depth_mask = True  # type: ignore[attr-defined]
