@@ -129,7 +129,7 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
     def render(self):
         if self._cull_back_face:
             self._ctx.enable(moderngl.CULL_FACE)
-            self._ctx.front_face = "ccw"  # or 'cw' if you used clockwise order
+            self._ctx.front_face = "ccw"
             self._ctx.cull_face = "back"  # Cull back-facing triangles
         else:
             self._ctx.disable(moderngl.CULL_FACE)
