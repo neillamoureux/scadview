@@ -163,7 +163,7 @@ class Camera:
     def _update_far_near(self, framing_points: NDArray[np.float32]):
         bb = self._bounding_box_in_cam_space(framing_points)
         self.far = -np.min(bb[:, 2]) * self.FAR_MULTIPLIER
-        self.far = max(1.0, self.far)
+        self.far = np.max(np.array([1.0, self.far]))
         self.near = self.far / self.FAR_NEAR_RATIO
 
     def _bounding_box_in_cam_space(

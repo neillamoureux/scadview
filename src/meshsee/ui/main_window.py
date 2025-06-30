@@ -286,14 +286,21 @@ class MeshLoader:
         self.mesh_queue = queue.Queue(maxsize=1)
 
     def run(self):
-        logger.info("Mesh loading about to start")
+        logger.info("Mesh loading about to start.")
         if self._file_path is not None:
             self._load_start_callback()
         if self._stop_requested:
+            logger.warning(
+                "A stop of the mesh load has been made before the load started.  The mesh will not be loaded."
+            )
             self._signal_stop()
             return
         try:
+            logger.debug(f"About to load {self._file_path}")
             for mesh in self._controller.load_mesh(self._file_path):
+                logger.debug(
+                    f"In load iteration.  _stop_requested is {self._stop_requested}"
+                )
                 if self._stop_requested:
                     self._signal_stop()
                     return
@@ -317,6 +324,7 @@ class MeshLoader:
             logger.info("Current mesh loading stopping")
 
     def _update_if_time(self, mesh: Trimesh):
+        logger.debug(f"_update_if_time.  _first_mesh is {self._first_mesh}")
         if self._first_mesh:
             self._update_mesh(mesh)
             self._first_mesh = False
@@ -327,6 +335,7 @@ class MeshLoader:
             self._latest_unloaded_mesh = mesh
 
     def _update_mesh(self, mesh):
+        logger.debug("_update_mesh")
         mesh2 = mesh
         if isinstance(mesh, Manifold):
             mesh2 = manifold_to_trimesh(mesh)
