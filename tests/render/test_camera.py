@@ -176,6 +176,23 @@ def test_view_matrix2():
     )
 
 
+def test_gnomon_view_matrix():
+    cam = Camera()
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-1.0, -2.0, -3.0])
+    cam.up = np.array([1.0, 1.0, 0.0])
+    # set up another camera that simulates the gnomon view
+    gcam = Camera()
+    gcam.position = -cam.direction / np.linalg.norm(cam.direction)
+    gcam.look_at = np.zeros((3))
+    gcam.up = cam.up
+    gcam.near = Camera.GNOMON_NEAR
+    gcam.far = Camera.GNOMON_FAR
+    cam.update_matrices()
+    gcam.update_matrices()
+    assert cam.gnomon_view_matrix == gcam.view_matrix
+
+
 def test_projection_matrix_perspective():
     cam = CameraPerspective()
     cam.aspect_ratio = 2.0
@@ -195,6 +212,33 @@ def test_projection_matrix_perspective():
                 [0.0, 0.0, -1.0, 0.0],
             ]
         ),
+    )
+
+
+def test_gnomon_projection_matrix_perspective():
+    # Note: OpenGL is right-handed, so the z-axis is pointing out of the screen back to the viewer
+    cam = CameraPerspective()
+    cam.aspect_ratio = 2.0
+    cam.fovy = 45.0
+    cam.near = 0.25
+    cam.far = 100.0
+    cam.look_at = np.array([0.0, 0.0, 1.0])
+    cam.up = np.array([0.0, 1.0, 0.0])
+    cam.position = np.array([0.0, 0.0, 0.0])
+    cam.update_matrices()
+
+    gcam = CameraPerspective()
+    gcam.aspect_ratio = 2.0
+    gcam.fovy = 45.0
+    gcam.near = Camera.GNOMON_NEAR
+    gcam.far = Camera.GNOMON_FAR
+    # gcam.look_at = np.zeros((3))
+    # gcam.up = np.array([0.0, 1.0, 0.0])
+    # gcam.position = -cam.direction / np.linalg.norm(cam.direction)
+    gcam.update_matrices()
+
+    assert np.testing.assert_array_equal(
+        cam.gnomon_projection_matrix, gcam.projection_matrix
     )
 
 

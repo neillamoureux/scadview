@@ -27,7 +27,7 @@ class GlWidgetAdapter:
     def init_gl(self, width: int, height: int):
         self.resize(width, height)
         # You cannot create the context before initializeGL is called
-        self._renderer = self._renderer_factory.make(width / height)
+        self._renderer = self._renderer_factory.make((width, height))
         self._gl_initialized = True
 
     def render(self):  # override
@@ -37,7 +37,7 @@ class GlWidgetAdapter:
         self._width = width
         self._height = height
         if self._gl_initialized:
-            self._renderer.aspect_ratio = width / height
+            self._renderer.window_size = (width, height)
 
     def start_orbit(self, x: int, y: int):
         self._orbiting = True

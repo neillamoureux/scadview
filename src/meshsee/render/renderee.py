@@ -20,9 +20,25 @@ class Renderee(ABC):
 
 
 class GnomonRenderee(Renderee):
-    def __init__(self, ctx: moderngl.Context, program: moderngl.Program):
+    WINDOW_DIM_FRAC = 0.2
+
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        program: moderngl.Program,
+        window_size: tuple[int, int],
+    ):
         super().__init__(ctx, program)
+        self._window_size = window_size
         self._vao = self._create_vao()
+
+    @property
+    def window_size(self) -> tuple[int, int]:
+        return self._window_size
+
+    @window_size.setter
+    def window_size(self, value: tuple[int, int]):
+        self._window_size = value
 
     def _vertices(self) -> NDArray:
         # fmt: off
@@ -55,6 +71,10 @@ class GnomonRenderee(Renderee):
             raise e
 
     def render(self) -> None:
-        width, height = self._ctx.screen.size
-        self._ctx.viewport = (0, 0, int(width * 0.2), int(height * 0.2))
-        self._vao.render()
+        self._ctx.viewport = (
+            0,
+            0,
+            int(self._window_size[0] * self.WINDOW_DIM_FRAC),
+            int(self._window_size[1] * self.WINDOW_DIM_FRAC),
+        )
+        self._vao.render(mode=moderngl.LINES)
