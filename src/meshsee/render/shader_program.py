@@ -18,6 +18,8 @@ class ShaderVar(Enum):
     PROJECTION_MATRIX = auto()
     MESH_COLOR = auto()
     SHOW_GRID = auto()
+    GNOMON_VIEW_MATRIX = auto()
+    GNOMON_PROJECTION_MATRIX = auto()
 
 
 class ShaderProgram:

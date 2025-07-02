@@ -112,6 +112,14 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.toggle_grid()
         self.update()
 
+    @property
+    def show_gnomon(self):
+        return self._gl_widget_adapter.show_gnomon
+
+    def toggle_gnomon(self):
+        self._gl_widget_adapter.toggle_gnomon()
+        self.update()
+
     def use_perspective_camera(self):
         self._gl_widget_adapter.use_perspective_camera()
         self.update()

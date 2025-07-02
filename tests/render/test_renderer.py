@@ -6,7 +6,7 @@ from meshsee.render.camera import Camera
 from meshsee.render.renderer import Renderer
 
 
-def test_aspect_ratio():
+def test_window_size():
     context = MagicMock()
     m_proj = Mock()
     shader_vars = {
@@ -18,13 +18,17 @@ def test_aspect_ratio():
     }
     context.program = Mock(return_value=shader_vars)
     camera = Camera()
-    aspect_ratio = 0.5
+    window_size = (50, 100)
+    aspect_ratio = float(window_size[0]) / window_size[1]
     with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
-        renderer = Renderer(context, camera, aspect_ratio)
+        renderer = Renderer(context, camera, window_size)
+        assert renderer.window_size == window_size
         assert renderer.aspect_ratio == aspect_ratio
-        new_aspect_ratio = 1.6
-        renderer.aspect_ratio = new_aspect_ratio
+        new_window_size = (320, 200)
+        new_aspect_ratio = float(new_window_size[0]) / new_window_size[1]
+        renderer.window_size = new_window_size
+        assert renderer.window_size == new_window_size
         assert renderer.aspect_ratio == new_aspect_ratio
         assert camera.aspect_ratio == new_aspect_ratio
 
@@ -32,9 +36,9 @@ def test_aspect_ratio():
 def test_frame():
     context = MagicMock()
     camera = Mock()
-    aspect_ratio = 1.6
+    window_size = (320, 200)
     with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
-        renderer = Renderer(context, camera, aspect_ratio)
+        renderer = Renderer(context, camera, window_size)
         renderer.frame(np.array([[1, 0, 0]]))
         camera.frame.assert_called()

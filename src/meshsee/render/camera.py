@@ -32,6 +32,8 @@ class Camera:
     FAR_MULTIPLIER = 2.0
     NEAR_INIT = 1.0
     FAR_INIT = NEAR_INIT * FAR_NEAR_RATIO
+    GNOMON_NEAR = 0.01
+    GNOMON_FAR = 10.0
 
     def __init__(self):
         self.position = self.POSITION_INIT
@@ -80,13 +82,24 @@ class Camera:
         return perp_up
 
     @property
-    def view_matrix(self):
+    def view_matrix(self) -> NDArray[np.float32]:
         vm = matrix44.create_look_at(self.position, self.look_at, self.up, dtype="f4")
         self.on_program_value_change.notify(ShaderVar.VIEW_MATRIX, vm)
         return vm
 
     @property
+    def gnomon_view_matrix(self) -> NDArray[np.float32]:
+        origin = np.zeros((3))
+        position = -self.direction / np.linalg.norm(self.direction)
+        gvm = matrix44.create_look_at(position, origin, self.up, dtype="f4")
+        self.on_program_value_change.notify(ShaderVar.GNOMON_VIEW_MATRIX, gvm)
+        return gvm
+
+    @property
     def projection_matrix(self) -> NDArray[np.float32]: ...
+
+    @property
+    def gnomon_projection_matrix(self) -> NDArray[np.float32]: ...
 
     @property
     def points(self) -> NDArray[np.float32]:
@@ -100,6 +113,8 @@ class Camera:
         self._update_far_near(self._last_framing_points)
         self.view_matrix
         self.projection_matrix
+        self.gnomon_projection_matrix
+        self.gnomon_view_matrix
 
     def orbit(self, angle_from_up, rotation_angle):
         """
@@ -286,6 +301,14 @@ class CameraPerspective(Camera):
         self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
         return pm
 
+    @property
+    def gnomon_projection_matrix(self) -> NDArray[np.float32]:
+        gpm = matrix44.create_perspective_projection(
+            self.fovy, self.aspect_ratio, self.GNOMON_NEAR, self.GNOMON_FAR, dtype="f4"
+        )
+        self.on_program_value_change.notify(ShaderVar.GNOMON_PROJECTION_MATRIX, gpm)
+        return gpm
+
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
         Move the camera to the normalized screen coordinates ndx, ndy
@@ -336,6 +359,20 @@ class CameraOrthogonal(Camera):
         )
         self.on_program_value_change.notify(ShaderVar.PROJECTION_MATRIX, pm)
         return pm
+
+    @property
+    def gnomon_projection_matrix(self) -> NDArray[np.float32]:
+        gpm = matrix44.create_orthogonal_projection(
+            -self.aspect_ratio,
+            self.aspect_ratio,
+            -1.0,
+            1.0,
+            self.GNOMON_NEAR,
+            self.GNOMON_FAR,
+            dtype="f4",
+        )
+        self.on_program_value_change.notify(ShaderVar.GNOMON_PROJECTION_MATRIX, gpm)
+        return gpm
 
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """

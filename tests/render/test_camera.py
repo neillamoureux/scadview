@@ -176,6 +176,22 @@ def test_view_matrix2():
     )
 
 
+def test_gnomon_view_matrix():
+    cam = Camera()
+    cam.position = np.array([1.0, 2.0, 3.0])
+    cam.look_at = np.array([-1.0, -2.0, -3.0])
+    cam.up = np.array([1.0, 1.0, 0.0])
+
+    # set up another camera that simulates the gnomon view
+    gcam = Camera()
+    gcam.position = -cam.direction / np.linalg.norm(cam.direction)
+    gcam.look_at = np.zeros((3))
+    gcam.up = cam.up
+    gcam.near = Camera.GNOMON_NEAR
+    gcam.far = Camera.GNOMON_FAR
+    np.testing.assert_array_equal(cam.gnomon_view_matrix, gcam.view_matrix)
+
+
 def test_projection_matrix_perspective():
     cam = CameraPerspective()
     cam.aspect_ratio = 2.0
@@ -196,6 +212,23 @@ def test_projection_matrix_perspective():
             ]
         ),
     )
+
+
+def test_gnomon_projection_matrix_perspective():
+    cam = CameraPerspective()
+    cam.aspect_ratio = 2.0
+    cam.fovy = 45.0
+    cam.near = 0.25
+    cam.far = 100.0
+
+    # Simulate gnomon projection with a new camera
+    gcam = CameraPerspective()
+    gcam.aspect_ratio = 2.0
+    gcam.fovy = 45.0
+    gcam.near = Camera.GNOMON_NEAR
+    gcam.far = Camera.GNOMON_FAR
+
+    np.testing.assert_array_equal(cam.gnomon_projection_matrix, gcam.projection_matrix)
 
 
 def test_projection_matrix_near_and_far_perspective():

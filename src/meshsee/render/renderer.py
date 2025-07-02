@@ -14,6 +14,7 @@ from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.label_renderee import (
     LabelSetRenderee,
 )
+from meshsee.render.renderee import GnomonRenderee
 from meshsee.render.trimesh_renderee import (
     create_trimesh_renderee,
     TrimeshListRenderee,
@@ -64,8 +65,14 @@ class Renderer:
     DEBUG_BACKGROUND_COLOR = (0.980, 0.980, 0.690, 1.0)  # yellow
     ERROR_BACKGROUND_COLOR = (0.976, 0.765, 0.765, 1.0)  #  red
 
-    def __init__(self, context: moderngl.Context, camera: Camera, aspect_ratio: float):
-        self._aspect_ratio = aspect_ratio
+    def __init__(
+        self,
+        context: moderngl.Context,
+        camera: Camera,
+        window_size: tuple[int, int],
+    ):
+        self._window_size = window_size
+        # self._aspect_ratio = aspect_rati
         self._ctx = context
         self._create_shaders()
         self.camera = camera
@@ -84,6 +91,9 @@ class Renderer:
         self._main_prog = self._create_main_shader_program(self.on_program_value_change)
         self._num_prog = self._create_num_shader_program(self.on_program_value_change)
         self._axis_prog = self._create_axis_shader_program(self.on_program_value_change)
+        self._gnomon_prog = self._create_gnomon_shader_program(
+            self.on_program_value_change
+        )
 
     def _create_renderees(self):
         self._base_axes = _make_base_axes()
@@ -96,6 +106,9 @@ class Renderer:
             MAX_LABELS_PER_AXIS,
             MAX_LABEL_FRAC_OF_STEP,
             self._camera,
+        )
+        self._gnomon_renderee = GnomonRenderee(
+            self._ctx, self._gnomon_prog.program, self.window_size
         )
 
     def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
@@ -157,14 +170,19 @@ class Renderer:
         self._last_background_color = self._background_color
 
     @property
-    def aspect_ratio(self):
-        return self._aspect_ratio
+    def aspect_ratio(self) -> float:
+        return float(self._window_size[0]) / self._window_size[1]
 
-    @aspect_ratio.setter
-    def aspect_ratio(self, aspect_ratio):
-        self._aspect_ratio = aspect_ratio
+    @property
+    def window_size(self) -> tuple[int, int]:
+        return self._window_size
+
+    @window_size.setter
+    def window_size(self, value: tuple[int, int]):
+        self._window_size = value
         if self._camera is not None:
-            self._camera.aspect_ratio = aspect_ratio
+            self._camera.aspect_ratio = self.aspect_ratio
+        self._gnomon_renderee.window_size = value
 
     @property
     def show_grid(self):
@@ -198,6 +216,16 @@ class Renderer:
         }
         return self._create_shader_program(
             "vertex_main.glsl", "fragment_main.glsl", program_vars, observable
+        )
+
+    def _create_gnomon_shader_program(self, observable: Observable) -> ShaderProgram:
+        program_vars = {
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.GNOMON_VIEW_MATRIX: "m_camera",
+            ShaderVar.GNOMON_PROJECTION_MATRIX: "m_proj",
+        }
+        return self._create_shader_program(
+            "gnomon_vertex.glsl", "gnomon_fragment.glsl", program_vars, observable
         )
 
     def _create_shader_program(
@@ -278,13 +306,15 @@ class Renderer:
         """
         self._camera.move_to_screen(ndx, ndy, distance)
 
-    def render(self, show_grid: bool):  # override
+    def render(self, show_grid: bool, show_gnomon: bool):  # override
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.show_grid = True
         self._axes_renderee.render()
         self.show_grid = show_grid
         self._main_renderee.render()
         self._label_set_renderee.render()
+        if show_gnomon:
+            self._gnomon_renderee.render()
         if self._clear_background:
             logger.debug(f"Clearing with color {self._background_color}")
             self._ctx.clear(*self._background_color)
@@ -295,5 +325,5 @@ class RendererFactory:
     def __init__(self, camera: Camera):
         self._camera = camera
 
-    def make(self, aspect_ratio) -> Renderer:
-        return Renderer(moderngl.create_context(), self._camera, aspect_ratio)
+    def make(self, window_size: tuple[int, int]) -> Renderer:
+        return Renderer(moderngl.create_context(), self._camera, window_size)
