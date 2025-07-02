@@ -184,12 +184,6 @@ class Renderer:
             self._camera.aspect_ratio = self.aspect_ratio
         self._gnomon_renderee.window_size = value
 
-    # @aspect_ratio.setter
-    # def aspect_ratio(self, aspect_ratio):
-    #     self._aspect_ratio = aspect_ratio
-    #     if self._camera is not None:
-    #         self._camera.aspect_ratio = aspect_ratio
-
     @property
     def show_grid(self):
         return self._show_grid

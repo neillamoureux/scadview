@@ -36,9 +36,9 @@ def test_window_size():
 def test_frame():
     context = MagicMock()
     camera = Mock()
-    aspect_ratio = 1.6
+    window_size = (320, 200)
     with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
-        renderer = Renderer(context, camera, aspect_ratio)
+        renderer = Renderer(context, camera, window_size)
         renderer.frame(np.array([[1, 0, 0]]))
         camera.frame.assert_called()
