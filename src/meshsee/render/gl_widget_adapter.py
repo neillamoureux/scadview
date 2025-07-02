@@ -12,9 +12,10 @@ class GlWidgetAdapter:
         self._gl_initialized = False
         self._orbiting = False
         self.show_grid = False
+        self.show_gnomon = True
 
     @property
-    def show_grid(self):
+    def show_grid(self) -> bool:
         return self._show_grid
 
     @show_grid.setter
@@ -24,6 +25,17 @@ class GlWidgetAdapter:
     def toggle_grid(self):
         self.show_grid = not self.show_grid
 
+    @property
+    def show_gnomon(self) -> bool:
+        return self._show_gnomon
+
+    @show_gnomon.setter
+    def show_gnomon(self, show_gnomon: bool):
+        self._show_gnomon = show_gnomon
+
+    def toggle_gnomon(self):
+        self.show_gnomon = not self.show_gnomon
+
     def init_gl(self, width: int, height: int):
         self.resize(width, height)
         # You cannot create the context before initializeGL is called
@@ -31,7 +43,7 @@ class GlWidgetAdapter:
         self._gl_initialized = True
 
     def render(self):  # override
-        self._renderer.render(self.show_grid)
+        self._renderer.render(self.show_grid, self.show_gnomon)
 
     def resize(self, width, height):  # override
         self._width = width

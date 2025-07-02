@@ -312,14 +312,15 @@ class Renderer:
         """
         self._camera.move_to_screen(ndx, ndy, distance)
 
-    def render(self, show_grid: bool):  # override
+    def render(self, show_grid: bool, show_gnomon: bool):  # override
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.show_grid = True
         self._axes_renderee.render()
         self.show_grid = show_grid
         self._main_renderee.render()
         self._label_set_renderee.render()
-        self._gnomon_renderee.render()
+        if show_gnomon:
+            self._gnomon_renderee.render()
         if self._clear_background:
             logger.debug(f"Clearing with color {self._background_color}")
             self._ctx.clear(*self._background_color)

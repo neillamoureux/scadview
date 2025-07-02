@@ -122,6 +122,12 @@ class MainWindow(QMainWindow):
         grid_btn.clicked.connect(self._gl_widget.toggle_grid)
         camera_button_layout.addWidget(grid_btn)
 
+        grid_btn = QPushButton("Gnomon")
+        grid_btn.setCheckable(True)
+        grid_btn.setChecked(self._gl_widget.show_gnomon)
+        grid_btn.clicked.connect(self._gl_widget.toggle_gnomon)
+        camera_button_layout.addWidget(grid_btn)
+
         return camera_button_strip
 
     def load_file(self):
