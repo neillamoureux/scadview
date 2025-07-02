@@ -91,8 +91,6 @@ class MeshHandler:
 
 
 class LoadMeshRunnable(QRunnable):
-    UPDATE_MESH_INTERVAL_MS = 100
-
     def __init__(
         self,
         controller: Controller,
