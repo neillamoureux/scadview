@@ -136,6 +136,7 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
         self._ctx.depth_mask = True  # type: ignore[attr-defined]
+        logger.debug(f"FBO during render: {self._ctx.fbo.glo}")
         self._vao.render()
 
 

@@ -17,6 +17,8 @@ from meshsee.ui.moderngl_widget import ModernglWidget
 def prepare_surface_format(gl_version: tuple[int, int]):
     # In macos, the surface format must be set before creating the application
     fmt = QtGui.QSurfaceFormat()
+    # fmt.setDepthBufferSize(24)
+    # fmt.setStencilBufferSize(8)
     fmt.setVersion(*gl_version)
     fmt.setProfile(QtGui.QSurfaceFormat.OpenGLContextProfile.CoreProfile)
     QtGui.QSurfaceFormat.setDefaultFormat(fmt)

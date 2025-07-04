@@ -1,6 +1,6 @@
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from trimesh import Trimesh
@@ -16,14 +16,61 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_initialized = False
         self._render_twice = False
         self._last_error_indicator = False
+        # self._frame_timer = QTimer(self)
+        # self._frame_timer.timeout.connect(self.update)
+        # self._frame_timer.start(16)
 
     def initializeGL(self):  # override
-        self._gl_widget_adapter.init_gl(self.width(), self.height())
+        # self._gl_widget_adapter.init_gl(self.width(), self.height())
+        import moderngl
+        self._ctx = moderngl.create_context(standalone=False)
         self._gl_initialized = True
 
-    def paintGL(self):  # override
-        self._gl_widget_adapter.render()
-        self._double_render_if_needed()
+    def paintGL(self):
+        self.makeCurrent()
+        import moderngl
+        self._ctx = moderngl.create_context(standalone=False)
+        self._ctx.fbo.use()
+        self._ctx.viewport = (0, 0, self.width(), self.height())
+        # ctx.screen.use()
+        self._ctx.clear(0.2, 0.2, 0.2, 1.0)
+
+        prog = self._ctx.program(
+            vertex_shader="""
+            #version 330
+            in vec2 in_vert;
+            void main() {
+                gl_Position = vec4(in_vert, 0.0, 1.0);
+            }
+            """,
+            fragment_shader="""
+            #version 330
+            out vec4 f_color;
+            void main() {
+                f_color = vec4(1.0, 0.0, 0.0, 1.0);
+            }
+            """
+        )
+
+        import struct
+        triangle = struct.pack("6f", 0.0, 0.5, -0.5, -0.5, 0.5, -0.5)
+        vbo = self._ctx.buffer(triangle)
+        vao = self._ctx.vertex_array(prog, vbo, "in_vert")
+        vao.render(mode=moderngl.TRIANGLES)
+        self._ctx.finish()
+        # print("paintGL")
+        # self.resize(self.width() + 1, self.height() + 1)
+        # self.resize(self.width() - 1, self.height() - 1)
+        # self.updateGeometry()
+        # self.update()
+        # self.repaint()
+
+    
+    # def paintGL(self):  # override
+    #     self.makeCurrent()
+    #     self._gl_widget_adapter.render()
+    #     # self._double_render_if_needed()
+    #     # self.update()
 
     def _double_render_if_needed(self):
         if self._render_twice:
@@ -98,6 +145,7 @@ class ModernglWidget(QOpenGLWidget):
 
     def frame(self):
         self._gl_widget_adapter.frame()
+        # self._render_twice = True
         self.update()
 
     def load_mesh(self, mesh: Trimesh):
