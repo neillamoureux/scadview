@@ -1,8 +1,11 @@
+import logging
 import numpy as np
+
 
 from meshsee.render.renderer import RendererFactory
 from meshsee.render.camera import CameraPerspective, CameraOrthogonal
 
+logger = logging.getLogger(__name__)
 
 class GlWidgetAdapter:
     ORBIT_ROTATION_SPEED = 0.01
@@ -13,6 +16,7 @@ class GlWidgetAdapter:
         self._orbiting = False
         self.show_grid = False
         self.show_gnomon = True
+        self._current_fbo = -1
 
     @property
     def show_grid(self) -> bool:
@@ -36,13 +40,21 @@ class GlWidgetAdapter:
     def toggle_gnomon(self):
         self.show_gnomon = not self.show_gnomon
 
-    def init_gl(self, width: int, height: int):
+    def init_gl(self, width: int, height: int, current_fbo: int):
         self.resize(width, height)
         # You cannot create the context before initializeGL is called
         self._renderer = self._renderer_factory.make((width, height))
         self._gl_initialized = True
+        self._current_fbo = current_fbo
 
-    def render(self):  # override
+    def _reinit_gl_if_needed(self, width: int, height: int, current_fbo: int):
+        # self.init_gl(width, height, current_fbo)
+        if current_fbo != self._current_fbo:
+            logger.debug("Framebuffer has changed")
+            self.init_gl(width, height, current_fbo)
+
+    def render(self, width: int, height: int, current_fbo: int):  # override
+        self._reinit_gl_if_needed(width, height, current_fbo)
         self._renderer.render(self.show_grid, self.show_gnomon)
 
     def resize(self, width, height):  # override

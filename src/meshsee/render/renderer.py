@@ -308,47 +308,13 @@ class Renderer:
         """
         self._camera.move_to_screen(ndx, ndy, distance)
 
-    def render(self, show_grid: bool, show_gnomon: bool):
-        self._ctx.fbo.use()
-        self._ctx.clear(*self._background_color, depth=1.0)
-        self._ctx.enable(moderngl.DEPTH_TEST)
-        self._ctx.disable(moderngl.CULL_FACE)  # Disable to avoid winding issues
-
-        # Known-good triangle in NDC space
-        prog = self._ctx.program(
-            vertex_shader="""
-            #version 330
-            in vec2 in_vert;
-            void main() {
-                gl_Position = vec4(in_vert, 0.0, 1.0);
-            }
-            """,
-            fragment_shader="""
-            #version 330
-            out vec4 f_color;
-            void main() {
-                f_color = vec4(1.0, 0.0, 0.0, 1.0);  // red
-            }
-            """
-        )
-
-        # Triangle covering center of screen
-        import struct
-        triangle = struct.pack("6f", 0.0, 0.5, -0.5, -0.5, 0.5, -0.5)
-        vbo = self._ctx.buffer(triangle)
-        vao = self._ctx.vertex_array(prog, vbo, "in_vert")
-
-        vao.render(mode=moderngl.TRIANGLES)
-
-        self._ctx.finish()
-    
-    # def render(self, show_grid: bool, show_gnomon: bool):  # override
-    #     logger.debug(f"Active FBO before clear: {self._ctx.fbo.glo}")
-    #     self._ctx.screen.use()
-    #     logger.debug(f"After binding screen, FBO is: {self._ctx.fbo.glo}")  
+    # def render(self, show_grid: bool, show_gnomon: bool):
+    #     self._ctx.fbo.use()
     #     self._ctx.clear(*self._background_color, depth=1.0)
-    #     logger.debug(f"Viewport: {self._ctx.viewport}")
+    #     self._ctx.enable(moderngl.DEPTH_TEST)
+    #     self._ctx.disable(moderngl.CULL_FACE)  # Disable to avoid winding issues
 
+    #     # Known-good triangle in NDC space
     #     prog = self._ctx.program(
     #         vertex_shader="""
     #         #version 330
@@ -365,24 +331,58 @@ class Renderer:
     #         }
     #         """
     #     )
-    #     vbo = self._ctx.buffer(b'\x00\x00\x00\x3f\x00\x3f')  # roughly (0,0), (0.5,0), (0,0.5)
+
+    #     # Triangle covering center of screen
+    #     import struct
+    #     triangle = struct.pack("6f", 0.0, 0.5, -0.5, -0.5, 0.5, -0.5)
+    #     vbo = self._ctx.buffer(triangle)
     #     vao = self._ctx.vertex_array(prog, vbo, "in_vert")
+
     #     vao.render(mode=moderngl.TRIANGLES)
 
-    #     # self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-    #     # self.show_grid = True
-    #     # # self._ctx.enable(moderngl.DEPTH_TEST)
-    #     # self._axes_renderee.render()
-    #     # self.show_grid = show_grid
-    #     # self._main_renderee.render()
-    #     # self._label_set_renderee.render()
-    #     # if show_gnomon:
-    #     #     self._gnomon_renderee.render()
     #     self._ctx.finish()
-    #     # if self._clear_background:
-    #     #     logger.debug(f"Clearing with color {self._background_color}")
-    #     #     self._ctx.clear(*self._background_color)
-    #     #     self._clear_background = False
+    
+    def render(self, show_grid: bool, show_gnomon: bool):  # override
+        logger.debug(f"Active FBO before clear: {self._ctx.fbo.glo}")
+        # self._ctx.screen.use()
+        # logger.debug(f"After binding screen, FBO is: {self._ctx.fbo.glo}")  
+        self._ctx.clear(*self._background_color, depth=1.0)
+        logger.debug(f"Viewport: {self._ctx.viewport}")
+
+        # prog = self._ctx.program(
+        #     vertex_shader="""
+        #     #version 330
+        #     in vec2 in_vert;
+        #     void main() {
+        #         gl_Position = vec4(in_vert, 0.0, 1.0);
+        #     }
+        #     """,
+        #     fragment_shader="""
+        #     #version 330
+        #     out vec4 f_color;
+        #     void main() {
+        #         f_color = vec4(1.0, 0.0, 0.0, 1.0);  // red
+        #     }
+        #     """
+        # )
+        # vbo = self._ctx.buffer(b'\x00\x00\x00\x3f\x00\x3f')  # roughly (0,0), (0.5,0), (0,0.5)
+        # vao = self._ctx.vertex_array(prog, vbo, "in_vert")
+        # vao.render(mode=moderngl.TRIANGLES)
+
+        self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+        self.show_grid = True
+        self._ctx.enable(moderngl.DEPTH_TEST)
+        self._axes_renderee.render()
+        self.show_grid = show_grid
+        self._main_renderee.render()
+        self._label_set_renderee.render()
+        if show_gnomon:
+            self._gnomon_renderee.render()
+        # self._ctx.finish()
+        # if self._clear_background:
+        #     logger.debug(f"Clearing with color {self._background_color}")
+        #     self._ctx.clear(*self._background_color)
+        #     self._clear_background = False
 
 
 class RendererFactory:
@@ -390,10 +390,10 @@ class RendererFactory:
         self._camera = camera
 
     def make(self, window_size: tuple[int, int]) -> Renderer:
-        from PySide6.QtGui import QOpenGLContext
-        assert QOpenGLContext.currentContext() is not None, "Qt context is not current"
-        print("Qt context valid:", QOpenGLContext.currentContext().isValid())
-        ctx = moderngl.create_context(standalone=False)
-        print("ModernGL context version:", ctx.version_code)
+        # from PySide6.QtGui import QOpenGLContext
+        # assert QOpenGLContext.currentContext() is not None, "Qt context is not current"
+        # print("Qt context valid:", QOpenGLContext.currentContext().isValid())
+        ctx = moderngl.create_context()
+        # print("ModernGL context version:", ctx.version_code)
         # return Renderer(moderngl.create_context(standalone=False), self._camera, window_size)
         return Renderer(ctx, self._camera, window_size)
