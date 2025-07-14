@@ -180,8 +180,8 @@ class ModernglWidget(QOpenGLWidget):
         # self._render_twice = True
         self.update()
 
-    def load_mesh(self, mesh: Trimesh):
-        self._gl_widget_adapter.load_mesh(mesh)
+    def load_mesh(self, mesh: Trimesh, name: str):
+        self._gl_widget_adapter.load_mesh(mesh, name)
         self.update()
 
     @property

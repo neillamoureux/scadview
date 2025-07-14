@@ -111,11 +111,14 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         program: moderngl.Program,
         mesh: Trimesh,
         cull_back_face: bool = False,
+        name: str = "Unnamed Trimesh"
     ):
-        super().__init__(ctx, program)
+        super().__init__(ctx, program, name)
         self._ctx = ctx
         self._program = program
-        self._vao = create_vao_from_mesh(ctx, program, mesh)
+        self._mesh = mesh
+        # self._vao = create_vao_from_mesh(ctx, program, mesh)
+        self._vao = None
         self._points = corners(mesh.bounds)
         self._cull_back_face = cull_back_face
 
@@ -136,7 +139,10 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
         self._ctx.depth_mask = True  # type: ignore[attr-defined]
-        logger.debug(f"FBO during render: {self._ctx.fbo.glo}")
+        logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
+        if self._vao is None: # Lazily create the _vao so that it is created during the render when the context is active
+            self._vao = create_vao_from_mesh(self._ctx, self._program, self._mesh)
+        logger.debug(f"VAO: {self._vao.glo}")
         self._vao.render()
 
 
@@ -165,15 +171,16 @@ class AlphaRenderee(Renderee):
         colors_arr: NDArray[np.uint8],
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
+        name: str = "Unknown AlphaRenderee"
     ):
-        super().__init__(ctx, program)
+        super().__init__(ctx, program, name)
         self._triangles = triangles
         self._triangles_cross = triangles_cross
         self._colors_arr = colors_arr
         self._model_matrix = model_matrix
         self._view_matrix = view_matrix
         self._resort_verts = True
-        self._sort_buffers()
+        # self._sort_buffers()
 
     @property
     def model_matrix(self) -> NDArray[np.float32]:
@@ -219,6 +226,7 @@ class AlphaRenderee(Renderee):
         self._resort_verts = False
 
     def render(self):
+        logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
         if self._resort_verts:
             self._sort_buffers()
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
@@ -236,6 +244,7 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
         mesh: Trimesh,
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
+        name: str = "Unknown TrimeshAlpha"
     ):
         self._alpha_renderee = AlphaRenderee(
             ctx,
@@ -245,8 +254,10 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
             create_colors_array_from_mesh(mesh),
             model_matrix,
             view_matrix,
+            name, 
         )
         self._points = corners(mesh.bounds)
+        self.name = name
 
     @property
     def points(self):
@@ -265,8 +276,9 @@ class TrimeshListOpaqueRenderee(TrimeshRenderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         meshes: list[Trimesh],
+        name: str = "Unknown TrimeshList"
     ):
-        super().__init__(ctx, program)
+        super().__init__(ctx, program, name)
         self._renderees = [TrimeshOpaqueRenderee(ctx, program, mesh) for mesh in meshes]
 
     @property
@@ -291,6 +303,7 @@ class TrimeshListAlphaRenderee(TrimeshRenderee):
         meshes: list[Trimesh],
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
+        name: str = "Unknow TrimeshListAlpha"
     ):
         self._alpha_renderee = AlphaRenderee(
             ctx,
@@ -300,6 +313,7 @@ class TrimeshListAlphaRenderee(TrimeshRenderee):
             concat_colors(meshes),
             model_matrix,
             view_matrix,
+            name,
         )
 
         self._points = np.concatenate([corners(mesh.bounds) for mesh in meshes]).astype(
@@ -346,6 +360,7 @@ def create_trimesh_renderee(
     mesh: Trimesh | list[Trimesh],
     model_matrix: NDArray[np.float32],
     view_matrix: NDArray[np.float32],
+    name: str = 'Unknown create_trimesh_renderee'
 ) -> TrimeshRenderee:
     if isinstance(mesh, list):
         if not all(isinstance(m, Trimesh) for m in mesh):
@@ -356,10 +371,11 @@ def create_trimesh_renderee(
             mesh,
             model_matrix,
             view_matrix,
+            name,
         )
     elif isinstance(mesh, Trimesh):
         return create_single_trimesh_renderee(
-            ctx, program, mesh, model_matrix, view_matrix
+            ctx, program, mesh, model_matrix, view_matrix, name,
         )
     else:
         raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
@@ -371,13 +387,14 @@ def create_trimesh_list_renderee(
     meshes: list[Trimesh],
     model_matrix: NDArray[np.float32],
     view_matrix: NDArray[np.float32],
+    name: str,
 ) -> TrimeshListRenderee:
     if not all(isinstance(m, Trimesh) for m in meshes):
         raise TypeError("All elements in the mesh list must be Trimesh instances.")
     opaques, alphas = split_opaque_alpha(meshes)
     opaques_renderee = create_trimesh_list_opaque_renderee(ctx, program, opaques)
     alphas_renderee = create_trimesh_list_alpha_renderee(
-        ctx, program, alphas, model_matrix, view_matrix
+        ctx, program, alphas, model_matrix, view_matrix, name,
     )
     return TrimeshListRenderee(opaques_renderee, alphas_renderee)
 
@@ -411,10 +428,11 @@ def create_trimesh_list_alpha_renderee(
     alphas: list[Trimesh],
     model_matrix: NDArray[np.float32],
     view_matrix: NDArray[np.float32],
+    name: str,
 ):
     if len(alphas) == 0:
         return TrimeshNullRenderee()
-    return TrimeshListAlphaRenderee(ctx, program, alphas, model_matrix, view_matrix)
+    return TrimeshListAlphaRenderee(ctx, program, alphas, model_matrix, view_matrix, name)
 
 
 def create_single_trimesh_renderee(
@@ -423,6 +441,7 @@ def create_single_trimesh_renderee(
     mesh: Trimesh,
     model_matrix: NDArray[np.float32],
     view_matrix: NDArray[np.float32],
+    name: str,
 ) -> TrimeshRenderee:
     if is_alpha(mesh):
         return TrimeshAlphaRenderee(
@@ -431,9 +450,10 @@ def create_single_trimesh_renderee(
             mesh,
             model_matrix,
             view_matrix,
+            name,
         )
     else:
-        return TrimeshOpaqueRenderee(ctx, program, mesh)
+        return TrimeshOpaqueRenderee(ctx, program, mesh, name=name)
 
 
 def sort_triangles(

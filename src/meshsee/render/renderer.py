@@ -83,7 +83,7 @@ class Renderer:
         self._last_background_color = self.ERROR_BACKGROUND_COLOR
         self.background_color = self.DEFAULT_BACKGROUND_COLOR
         # self._ctx.clear(*self._background_color)
-        self.load_mesh(_make_default_mesh())
+        self.load_mesh(_make_default_mesh(), "default_mesh")
         self.frame()
 
     def _create_shaders(self):
@@ -106,9 +106,10 @@ class Renderer:
             MAX_LABELS_PER_AXIS,
             MAX_LABEL_FRAC_OF_STEP,
             self._camera,
+            name="label_set"
         )
         self._gnomon_renderee = GnomonRenderee(
-            self._ctx, self._gnomon_prog.program, self.window_size
+            self._ctx, self._gnomon_prog.program, self.window_size, name="gnomon"
         )
 
     def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
@@ -118,6 +119,7 @@ class Renderer:
             self._axis_prog.program,
             axes,
             cull_back_face=True,
+            name="axes"
         )
         axes_renderee.subscribe_to_updates(self.on_program_value_change)
         return axes_renderee
@@ -269,6 +271,7 @@ class Renderer:
     def load_mesh(
         self,
         mesh: Trimesh | list[Trimesh],
+        name: str = "Unknown load_mesh"
     ):
         self._main_renderee = create_trimesh_renderee(
             self._ctx,
@@ -276,6 +279,7 @@ class Renderer:
             mesh,
             self._m_model,
             self._camera.view_matrix,
+            name=name,
         )
         if isinstance(mesh, list):
             self.scale = max([m.scale for m in mesh])

@@ -39,10 +39,12 @@ class MeshHandler:
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
         self._first_mesh = False
+        self._mesh_name: str | None = "Unknown from MeshHandler"
 
     def load_mesh(self, file_path: str | None):
         self._reload_file_btn.setEnabled(True)
         self._export_btn.setDisabled(True)
+        self._mesh_name = file_path
         worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
             self._start_worker(worker)
@@ -75,7 +77,7 @@ class MeshHandler:
             if self._mesh_loading_worker is None:
                 raise ValueError("There is no worker to update the mesh")
             mesh = self._mesh_loading_worker.mesh_queue.get_nowait()
-            self._gl_widget.load_mesh(mesh)
+            self._gl_widget.load_mesh(mesh, self._mesh_name)
             if self._first_mesh:
                 self._first_mesh = False
                 self._gl_widget.frame()

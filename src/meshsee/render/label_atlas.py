@@ -30,29 +30,23 @@ def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple:
 class LabelAtlas:
     def __init__(self, ctx: moderngl.Context):
         self._create_label_atlas()
-        self._texture = ctx.texture(
-            (self._width, self._height),
-            1,
-            data=self._bytes,
-            dtype="f1",
-        )
-        self._sampler = ctx.sampler(texture=self._texture)
-        self._sampler.filter = (ctx.NEAREST, ctx.NEAREST)
+        self._texture = None
+        self._sampler = None
 
     def uv(self, char: str) -> NDArray[np.float32]:
         return self._uv_data[char]
 
-    @property
-    def image(self) -> Image.Image:
-        return self._image
+    # @property
+    # def image(self) -> Image.Image:
+    #     return self._image
 
-    @property
-    def texture(self) -> moderngl.Texture:
-        return self._texture
+    # @property
+    # def texture(self) -> moderngl.Texture:
+    #     return self._texture
 
-    @property
-    def sampler(self) -> moderngl.Sampler:
-        return self._sampler
+    # @property
+    # def sampler(self) -> moderngl.Sampler:
+    #     return self._sampler
 
     def _create_label_atlas(
         self,
@@ -95,3 +89,17 @@ class LabelAtlas:
         u1 = (x + self._cell_width) / self._width
         v1 = 1.0
         self._uv_data[char] = np.array((u0, v0, u1, v1), dtype="f4")
+
+    def create_sampler(self, ctx: moderngl.Context) -> moderngl.Sampler:
+        if self._sampler is None:
+            self._texture = ctx.texture(
+                (self._width, self._height),
+                1,
+                data=self._bytes,
+                dtype="f1",
+            )
+            self._sampler = ctx.sampler(texture=self._texture)
+            self._sampler.filter = (ctx.NEAREST, ctx.NEAREST)
+        return self._sampler
+
+

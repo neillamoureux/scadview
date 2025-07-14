@@ -9,9 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class Renderee(ABC):
-    def __init__(self, ctx: moderngl.Context, program: moderngl.Program):
+    def __init__(self, ctx: moderngl.Context, program: moderngl.Program, name: str = "Unnamed"):
         self._ctx = ctx
         self._program = program
+        self.name = name
 
     @abstractmethod
     def render(self) -> None:
@@ -27,11 +28,11 @@ class GnomonRenderee(Renderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         window_size: tuple[int, int],
+        name: str = "Uknown Gnomon"
     ):
-        super().__init__(ctx, program)
+        super().__init__(ctx, program, name)
         self._window_size = window_size
-        self._vao = self._create_vao()
-
+        self._vao = None
     @property
     def window_size(self) -> tuple[int, int]:
         return self._window_size
@@ -77,4 +78,6 @@ class GnomonRenderee(Renderee):
             int(self._window_size[0] * self.WINDOW_DIM_FRAC),
             int(self._window_size[1] * self.WINDOW_DIM_FRAC),
         )
+        if self._vao is None:
+            self._vao = self._create_vao()
         self._vao.render(mode=moderngl.LINES)
