@@ -36,19 +36,21 @@ vec4 combined_grid_color(vec3 pos, int levels, float[5] spacings, float frac_wid
 }
 
 void main() {
-    float l = dot(normalize(-pos), normal) 
-    + 0.4;
     if (show_grid) {
         vec4 grid = combined_grid_color(w_pos, 3, float[5](0.1, 1.0, 10.0, 0.0, 0.0), 0.05);
-        if (grid == vec4(0.0, 0.0, 0.0, 1.0)) {
+        float is_grid = dot(grid.rgb, vec3(1.0)); 
+
+        if (is_grid == 0.0) {
             fragColor = color;
         } else {
-            fragColor = grid;
+            vec3 blended = mix(color.rgb, grid.rgb, 0.5);
+            fragColor = vec4(blended, 1.0);
         }
     } else {
         fragColor = color;
     }
 
+    float l = dot(normalize(-pos), normal) + 0.4;
     fragColor = fragColor * (0.25 + abs(l) * 0.75);
 }
 
