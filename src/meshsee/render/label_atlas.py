@@ -36,18 +36,6 @@ class LabelAtlas:
     def uv(self, char: str) -> NDArray[np.float32]:
         return self._uv_data[char]
 
-    # @property
-    # def image(self) -> Image.Image:
-    #     return self._image
-
-    # @property
-    # def texture(self) -> moderngl.Texture:
-    #     return self._texture
-
-    # @property
-    # def sampler(self) -> moderngl.Sampler:
-    #     return self._sampler
-
     def _create_label_atlas(
         self,
     ):

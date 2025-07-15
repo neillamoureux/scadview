@@ -117,7 +117,6 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         self._ctx = ctx
         self._program = program
         self._mesh = mesh
-        # self._vao = create_vao_from_mesh(ctx, program, mesh)
         self._vao = None
         self._points = corners(mesh.bounds)
         self._cull_back_face = cull_back_face
@@ -180,7 +179,6 @@ class AlphaRenderee(Renderee):
         self._model_matrix = model_matrix
         self._view_matrix = view_matrix
         self._resort_verts = True
-        # self._sort_buffers()
 
     @property
     def model_matrix(self) -> NDArray[np.float32]:
@@ -254,7 +252,7 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
             create_colors_array_from_mesh(mesh),
             model_matrix,
             view_matrix,
-            name, 
+            name,
         )
         self._points = corners(mesh.bounds)
         self.name = name

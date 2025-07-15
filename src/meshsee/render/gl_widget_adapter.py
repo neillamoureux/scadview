@@ -48,12 +48,8 @@ class GlWidgetAdapter:
         self._current_fbo = current_fbo
 
     def _reinit_gl_if_needed(self, width: int, height: int, current_fbo: int):
-        # self.init_gl(width, height, current_fbo)
-        # if current_fbo != self._current_fbo:
         if current_fbo != self._renderer._ctx.fbo.glo:
             logger.debug(f"Framebuffer has changed from {self._renderer._ctx.fbo.glo} to {current_fbo}")
-            # self._renderer._ctx.clear()
-            del self._renderer._ctx
             self._gl_initialized = False
             self.init_gl(width, height, current_fbo)
             logger.debug(f"Framebuffer after init_gl: {self._renderer._ctx.fbo.glo}")

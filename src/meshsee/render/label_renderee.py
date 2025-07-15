@@ -135,7 +135,6 @@ class LabelRenderee(Renderee):
         logger.debug(f"Rendering label {self.label} on axis {self.axis}")
         self._vao.render(moderngl.TRIANGLE_STRIP)
         self._ctx.disable(moderngl.BLEND)
-        self._ctx.enable(moderngl.DEPTH_TEST)
 
     def _update_m_base_scale(self, scale: float):
         self._m_base_scale[0, 0] = scale

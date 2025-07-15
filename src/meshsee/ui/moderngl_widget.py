@@ -16,93 +16,17 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_initialized = False
         self._render_twice = False
         self._last_error_indicator = False
-        # self._frame_timer = QTimer(self)
-        # self._frame_timer.timeout.connect(self.update)
-        # self._frame_timer.start(16)
 
     def initializeGL(self):  # override
         self._gl_widget_adapter.init_gl(self.width(), self.height(), self.defaultFramebufferObject())
         print(f"01 Qt FBO: {self.defaultFramebufferObject()}")
-
-        # import moderngl
-        # self._ctx = moderngl.create_context(standalone=False)
         self._gl_initialized = True
-        # self._ctx = None
 
     def reinit_gl_if_needed(self):
         self._gl_widget_adapter.init_gl(self.width(), self.height(), self.defaultFramebufferObject())
-
-    # def paintGL(self):
-    #     self.makeCurrent()
-    #     # import moderngl
-    #     if not self._gl_initialized:
-    #         self.initializeGL()
-            # self._gl_widget_adapter.init_gl(self.width(), self.height())
-            # self._ctx = moderngl.create_context(standalone=False)
-            # self._gl_initialized = True
-        # self._ctx.fbo.use()
-        # print(f"01 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-        # self._ctx.fbo.glo = self.defaultFramebufferObject() # can't set fbo.glo
-
-
-        # fbo_id = self.defaultFramebufferObject()
-        # target_fbo = self._ctx.framebuffer_from_existing(fbo_id)
-        # target_fbo.use()
-
-        # Then render your scene
-        # target_fbo.clear(0.0, 0.0, 0.0, 1.0)
-        # vao.render()
-
-        # self._ctx.fbo.use()
-        # self._ctx.viewport = (0, 0, self.width(), self.height())
-        # ctx.screen.use()
-        # self._ctx.clear(0.2, 0.2, 0.2, 1.0)
-        # print(f"02 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-
-
-        # prog = self._ctx.program(
-        #     vertex_shader="""
-        #     #version 330
-        #     in vec2 in_vert;
-        #     void main() {
-        #         gl_Position = vec4(in_vert, 0.0, 1.0);
-        #     }
-        #     """,
-        #     fragment_shader="""
-        #     #version 330
-        #     out vec4 f_color;
-        #     void main() {
-        #         f_color = vec4(1.0, 0.0, 0.0, 1.0);
-        #     }
-        #     """
-        # )
-
-        # import struct
-        # triangle = struct.pack("6f", 0.0, 0.5, -0.5, -0.5, 0.5, -0.5)
-        # print(f"10 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-        # vbo = self._ctx.buffer(triangle)
-        # print(f"20 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-        # vao = self._ctx.vertex_array(prog, vbo, "in_vert")
-        # print(f"30 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-        # vao.render(mode=moderngl.TRIANGLES)
-        # print(f"40 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-        # self._ctx.finish()
-        # print(f"50 Qt FBO: {self.defaultFramebufferObject()}, ModernGL FBO: {self._ctx.fbo.glo}")
-        # print("paintGL")
-        # self.resize(self.width() + 1, self.height() + 1)
-        # self.resize(self.width() - 1, self.height() - 1)
-        # self.updateGeometry()
-        # self.update()
-        # self.repaint()
-
     
     def paintGL(self):  # override
-        # self.makeCurrent()
-        # if not self._gl_initialized or self._gl_widget_adapter._renderer._ctx.fbo.glo != self.defaultFramebufferObject():
-        #     self.initializeGL()
         self._gl_widget_adapter.render(self.width(), self.height(), self.defaultFramebufferObject())
-        # self._double_render_if_needed()
-        # self.update()
 
     def _double_render_if_needed(self):
         if self._render_twice:
@@ -134,7 +58,6 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.move_to_screen(
             event.position().x(), event.position().y(), distance
         )
-        # self._gl_widget_adapter.move(event.angleDelta().y() * self.CAMERA_MOVE_FACTOR)
         self.update()
 
     def keyPressEvent(self, event):
@@ -177,7 +100,6 @@ class ModernglWidget(QOpenGLWidget):
 
     def frame(self):
         self._gl_widget_adapter.frame()
-        # self._render_twice = True
         self.update()
 
     def load_mesh(self, mesh: Trimesh, name: str):
