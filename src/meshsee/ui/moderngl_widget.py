@@ -13,18 +13,25 @@ class ModernglWidget(QOpenGLWidget):
     def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter
-        self._gl_initialized = False
+        # self._gl_initialized = False
         self._render_twice = False
         self._last_error_indicator = False
 
-    def initializeGL(self):  # override
-        self._gl_widget_adapter.init_gl(
-            self.width(), self.height(), self.defaultFramebufferObject()
-        )
-        print(f"01 Qt FBO: {self.defaultFramebufferObject()}")
-        self._gl_initialized = True
+    # def initializeGL(self):  # override
+    # self._gl_widget_adapter.init_gl(
+    #     self.width(), self.height(), self.defaultFramebufferObject()
+    # )
+    # print(f"01 Qt FBO: {self.defaultFramebufferObject()}")
+    # self._gl_initialized = True
 
     def paintGL(self):  # override
+        # if not self._gl_initialized:
+        #     self._gl_widget_adapter.init_gl(
+        #         self.width(), self.height(), self.defaultFramebufferObject()
+        #     )
+        #     print(f"01 Qt FBO: {self.defaultFramebufferObject()}")
+        #     self._gl_initialized = True
+
         self._gl_widget_adapter.render(
             self.width(), self.height(), self.defaultFramebufferObject()
         )
