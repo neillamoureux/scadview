@@ -89,5 +89,3 @@ class LabelAtlas:
             self._sampler = ctx.sampler(texture=self._texture)
             self._sampler.filter = (ctx.NEAREST, ctx.NEAREST)
         return self._sampler
-
-

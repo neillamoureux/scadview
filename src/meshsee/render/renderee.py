@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class Renderee(ABC):
-    def __init__(self, ctx: moderngl.Context, program: moderngl.Program, name: str = "Unnamed"):
+    def __init__(
+        self, ctx: moderngl.Context, program: moderngl.Program, name: str = "Unnamed"
+    ):
         self._ctx = ctx
         self._program = program
         self.name = name
@@ -28,11 +30,12 @@ class GnomonRenderee(Renderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         window_size: tuple[int, int],
-        name: str = "Uknown Gnomon"
+        name: str = "Uknown Gnomon",
     ):
         super().__init__(ctx, program, name)
         self._window_size = window_size
         self._vao = None
+
     @property
     def window_size(self) -> tuple[int, int]:
         return self._window_size

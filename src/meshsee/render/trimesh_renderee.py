@@ -111,7 +111,7 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         program: moderngl.Program,
         mesh: Trimesh,
         cull_back_face: bool = False,
-        name: str = "Unnamed Trimesh"
+        name: str = "Unnamed Trimesh",
     ):
         super().__init__(ctx, program, name)
         self._ctx = ctx
@@ -139,7 +139,9 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         self._ctx.disable(moderngl.BLEND)
         self._ctx.depth_mask = True  # type: ignore[attr-defined]
         logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
-        if self._vao is None: # Lazily create the _vao so that it is created during the render when the context is active
+        if (
+            self._vao is None
+        ):  # Lazily create the _vao so that it is created during the render when the context is active
             self._vao = create_vao_from_mesh(self._ctx, self._program, self._mesh)
         logger.debug(f"VAO: {self._vao.glo}")
         self._vao.render()
@@ -170,7 +172,7 @@ class AlphaRenderee(Renderee):
         colors_arr: NDArray[np.uint8],
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
-        name: str = "Unknown AlphaRenderee"
+        name: str = "Unknown AlphaRenderee",
     ):
         super().__init__(ctx, program, name)
         self._triangles = triangles
@@ -242,7 +244,7 @@ class TrimeshAlphaRenderee(TrimeshRenderee):
         mesh: Trimesh,
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
-        name: str = "Unknown TrimeshAlpha"
+        name: str = "Unknown TrimeshAlpha",
     ):
         self._alpha_renderee = AlphaRenderee(
             ctx,
@@ -274,7 +276,7 @@ class TrimeshListOpaqueRenderee(TrimeshRenderee):
         ctx: moderngl.Context,
         program: moderngl.Program,
         meshes: list[Trimesh],
-        name: str = "Unknown TrimeshList"
+        name: str = "Unknown TrimeshList",
     ):
         super().__init__(ctx, program, name)
         self._renderees = [TrimeshOpaqueRenderee(ctx, program, mesh) for mesh in meshes]
@@ -301,7 +303,7 @@ class TrimeshListAlphaRenderee(TrimeshRenderee):
         meshes: list[Trimesh],
         model_matrix: NDArray[np.float32],
         view_matrix: NDArray[np.float32],
-        name: str = "Unknow TrimeshListAlpha"
+        name: str = "Unknow TrimeshListAlpha",
     ):
         self._alpha_renderee = AlphaRenderee(
             ctx,
@@ -358,7 +360,7 @@ def create_trimesh_renderee(
     mesh: Trimesh | list[Trimesh],
     model_matrix: NDArray[np.float32],
     view_matrix: NDArray[np.float32],
-    name: str = 'Unknown create_trimesh_renderee'
+    name: str = "Unknown create_trimesh_renderee",
 ) -> TrimeshRenderee:
     if isinstance(mesh, list):
         if not all(isinstance(m, Trimesh) for m in mesh):
@@ -373,7 +375,12 @@ def create_trimesh_renderee(
         )
     elif isinstance(mesh, Trimesh):
         return create_single_trimesh_renderee(
-            ctx, program, mesh, model_matrix, view_matrix, name,
+            ctx,
+            program,
+            mesh,
+            model_matrix,
+            view_matrix,
+            name,
         )
     else:
         raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
@@ -392,7 +399,12 @@ def create_trimesh_list_renderee(
     opaques, alphas = split_opaque_alpha(meshes)
     opaques_renderee = create_trimesh_list_opaque_renderee(ctx, program, opaques)
     alphas_renderee = create_trimesh_list_alpha_renderee(
-        ctx, program, alphas, model_matrix, view_matrix, name,
+        ctx,
+        program,
+        alphas,
+        model_matrix,
+        view_matrix,
+        name,
     )
     return TrimeshListRenderee(opaques_renderee, alphas_renderee)
 
@@ -430,7 +442,9 @@ def create_trimesh_list_alpha_renderee(
 ):
     if len(alphas) == 0:
         return TrimeshNullRenderee()
-    return TrimeshListAlphaRenderee(ctx, program, alphas, model_matrix, view_matrix, name)
+    return TrimeshListAlphaRenderee(
+        ctx, program, alphas, model_matrix, view_matrix, name
+    )
 
 
 def create_single_trimesh_renderee(

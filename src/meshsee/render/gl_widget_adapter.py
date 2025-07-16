@@ -7,6 +7,7 @@ from meshsee.render.camera import CameraPerspective, CameraOrthogonal
 
 logger = logging.getLogger(__name__)
 
+
 class GlWidgetAdapter:
     ORBIT_ROTATION_SPEED = 0.01
 
@@ -49,7 +50,9 @@ class GlWidgetAdapter:
 
     def _reinit_gl_if_needed(self, width: int, height: int, current_fbo: int):
         if current_fbo != self._renderer._ctx.fbo.glo:
-            logger.debug(f"Framebuffer has changed from {self._renderer._ctx.fbo.glo} to {current_fbo}")
+            logger.debug(
+                f"Framebuffer has changed from {self._renderer._ctx.fbo.glo} to {current_fbo}"
+            )
             self._gl_initialized = False
             self.init_gl(width, height, current_fbo)
             logger.debug(f"Framebuffer after init_gl: {self._renderer._ctx.fbo.glo}")

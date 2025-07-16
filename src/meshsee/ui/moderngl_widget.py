@@ -1,6 +1,6 @@
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 from trimesh import Trimesh
@@ -18,15 +18,21 @@ class ModernglWidget(QOpenGLWidget):
         self._last_error_indicator = False
 
     def initializeGL(self):  # override
-        self._gl_widget_adapter.init_gl(self.width(), self.height(), self.defaultFramebufferObject())
+        self._gl_widget_adapter.init_gl(
+            self.width(), self.height(), self.defaultFramebufferObject()
+        )
         print(f"01 Qt FBO: {self.defaultFramebufferObject()}")
         self._gl_initialized = True
 
     def reinit_gl_if_needed(self):
-        self._gl_widget_adapter.init_gl(self.width(), self.height(), self.defaultFramebufferObject())
-    
+        self._gl_widget_adapter.init_gl(
+            self.width(), self.height(), self.defaultFramebufferObject()
+        )
+
     def paintGL(self):  # override
-        self._gl_widget_adapter.render(self.width(), self.height(), self.defaultFramebufferObject())
+        self._gl_widget_adapter.render(
+            self.width(), self.height(), self.defaultFramebufferObject()
+        )
 
     def _double_render_if_needed(self):
         if self._render_twice:

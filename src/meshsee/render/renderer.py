@@ -105,7 +105,7 @@ class Renderer:
             MAX_LABELS_PER_AXIS,
             MAX_LABEL_FRAC_OF_STEP,
             self._camera,
-            name="label_set"
+            name="label_set",
         )
         self._gnomon_renderee = GnomonRenderee(
             self._ctx, self._gnomon_prog.program, self.window_size, name="gnomon"
@@ -114,11 +114,7 @@ class Renderer:
     def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
         axes = _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
         axes_renderee = TrimeshOpaqueRenderee(
-            self._ctx,
-            self._axis_prog.program,
-            axes,
-            cull_back_face=True,
-            name="axes"
+            self._ctx, self._axis_prog.program, axes, cull_back_face=True, name="axes"
         )
         axes_renderee.subscribe_to_updates(self.on_program_value_change)
         return axes_renderee
@@ -185,7 +181,6 @@ class Renderer:
         if self._camera is not None:
             self._camera.aspect_ratio = self.aspect_ratio
         self._gnomon_renderee.window_size = value
-
 
     @property
     def show_grid(self):
@@ -267,11 +262,7 @@ class Renderer:
         else:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR
 
-    def load_mesh(
-        self,
-        mesh: Trimesh | list[Trimesh],
-        name: str = "Unknown load_mesh"
-    ):
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str = "Unknown load_mesh"):
         self._main_renderee = create_trimesh_renderee(
             self._ctx,
             self._main_prog.program,

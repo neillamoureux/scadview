@@ -125,7 +125,9 @@ class LabelRenderee(Renderee):
         self._program["m_scale"].write(  # pyright: ignore [reportAttributeAccessIssue]
             m_scale
         )
-        if self._vao is None: # Create VAO lazily to ensure it is created during the render while the context is active
+        if (
+            self._vao is None
+        ):  # Create VAO lazily to ensure it is created during the render while the context is active
             try:
                 self._vao = self._create_vao()
             except Exception as e:
@@ -174,7 +176,7 @@ class LabelSetRenderee(Renderee):
         max_labels_per_axis: int,
         max_label_frac_of_step: float,
         camera: Camera,
-        name = "Unknown Label Set"
+        name="Unknown Label Set",
     ):
         super().__init__(ctx, program, name)
         self._label_atlas = label_atlas
