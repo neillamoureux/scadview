@@ -39,12 +39,12 @@ class MeshHandler:
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
         self._first_mesh = False
-        self._mesh_name: str | None = "Unknown from MeshHandler"
+        self._mesh_name: str = "Unknown from MeshHandler"
 
     def load_mesh(self, file_path: str | None):
         self._reload_file_btn.setEnabled(True)
         self._export_btn.setDisabled(True)
-        self._mesh_name = file_path
+        self._mesh_name = file_path if file_path is not None else "Unknown"
         worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
             self._start_worker(worker)
