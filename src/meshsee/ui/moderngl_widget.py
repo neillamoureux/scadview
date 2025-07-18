@@ -13,7 +13,6 @@ class ModernglWidget(QOpenGLWidget):
     def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter
-        # self._gl_initialized = False
         self._render_twice = False
         self._last_error_indicator = False
 
