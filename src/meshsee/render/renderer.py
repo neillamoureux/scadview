@@ -202,7 +202,7 @@ class Renderer:
             ShaderVar.SHOW_GRID: "show_grid",
         }
         return self._create_shader_program(
-            "vertex_main.glsl", "fragment_main.glsl", program_vars, observable
+            "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
         )
 
     def _create_axis_shader_program(self, observable: Observable) -> ShaderProgram:
@@ -213,7 +213,7 @@ class Renderer:
             ShaderVar.SHOW_GRID: "show_grid",
         }
         return self._create_shader_program(
-            "vertex_main.glsl", "fragment_main.glsl", program_vars, observable
+            "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
         )
 
     def _create_gnomon_shader_program(self, observable: Observable) -> ShaderProgram:
