@@ -36,6 +36,7 @@ vec4 combined_grid_color(vec3 pos, int levels, float[5] spacings, float frac_wid
 }
 
 void main() {
+    vec3 light_dir = normalize(vec3(-1.0, 1.0, 1.0));
     if (show_grid) {
         vec4 grid = combined_grid_color(w_pos, 3, float[5](0.1, 1.0, 10.0, 0.0, 0.0), 0.05);
         float is_grid = dot(grid.rgb, vec3(1.0)); 
@@ -50,7 +51,7 @@ void main() {
         fragColor = color;
     }
 
-    float l = dot(normalize(-pos), normal) + 0.4;
+    float l = dot(light_dir, normal) + 0.8;
     fragColor = fragColor * (0.25 + abs(l) * 0.75);
 }
 
