@@ -17,7 +17,6 @@ class GlWidgetAdapter:
         self._orbiting = False
         self.show_grid = False
         self.show_gnomon = True
-        self._current_fbo = -1
 
     @property
     def show_grid(self) -> bool:
@@ -41,28 +40,16 @@ class GlWidgetAdapter:
     def toggle_gnomon(self):
         self.show_gnomon = not self.show_gnomon
 
-    def render(self, width: int, height: int, current_fbo: int):  # override
+    def render(self, width: int, height: int):  # override
         if not self._gl_initialized:
-            self._init_gl(width, height, current_fbo)
-        # else:
-        #     self._reinit_gl_if_needed(width, height, current_fbo)
+            self._init_gl(width, height)
         self._renderer.render(self.show_grid, self.show_gnomon)
 
-    def _init_gl(self, width: int, height: int, current_fbo: int):
+    def _init_gl(self, width: int, height: int):
         # You cannot create the context before initializeGL is called
         self._renderer = self._renderer_factory.make((width, height))
         self._gl_initialized = True
         self.resize(width, height)
-        self._current_fbo = current_fbo
-
-    def _reinit_gl_if_needed(self, width: int, height: int, current_fbo: int):
-        if current_fbo != self._renderer._ctx.fbo.glo:
-            logger.debug(
-                f"Framebuffer has changed from {self._renderer._ctx.fbo.glo} to {current_fbo}"
-            )
-            self._gl_initialized = False
-            self._init_gl(width, height, current_fbo)
-            logger.debug(f"Framebuffer after init_gl: {self._renderer._ctx.fbo.glo}")
 
     def resize(self, width, height):  # override
         self._width = width
