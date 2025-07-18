@@ -13,17 +13,11 @@ class ModernglWidget(QOpenGLWidget):
     def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter
-        self._gl_initialized = False
         self._render_twice = False
         self._last_error_indicator = False
 
-    def initializeGL(self):  # override
-        self._gl_widget_adapter.init_gl(self.width(), self.height())
-        self._gl_initialized = True
-
     def paintGL(self):  # override
-        self._gl_widget_adapter.render()
-        self._double_render_if_needed()
+        self._gl_widget_adapter.render(self.width(), self.height())
 
     def _double_render_if_needed(self):
         if self._render_twice:
@@ -55,7 +49,6 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.move_to_screen(
             event.position().x(), event.position().y(), distance
         )
-        # self._gl_widget_adapter.move(event.angleDelta().y() * self.CAMERA_MOVE_FACTOR)
         self.update()
 
     def keyPressEvent(self, event):
@@ -100,8 +93,8 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.frame()
         self.update()
 
-    def load_mesh(self, mesh: Trimesh):
-        self._gl_widget_adapter.load_mesh(mesh)
+    def load_mesh(self, mesh: Trimesh, name: str):
+        self._gl_widget_adapter.load_mesh(mesh, name)
         self.update()
 
     @property

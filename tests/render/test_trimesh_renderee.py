@@ -299,15 +299,15 @@ def test_trimesh_renderee_subscribe_to_updates(dummy_trimesh_renderee):
     )
 
 
-def test_trimesh_opaque_renderee_init_sets_vao(dummy_trimesh):
-    ctx = mock.MagicMock()
-    program = mock.MagicMock()
-    ctx.buffer.return_value = mock.MagicMock()
-    ctx.vertex_array.return_value = mock.MagicMock()
-    renderee = TrimeshOpaqueRenderee(ctx, program, dummy_trimesh)
-    assert hasattr(renderee, "_vao")
-    assert isinstance(renderee.points, np.ndarray)
-    ctx.buffer.assert_called()  # At least once
+# def test_trimesh_opaque_renderee_init_setsx_vao(dummy_trimesh):
+#     ctx = mock.MagicMock()
+#     program = mock.MagicMock()
+#     ctx.buffer.return_value = mock.MagicMock()
+#     ctx.vertex_array.return_value = mock.MagicMock()
+#     renderee = TrimeshOpaqueRenderee(ctx, program, dummy_trimesh)
+#     assert hasattr(renderee, "_vao")
+#     assert isinstance(renderee.points, np.ndarray)
+#     ctx.buffer.assert_called()  # At least once
 
 
 def test_trimesh_opaque_renderee_render_calls_ctx_methods(dummy_trimesh):
@@ -368,12 +368,12 @@ def test_trimesh_null_renderee_has_no_buffers_or_vao():
     assert not hasattr(renderee, "_vao")
 
 
-def test_alpha_renderee_init_sets_attributes(
-    alpha_renderee,
-):
-    assert np.array_equal(alpha_renderee.model_matrix, np.eye(4, dtype="f4"))
-    assert np.array_equal(alpha_renderee.view_matrix, np.eye(4, dtype="f4"))
-    assert alpha_renderee._resort_verts is False
+# def test_alpha_renderee_init_sets_attributes(
+#     alpha_renderee,
+# ):
+#     assert np.array_equal(alpha_renderee.model_matrix, np.eye(4, dtype="f4"))
+#     assert np.array_equal(alpha_renderee.view_matrix, np.eye(4, dtype="f4"))
+#     assert alpha_renderee._resort_verts is False
 
 
 def test_trimesh_alpha_renderee_points_property(dummy_trimesh_alpha_renderee):

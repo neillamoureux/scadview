@@ -1,7 +1,11 @@
+import logging
 import numpy as np
+
 
 from meshsee.render.renderer import RendererFactory
 from meshsee.render.camera import CameraPerspective, CameraOrthogonal
+
+logger = logging.getLogger(__name__)
 
 
 class GlWidgetAdapter:
@@ -36,14 +40,16 @@ class GlWidgetAdapter:
     def toggle_gnomon(self):
         self.show_gnomon = not self.show_gnomon
 
-    def init_gl(self, width: int, height: int):
-        self.resize(width, height)
+    def render(self, width: int, height: int):  # override
+        if not self._gl_initialized:
+            self._init_gl(width, height)
+        self._renderer.render(self.show_grid, self.show_gnomon)
+
+    def _init_gl(self, width: int, height: int):
         # You cannot create the context before initializeGL is called
         self._renderer = self._renderer_factory.make((width, height))
         self._gl_initialized = True
-
-    def render(self):  # override
-        self._renderer.render(self.show_grid, self.show_gnomon)
+        self.resize(width, height)
 
     def resize(self, width, height):  # override
         self._width = width
@@ -113,8 +119,8 @@ class GlWidgetAdapter:
     def indicate_load_state(self, state: str):
         self._renderer.indicate_load_state(state)
 
-    def load_mesh(self, mesh):
-        self._renderer.load_mesh(mesh)
+    def load_mesh(self, mesh, name: str):
+        self._renderer.load_mesh(mesh, name)
 
     def frame(self, direction=None, up=None):
         self._renderer.frame(direction, up)

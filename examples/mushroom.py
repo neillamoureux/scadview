@@ -41,4 +41,4 @@ def create_mesh():
     return top.union(stem).union(join).union(edge)
     # return edge
     # top.metadata = {"meshsee": {"color": [1.0, 0.0, 0.0, 0.3]}}
-    # return [top, stem, cut]
+    # return [top, stem, cut, join, edge]

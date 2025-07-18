@@ -32,14 +32,13 @@ class LabelRenderee(Renderee):
         self.camera = camera
         self.char_width = self.NUMBER_WIDTH
         self.axis = 0
+        self.label = label
         self.shift_up = DEFAULT_SHIFT_UP
         self._vertices = self._create_vertices(len(label))
         self._uv = self._create_uvs(label, label_atlas)
-        self._sampler = label_atlas.sampler
-        try:
-            self._vao = self._create_vao()
-        except Exception as e:
-            logger.exception(f"Error creating vertex array: {e}")
+        self._label_atlas = label_atlas
+        self._sampler = None
+        self._vao = None
 
         self._program["atlas"].value = (  # pyright: ignore [reportAttributeAccessIssue]
             self.ATLAS_SAMPLER_LOCATION
@@ -111,8 +110,11 @@ class LabelRenderee(Renderee):
         )
 
     def render(self):
+        self._ctx.disable(moderngl.CULL_FACE)
         scale = self.char_width / self.NUMBER_WIDTH
         self._update_m_base_scale(scale)
+        if self._sampler is None:
+            self._sampler = self._label_atlas.create_sampler(self._ctx)
         self._sampler.use(location=self.ATLAS_SAMPLER_LOCATION)
         self._ctx.enable(moderngl.BLEND)
 
@@ -123,6 +125,16 @@ class LabelRenderee(Renderee):
         self._program["m_scale"].write(  # pyright: ignore [reportAttributeAccessIssue]
             m_scale
         )
+        if (
+            self._vao is None
+        ):  # Create VAO lazily to ensure it is created during the render while the context is active
+            try:
+                self._vao = self._create_vao()
+            except Exception as e:
+                logger.exception(f"Error creating vertex array: {e}")
+                self._ctx.disable(moderngl.BLEND)
+                return
+        logger.debug(f"Rendering label {self.label} on axis {self.axis}")
         self._vao.render(moderngl.TRIANGLE_STRIP)
         self._ctx.disable(moderngl.BLEND)
 
@@ -164,8 +176,9 @@ class LabelSetRenderee(Renderee):
         max_labels_per_axis: int,
         max_label_frac_of_step: float,
         camera: Camera,
+        name="Unknown Label Set",
     ):
-        super().__init__(ctx, program)
+        super().__init__(ctx, program, name)
         self._label_atlas = label_atlas
         self.camera = camera
         self._max_labels_per_axis = max_labels_per_axis
@@ -174,6 +187,7 @@ class LabelSetRenderee(Renderee):
         self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):
+        logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
         axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
         visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
         if len(visible_ranges) == 0:
@@ -199,6 +213,7 @@ class LabelSetRenderee(Renderee):
         char_width = label_char_width(
             min_value, max_value, step, self._max_label_frac_of_step
         )
+        logger.debug(f"LabelSetRenderee visible_ranges len: {len(visible_ranges)}")
         for visible in visible_ranges:
             axis = visible[0]
             min_value = visible[1][0]  # pyright: ignore [reportOptionalSubscript]

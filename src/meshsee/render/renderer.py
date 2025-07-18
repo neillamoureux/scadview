@@ -82,8 +82,7 @@ class Renderer:
         self._clear_background = True
         self._last_background_color = self.ERROR_BACKGROUND_COLOR
         self.background_color = self.DEFAULT_BACKGROUND_COLOR
-        self._ctx.clear(*self._background_color)
-        self.load_mesh(_make_default_mesh())
+        self.load_mesh(_make_default_mesh(), "default_mesh")
         self.frame()
 
     def _create_shaders(self):
@@ -106,18 +105,16 @@ class Renderer:
             MAX_LABELS_PER_AXIS,
             MAX_LABEL_FRAC_OF_STEP,
             self._camera,
+            name="label_set",
         )
         self._gnomon_renderee = GnomonRenderee(
-            self._ctx, self._gnomon_prog.program, self.window_size
+            self._ctx, self._gnomon_prog.program, self.window_size, name="gnomon"
         )
 
     def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
         axes = _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
         axes_renderee = TrimeshOpaqueRenderee(
-            self._ctx,
-            self._axis_prog.program,
-            axes,
-            cull_back_face=True,
+            self._ctx, self._axis_prog.program, axes, cull_back_face=True, name="axes"
         )
         axes_renderee.subscribe_to_updates(self.on_program_value_change)
         return axes_renderee
@@ -180,6 +177,7 @@ class Renderer:
     @window_size.setter
     def window_size(self, value: tuple[int, int]):
         self._window_size = value
+        self._ctx.viewport = (0, 0, value[0], value[1])
         if self._camera is not None:
             self._camera.aspect_ratio = self.aspect_ratio
         self._gnomon_renderee.window_size = value
@@ -264,16 +262,14 @@ class Renderer:
         else:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR
 
-    def load_mesh(
-        self,
-        mesh: Trimesh | list[Trimesh],
-    ):
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str = "Unknown load_mesh"):
         self._main_renderee = create_trimesh_renderee(
             self._ctx,
             self._main_prog.program,
             mesh,
             self._m_model,
             self._camera.view_matrix,
+            name=name,
         )
         if isinstance(mesh, list):
             self.scale = max([m.scale for m in mesh])
@@ -307,18 +303,18 @@ class Renderer:
         self._camera.move_to_screen(ndx, ndy, distance)
 
     def render(self, show_grid: bool, show_gnomon: bool):  # override
+        logger.debug(f"Active FBO before clear: {self._ctx.fbo.glo}")
+        self._ctx.clear(*self._background_color, depth=1.0)
+        logger.debug(f"Viewport: {self._ctx.viewport}")
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.show_grid = True
+        self._ctx.enable(moderngl.DEPTH_TEST)
         self._axes_renderee.render()
         self.show_grid = show_grid
         self._main_renderee.render()
         self._label_set_renderee.render()
         if show_gnomon:
             self._gnomon_renderee.render()
-        if self._clear_background:
-            logger.debug(f"Clearing with color {self._background_color}")
-            self._ctx.clear(*self._background_color)
-            self._clear_background = False
 
 
 class RendererFactory:
@@ -326,4 +322,5 @@ class RendererFactory:
         self._camera = camera
 
     def make(self, window_size: tuple[int, int]) -> Renderer:
-        return Renderer(moderngl.create_context(), self._camera, window_size)
+        ctx = moderngl.create_context()
+        return Renderer(ctx, self._camera, window_size)
