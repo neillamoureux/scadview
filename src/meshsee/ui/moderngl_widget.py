@@ -7,7 +7,6 @@ from trimesh import Trimesh
 
 
 class ModernglWidget(QOpenGLWidget):
-
     def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter

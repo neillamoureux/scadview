@@ -468,18 +468,18 @@ def test_move__forward():
     check_move(1.3)
 
 
-def check_move(move_by):
+def check_move(halves):
     __tracebackhide__ = True
     cam = Camera()
     cam.position = np.array([1.0, 2.0, 3.0])
     # look_at = np.array([-1.0, -4.0, -3.0])
     position_orig = deepcopy(cam.position)
-    distance = np.linalg.norm(cam.direction)
-    cam.move(move_by)
-    assert np.linalg.norm(cam.direction) == approx(distance)
-    assert np.linalg.norm(cam.position - position_orig) == approx(abs(move_by))
+    distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
+    cam.move(halves)
+    # assert np.linalg.norm(cam.direction) == approx(distance)
+    assert np.linalg.norm(cam.position - position_orig) == approx(abs(distance))
     assert np.allclose(
-        position_orig + cam.direction * move_by / np.linalg.norm(cam.direction),
+        position_orig + cam.direction * distance / np.linalg.norm(cam.direction),
         cam.position,
     )
 
@@ -497,11 +497,13 @@ def test_move_up():
     perp_up = cam.perpendicular_up
     direction = cam.direction
     distance = np.linalg.norm(cam.direction)
+    move_distance = distance * (1 - np.power(0.5, 1.5))
     cam.move_up(1.5)
     assert np.linalg.norm(cam.direction) == approx(distance)
+    print(cam.direction, direction)
     assert np.allclose(cam.direction, direction)
-    assert np.allclose(cam.position, position + perp_up * 1.5)
-    assert np.allclose(cam.look_at, look_at + perp_up * 1.5)
+    assert np.allclose(cam.position, position + perp_up * move_distance)
+    assert np.allclose(cam.look_at, look_at + perp_up * move_distance)
     assert np.allclose(cam.perpendicular_up, perp_up)
 
 
@@ -514,12 +516,13 @@ def test_move_right():
     perp_up = cam.perpendicular_up
     direction = cam.direction
     distance = np.linalg.norm(cam.direction)
+    move_distance = distance * (1 - np.power(0.5, 1.5))
     cam.move_right(1.5)
     right = np.cross(cam.direction / np.linalg.norm(cam.direction), cam.up)
     assert np.linalg.norm(cam.direction) == approx(distance)
     assert np.allclose(cam.direction, direction)
-    assert np.allclose(cam.position, position + right * 1.5)
-    assert np.allclose(cam.look_at, look_at + right * 1.5)
+    assert np.allclose(cam.position, position + right * move_distance)
+    assert np.allclose(cam.look_at, look_at + right * move_distance)
     assert np.allclose(cam.perpendicular_up, perp_up)
 
 
@@ -531,9 +534,12 @@ def test_move_along():
     cam.position = position
     cam.look_at = look_at
     perp_up = cam.perpendicular_up
-    cam.move_along(vector)
-    assert np.allclose(cam.position, position + vector)
-    assert np.allclose(cam.look_at, look_at + vector)
+    halves = 1.7
+    distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
+    offset = vector / np.linalg.norm(vector) * distance
+    cam.move_along(vector, halves)
+    assert np.allclose(cam.position, position + offset)
+    assert np.allclose(cam.look_at, look_at + offset)
     assert np.allclose(cam.perpendicular_up, perp_up)
 
 
@@ -546,10 +552,11 @@ def test_move_to_screen_perspective():
     orig_view = cam.view_matrix
     orig_proj = cam.projection_matrix
     perp_up = cam.perpendicular_up
-    distance = 1.5
+    halves = 1.5
     ndx = 0.6
     ndy = -0.7
-    cam.move_to_screen(ndx, ndy, distance)
+    cam.move_to_screen(ndx, ndy, halves)
+    distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
 
     displacement = cam.position - position
     assert np.linalg.norm(displacement) == approx(distance)
@@ -593,12 +600,12 @@ def test_move_to_screen_orthogonal():
     orig_view = cam.view_matrix
     orig_proj = cam.projection_matrix
     perp_up = cam.perpendicular_up
-    distance = 1.5
+    halves = 1.5
     ndx = 0.6
     ndy = -0.7
     orig_fp_distance = cam._distance_to_focal_plane()
-    cam.move_to_screen(ndx, ndy, distance)
-
+    cam.move_to_screen(ndx, ndy, halves)
+    distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
     new_fp_distance = cam._distance_to_focal_plane()
     assert (orig_fp_distance - new_fp_distance) == approx(distance)
     assert np.allclose(cam.direction, look_at - position)
