@@ -257,32 +257,42 @@ class Camera:
 
     # move the camera along the direction vector
     # without changing the look_at point
-    def move(self, distance):
-        vector = self.direction * distance / np.linalg.norm(self.direction)
-        self.position = self.position + vector
-        self.look_at = self.look_at + vector
+    def move(self, halves: float):
+        self.position = self.position + self.direction * self._move_fraction(halves)
         self.update_matrices()
 
+    def _move_fraction(self, halves: float) -> np.float32:
+        return 1 - np.pow(0.5, halves)
+
     # move the camera along the up vector
-    def move_up(self, distance):
-        displacement = self.perpendicular_up * distance
+    def move_up(self, halves: float):
+        displacement = self.perpendicular_up * self._move_distance(halves)
         self.position = self.position + displacement
         self.look_at = self.look_at + displacement
         self.update_matrices()
 
+    def _move_distance(self, halves: float) -> np.float32:
+        return np.linalg.norm(self.direction) * self._move_fraction(halves)
+
     # move the camera along the right vector
-    def move_right(self, distance):
+    def move_right(self, halves: float):
+        distance = self._move_distance(halves)
         right = np.cross(self.direction / np.linalg.norm(self.direction), self.up)
         self.position = self.position + right * distance
         self.look_at = self.look_at + right * distance
         self.update_matrices()
 
-    def move_along(self, vector):
+    def move_along(self, vector, halves: float):
+        displacement = vector * self._move_distance(halves) / np.linalg.norm(vector)
+        self.move_along_by(displacement)
+        self.update_matrices()
+
+    def move_along_by(self, vector: NDArray[np.float32]):
         self.position = self.position + vector
         self.look_at = self.look_at + vector
         self.update_matrices()
 
-    def move_to_screen(self, ndx: float, ndy: float, distance: float):
+    def move_to_screen(self, ndx: float, ndy: float, halves: float):
         """
         Move the camera to the normalized screen coordinates ndx, ndy
         """
@@ -309,7 +319,7 @@ class CameraPerspective(Camera):
         self.on_program_value_change.notify(ShaderVar.GNOMON_PROJECTION_MATRIX, gpm)
         return gpm
 
-    def move_to_screen(self, ndx: float, ndy: float, distance: float):
+    def move_to_screen(self, ndx: float, ndy: float, halves: float):
         """
         Move the camera to the normalized screen coordinates ndx, ndy
         """
@@ -318,8 +328,7 @@ class CameraPerspective(Camera):
         )
         pos_on_far = np.linalg.inv(self.view_matrix.T).dot(eye_pos_on_far)
         ray_vector = pos_on_far[:3] / pos_on_far[3] - self.position
-        ray_vector = ray_vector / np.linalg.norm(ray_vector) * distance
-        self.move_along(ray_vector)
+        self.move_along(ray_vector, halves)
 
 
 class CameraOrthogonal(Camera):
@@ -374,7 +383,7 @@ class CameraOrthogonal(Camera):
         self.on_program_value_change.notify(ShaderVar.GNOMON_PROJECTION_MATRIX, gpm)
         return gpm
 
-    def move_to_screen(self, ndx: float, ndy: float, distance: float):
+    def move_to_screen(self, ndx: float, ndy: float, halves: float):
         """
         Move the camera to the normalized screen coordinates ndx, ndy
         """
@@ -401,7 +410,7 @@ class CameraOrthogonal(Camera):
 
         # Get the scaling factor
         old_fp_distance = self._distance_to_focal_plane()
-        self.move_along(self.direction / np.linalg.norm(self.direction) * distance)
+        self.move_along(self.direction, halves)
         new_fp_distance = self._distance_to_focal_plane()
         s = old_fp_distance / new_fp_distance
 
@@ -412,7 +421,7 @@ class CameraOrthogonal(Camera):
         # We calculated this perp direction before scaling, so we need to divide by s to get the
         # correct distance after scaling.
 
-        self.move_along(perp_direction * (s - 1.0) / s)
+        self.move_along_by(perp_direction * (s - 1.0) / s)
 
 
 def copy_camera_state(from_camera: Camera, to_camera: Camera):

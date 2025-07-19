@@ -7,9 +7,6 @@ from trimesh import Trimesh
 
 
 class ModernglWidget(QOpenGLWidget):
-    CAMERA_MOVE_FACTOR = 0.1
-    MOVE_STEP = 10.0
-
     def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter
@@ -45,7 +42,7 @@ class ModernglWidget(QOpenGLWidget):
         self.update()
 
     def wheelEvent(self, event):
-        distance = event.angleDelta().y() * self.CAMERA_MOVE_FACTOR
+        distance = event.angleDelta().y()
         self._gl_widget_adapter.move_to_screen(
             event.position().x(), event.position().y(), distance
         )
@@ -54,17 +51,17 @@ class ModernglWidget(QOpenGLWidget):
     def keyPressEvent(self, event):
         key = event.key()
         if key == Qt.Key.Key_W or key == Qt.Key.Key_Up:
-            self._gl_widget_adapter.move(self.MOVE_STEP)
+            self._gl_widget_adapter.move(1.0)
         elif key == Qt.Key.Key_S or key == Qt.Key.Key_Down:
-            self._gl_widget_adapter.move(-self.MOVE_STEP)
+            self._gl_widget_adapter.move(-1.0)
         elif key == Qt.Key.Key_A or key == Qt.Key.Key_Left:
-            self._gl_widget_adapter.move_right(-self.MOVE_STEP)
+            self._gl_widget_adapter.move_right(-1.0)
         elif key == Qt.Key.Key_D or key == Qt.Key.Key_Right:
-            self._gl_widget_adapter.move_right(self.MOVE_STEP)
+            self._gl_widget_adapter.move_right(1.0)
         elif key == Qt.Key.Key_Q or key == Qt.Key.Key_PageUp:
-            self._gl_widget_adapter.move_up(self.MOVE_STEP)
+            self._gl_widget_adapter.move_up(1.0)
         elif key == Qt.Key.Key_E or key == Qt.Key.Key_PageDown:
-            self._gl_widget_adapter.move_up(-self.MOVE_STEP)
+            self._gl_widget_adapter.move_up(-1.0)
         self.update()
 
     def view_from_xyz(self):
