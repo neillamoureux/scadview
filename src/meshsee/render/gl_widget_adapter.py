@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 class GlWidgetAdapter:
     ORBIT_ROTATION_SPEED = 0.01
+    CAMERA_WHEEL_MOVE_FACTOR = 0.0003
+    MOVE_STEP = 0.1
 
     def __init__(self, renderer_factory: RendererFactory):
         self._renderer_factory = renderer_factory
@@ -80,21 +82,20 @@ class GlWidgetAdapter:
         self._renderer.orbit(angle_from_up, rotation_angle)
 
     def move(self, distance):
-        self._renderer.move(distance)
+        self._renderer.move(distance * self.MOVE_STEP)
 
     def move_up(self, distance):
-        self._renderer.move_up(distance)
+        self._renderer.move_up(distance * self.MOVE_STEP)
 
     def move_right(self, distance):
-        self._renderer.move_right(distance)
-
-    def move_along(self, vector):
-        self._renderer.move_along(vector)
+        self._renderer.move_right(distance * self.MOVE_STEP)
 
     def move_to_screen(self, x: int, y: int, distance: float):
         ndx = x / self._width * 2 - 1
         ndy = 1 - y / self._height * 2
-        self._renderer.move_to_screen(ndx, ndy, distance)
+        self._renderer.move_to_screen(
+            ndx, ndy, distance * self.CAMERA_WHEEL_MOVE_FACTOR
+        )
 
     def view_from_xyz(self):
         direction = np.array([-1, 1, -1])

@@ -293,9 +293,6 @@ class Renderer:
     def move_right(self, distance):
         self._camera.move_right(distance)
 
-    def move_along(self, vector):
-        self._camera.move_along(vector)
-
     def move_to_screen(self, ndx: float, ndy: float, distance: float):
         """
         Move the camera to the normalized screen position (ndx, ndy) and move it by distance.
