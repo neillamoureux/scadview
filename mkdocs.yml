@@ -1,0 +1,10 @@
+site_name: Meshsee Documentation
+nav:
+  - Home: index.md
+  - About: about.md
+  - Examples: examples.md
+  - API Reference: api_reference.md
+  - Tutorials: tutorials.md
+  - Contributing: contributing.md
+  - License: license.md
+theme: readthedocs
