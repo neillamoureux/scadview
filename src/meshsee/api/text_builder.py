@@ -27,8 +27,11 @@ SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
 
 @cache
 def list_system_fonts() -> dict[str, str]:
-    """
-    Returns a dict mapping font family names -> font file paths
+    """List system font you can use in text().
+
+
+    Returns:
+    A dict mapping font family names -> font file paths
     (only TrueType/OpenType fonts).
     """
     logger.info("Finding system fonts - this can take some time")
@@ -67,16 +70,20 @@ def text(
 ) -> Trimesh:
     """
     Create a 3D mesh from the given text using the specified font and size.
-    :param text: The text to convert to a 3D mesh.
-    :param size: The size of the text in mesh units.
-    :param font: The font family name to use for the text.
-    :param halign: Horizontal alignment of the text ('left', 'center', 'right').
-    :param valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
-    :param spacing: Spacing between characters in mesh units (not used in this implementtion).
-    :param direction: Text direction (only 'ltr' and 'rtl' are is supported in this implementation).
-    :param language: Language of the text (not used in this implementation).
-    :param script: Script of the text (not used in this implementation).
-    :return: A trimesh.Trimesh object representing the 3D mesh of the text.
+
+    Args:
+        text: The text to convert to a 3D mesh.
+        size: The size of the text in mesh units.
+        font: The font family name to use for the text.
+        halign: Horizontal alignment of the text ('left', 'center', 'right').
+        valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
+        spacing: Spacing between characters in mesh units (not used in this implementtion).
+        direction: Text direction (only 'ltr' and 'rtl' are is supported in this implementation).
+        language: Language of the text (not used in this implementation).
+        script: Script of the text (not used in this implementation).
+
+    Returns:
+        An object representing the 3D mesh of the text.
     """
     if text.strip() == "":
         # If the text is empty or contains only spaces, return an empty mesh

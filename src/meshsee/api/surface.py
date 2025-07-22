@@ -11,18 +11,17 @@ def surface(
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh on a base at z = 0.0 from a file containing heightmap data.
+    The file can be a CSV, TSV, TXT, DAT, or an image file (PNG, JPEG, etc.).
 
-    Parameters
-    ----------
-    file : str
-        Path to the file containing heightmap data. The file can be a CSV or an image.
-    scale : tuple
-        A tuple of three values (X, Y, Z) to scale the mesh in the respective dimensions.
+    Args:
+        file: The file path to get the data from.
+        scale: A 3-tuple that scales in each dimension.
+        base: The base height of the pedestal upon which the mesh will be placed.
+        invert: If True, inverts the heightmap values (useful for some heightmaps).
 
-    Returns
-    -------
-    trimesh.Trimesh
-        A trimesh object representing the 3D mesh.
+    Returns:
+        Trimesh: A 3d mesh object representing the surface.
+
     """
     delimiter = None
     if file.endswith(".csv"):
@@ -174,20 +173,14 @@ def _assemble_solid(
 def mesh_from_heightmap(
     heightmap: NDArray[np.float32], scale: tuple = (1.0, 1.0, 1.0)
 ) -> trimesh.Trimesh:
-    """
-    Create a 3D mesh from a heightmap.
+    """Create a 3D mesh from a heightmap.
 
-    Parameters
-    ----------
-    heightmap : NDArray[np.float32]
-        A 2D numpy array representing the heightmap, where each value corresponds to the height at that point.
-    scale : tuple
-        A tuple of three values (X, Y, Z) to scale the mesh in the respective dimensions.
+    Args:
+        heightmap: A 2D numpy array representing the heightmap, where each value corresponds to the height at that point.
+        scale: A 3-tuple (X, Y, Z) to scale the mesh in the respective dimensions.
 
-    Returns
-    -------
-    trimesh.Trimesh
-        A trimesh object representing the 3D mesh.
+    Returns:
+        An object representing the 3D mesh.
     """
     H, W = heightmap.shape
     # 1) grid coordinates
