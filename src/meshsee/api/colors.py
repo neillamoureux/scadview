@@ -3,6 +3,8 @@ from enum import Enum
 
 
 class Color(Enum):
+    """Enum for common colors used in Meshsee visualizations."""
+
     RED = (1.0, 0.0, 0.0)
     GREEN = (0.0, 1.0, 0.0)
     BLUE = (0.0, 0.0, 1.0)
@@ -40,6 +42,16 @@ def set_mesh_color(
     color: tuple[float, float, float] | list[float] | Color,
     alpha: float = 1.0,
 ) -> Trimesh:
+    """Set the color of a Trimesh object for Meshsee visualization.
+
+    Args:
+        mesh: The input mesh to which the color will be applied.
+        color: The RGB color to set. Can be a tuple, list, or Color enum.
+        alpha: The alpha transparency value for the color (0.0 to 1.0).
+
+    Returns:
+        Trimesh: The input mesh with updated color metadata.
+    """
     if isinstance(color, Color):
         color = color.value
     mesh.metadata["meshsee"] = {"color": [color[0], color[1], color[2], alpha]}

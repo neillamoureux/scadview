@@ -9,6 +9,7 @@ help:
 	@echo "  lint    	- Lint the code"
 	@echo "  type		- Type check the code"
 	@echo "  preflight	- format, lint and type"
+	@echo "  serve_docs	- Run the documentation server"
 
 VENV_DIR := .venv
 SCRIPTS_DIR := scripts
@@ -57,3 +58,7 @@ type: check-venv
 	@"$(SCRIPTS_DIR)/type.sh"
 
 preflight: format lint test type
+
+serve_docs: check-venv
+	@echo "Generating server documentation..."
+	@"$(SCRIPTS_DIR)/serve_docs.sh"

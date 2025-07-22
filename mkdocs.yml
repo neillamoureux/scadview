@@ -1,0 +1,25 @@
+site_name: Meshsee Documentation
+watch: 
+  - src
+  - docs
+nav:
+  - Home: index.md
+  - About: about.md
+  - Examples: examples.md
+  - API Reference: api.md
+  - Tutorials: tutorials.md
+  - Contributing: contributing.md
+  - License: license.md
+theme: readthedocs
+plugins:
+- search
+- mkdocstrings:
+    handlers:
+      python:
+        paths: [src]
+        options:
+            docstring_style: google
+            show_root_full_path: true
+            show_root_heading: true
+
+

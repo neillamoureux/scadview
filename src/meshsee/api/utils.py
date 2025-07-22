@@ -2,10 +2,17 @@ import numpy as np
 import trimesh
 
 
-# Helper to convert a Manifold into a Trimesh
-# From https://colab.research.google.com/drive/1VxrFYHPSHZgUbl9TeWzCeovlpXrPQ5J5?usp=sharing#scrollTo=xCHqkWeJXgmJ
-#
 def manifold_to_trimesh(manifold):
+    """
+    Convert a manifold object to a Trimesh object.
+    From [Manifold](https://colab.research.google.com/drive/1VxrFYHPSHZgUbl9TeWzCeovlpXrPQ5J5?usp=sharing#scrollTo=xCHqkWeJXgmJ)
+
+    Args:
+        manifold: A manifold object with vertex properties and triangle vertices.
+
+    Returns:
+        trimesh.Trimesh: A Trimesh object representing the manifold.
+    """
     mesh = manifold.to_mesh()
 
     if mesh.vert_properties.shape[1] > 3:
