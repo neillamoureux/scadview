@@ -1,5 +1,6 @@
 import logging
 
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -32,13 +33,41 @@ class MainWindow(QMainWindow):
         self._gl_widget = gl_widget
         self.setWindowTitle(title)
         self.resize(*size)
+        self._create_actions()
+        self._create_menu_bar()
         self._main_layout = self._create_main_layout()
         self._mesh_handler = MeshHandler(
             controller=controller,
             gl_widget=self._gl_widget,
-            reload_file_btn=self._reload_file_btn,
-            export_btn=self._export_btn,
+            reload_enable_callback=self._enable_reload,
+            export_enable_callback=self._enable_export,
         )
+
+    def _create_actions(self) -> None:
+        self._load_action = QAction("&Load .py...", self)
+        self._load_action.setStatusTip(
+            "Load a Python file containing a def create_mesh()..."
+        )
+        self._load_action.triggered.connect(self.load_file)
+
+        self._reload_action = QAction("&Reload .py", self)
+        self._reload_action.setStatusTip("Reload the current mesh from the file")
+        self._reload_action.triggered.connect(self.reload)
+        self._reload_action.setDisabled(True)
+
+        self._export_action = QAction("&Export...", self)
+        self._export_action.setStatusTip("Export the current mesh to a file")
+        self._export_action.triggered.connect(self.export)
+
+    def _create_menu_bar(self) -> None:
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("&File")
+        file_menu.addAction(self._load_action)
+        file_menu.addAction(self._reload_action)
+        file_menu.addAction(self._export_action)
+        # help_menu = menu_bar.addMenu("Help")
+        # help_menu.addAction("About", self._controller.show_about_dialog)
+        # help_menu.addAction("Documentation", self._controller.open_documentation)
 
     def _create_main_layout(self) -> QVBoxLayout:
         central_widget = QWidget(self)
@@ -49,6 +78,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(file_buttons)
         camera_buttons = self._create_camera_buttons()
         main_layout.addWidget(camera_buttons)
+        self._init_buttons_state()
         return main_layout
 
     def _create_file_buttons(self) -> QWidget:
@@ -58,20 +88,30 @@ class MainWindow(QMainWindow):
         file_button_strip.setFixedHeight(self.BUTTON_STRIP_HEIGHT)
 
         load_file_btn = QPushButton("Load .py")
-        load_file_btn.clicked.connect(self.load_file)
+        load_file_btn.clicked.connect(self._load_action.trigger)
         file_button_layout.addWidget(load_file_btn)
 
         self._reload_file_btn = QPushButton("Reload .py")
-        self._reload_file_btn.setDisabled(True)
-        self._reload_file_btn.clicked.connect(self.reload)
+        self._reload_file_btn.addAction(self._reload_action)
         file_button_layout.addWidget(self._reload_file_btn)
 
         self._export_btn = QPushButton("Export")
-        self._export_btn.setDisabled(True)
-        self._export_btn.clicked.connect(self.export)
+        self._export_btn.addAction(self._export_action)
         file_button_layout.addWidget(self._export_btn)
 
         return file_button_strip
+
+    def _init_buttons_state(self) -> None:
+        self._enable_export(False)
+        self._enable_reload(False)
+
+    def _enable_export(self, enable: bool = True) -> None:
+        self._export_btn.setEnabled(enable)
+        self._export_action.setEnabled(enable)
+
+    def _enable_reload(self, enable: bool = True) -> None:
+        self._reload_action.setEnabled(enable)
+        self._reload_file_btn.setEnabled(enable)
 
     def _create_camera_buttons(self) -> QWidget:
         camera_button_strip = QWidget()
@@ -128,6 +168,8 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open File", "", "Python Files (*.py)"
         )
+        if file_path == "":
+            return
         self._load_mesh(file_path)
 
     def reload(self):
