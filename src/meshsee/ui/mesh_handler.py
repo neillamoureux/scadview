@@ -3,7 +3,6 @@ import queue
 from typing import Callable
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
-from PySide6.QtWidgets import QWidget
 
 from meshsee.controller import Controller
 from meshsee.mesh_loader import MeshLoader

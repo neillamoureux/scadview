@@ -19,6 +19,7 @@ class GlWidgetAdapter:
         self._orbiting = False
         self.show_grid = False
         self.show_gnomon = True
+        self._camera_type = "perspective"
 
     @property
     def show_grid(self) -> bool:
@@ -41,6 +42,16 @@ class GlWidgetAdapter:
 
     def toggle_gnomon(self):
         self.show_gnomon = not self.show_gnomon
+
+    @property
+    def camera_type(self) -> str:
+        return self._camera_type
+
+    def toggle_camera(self):
+        if self._camera_type == "orthogonal":
+            self.use_perspective_camera()
+        else:
+            self.use_orthogonal_camera()
 
     def render(self, width: int, height: int):  # override
         if not self._gl_initialized:
@@ -128,6 +139,8 @@ class GlWidgetAdapter:
 
     def use_orthogonal_camera(self):
         self._renderer.camera = CameraOrthogonal()
+        self._camera_type = "orthogonal"
 
     def use_perspective_camera(self):
         self._renderer.camera = CameraPerspective()
+        self._camera_type = "perspective"

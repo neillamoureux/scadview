@@ -2,7 +2,7 @@ import sys
 from importlib.resources import as_file, files
 
 from PySide6 import QtGui
-from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 

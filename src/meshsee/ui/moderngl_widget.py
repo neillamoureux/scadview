@@ -13,6 +13,14 @@ class ModernglWidget(QOpenGLWidget):
         self._render_twice = False
         self._last_error_indicator = False
 
+    @property
+    def camera_type(self):
+        return self._gl_widget_adapter.camera_type
+
+    def toggle_camera(self):
+        self._gl_widget_adapter.toggle_camera()
+        self.update()
+
     def paintGL(self):  # override
         self._gl_widget_adapter.render(self.width(), self.height())
 
@@ -108,12 +116,4 @@ class ModernglWidget(QOpenGLWidget):
 
     def toggle_gnomon(self):
         self._gl_widget_adapter.toggle_gnomon()
-        self.update()
-
-    def use_perspective_camera(self):
-        self._gl_widget_adapter.use_perspective_camera()
-        self.update()
-
-    def use_orthogonal_camera(self):
-        self._gl_widget_adapter.use_orthogonal_camera()
         self.update()
