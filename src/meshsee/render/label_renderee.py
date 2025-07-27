@@ -134,7 +134,7 @@ class LabelRenderee(Renderee):
                 logger.exception(f"Error creating vertex array: {e}")
                 self._ctx.disable(moderngl.BLEND)
                 return
-        logger.debug(f"Rendering label {self.label} on axis {self.axis}")
+        # logger.debug(f"Rendering label {self.label} on axis {self.axis}")
         self._vao.render(moderngl.TRIANGLE_STRIP)
         self._ctx.disable(moderngl.BLEND)
 
