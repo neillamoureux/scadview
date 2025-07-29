@@ -313,15 +313,6 @@ def bend_grid(
     return Trimesh(vertices=bent_verts, faces=grid.faces)
 
 
-def clean_mesh(mesh: Trimesh) -> Trimesh:
-    mesh.merge_vertices()
-    mesh.remove_degenerate_faces()
-    mesh.fill_holes()
-    mesh.remove_duplicate_faces()
-    mesh.process(validate=True)
-    return mesh
-
-
 def bend_x(
     vertices: np.ndarray, arc_radians: float = np.pi / 2.0, x_gap=0.01
 ) -> np.ndarray:
