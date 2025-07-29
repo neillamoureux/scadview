@@ -47,8 +47,14 @@ class MeshHandler:
         self._mesh_name = file_path if file_path is not None else "Unknown"
         worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
+            logger.debug(
+                f"No current worker. Starting mesh loading worker for {self._mesh_name}"
+            )
             self._start_worker(worker)
         else:
+            logger.debug(
+                f"Current worker exists; must stop before loading {self._mesh_name}"
+            )
             self._next_mesh_loading_worker = worker
             self._mesh_loading_worker.stop()
 
@@ -60,6 +66,7 @@ class MeshHandler:
         self._mesh_loading_worker.signals.load_successful.connect(self._load_successful)
         self._mesh_loading_worker.signals.error.connect(self._indicate_error)
         self._gl_widget.indicate_load_state("loading")
+        logger.debug(f"Starting mesh loading worker for {self._mesh_name}")
         QThreadPool.globalInstance().start(self._mesh_loading_worker)
 
     def _start_next_worker(self):

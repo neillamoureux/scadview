@@ -7,90 +7,102 @@ from trimesh.creation import box, cylinder, extrude_polygon
 
 from meshsee import text
 
-# from meshsee import set_mesh_color, Color
+"""
+A toothbrush holder with a tube for each person in the household.
+Each tube is made from a hexagonal grid bent into a tube shape.
+Each tube is labeled with the person's name.
+The tubes are arrange in a circle on a circular base plate.
 
+The center axis of each tube extends from a circle on the base plate,
+to a circle at the top of the tube.  
+Both circles have the same radius, and are centered on the same axis
+as the base plate.
+The tubes are tilted to hold the toothbrushes at an angle.
+"""
+
+# Names to mark each holder tube
 NAMES = [
     "NEIL",
     "ADAM",
     "SOPHIE",
 ]
 
-#  Hole size for a toothbrush
-TUBE_INNER_R = 9
-TUBE_H = 100
-TWIST = np.pi / 2.0
-TILT = np.deg2rad(30)
-OUTWARD_ROT = np.deg2rad(50)
-TUBE_COUNT = len(NAMES)
-TUBE_WALL = 4
-TUBE_BASE = 2
 
-FONT = "Helvetica"
-FONT_H = TUBE_WALL
-FONT_SIZE = 8
+TUBE_INNER_R = 9.5  #  Tube size for a toothbrush (radius)
+TUBE_H = 100  # height of tube when standing upright
+TILT = np.deg2rad(30)  # tilt of tube
+TUBE_COUNT = len(NAMES)  # number of toothbrushes to hold
+TUBE_WALL = 4  # Thickness of the tube wall
+HEX_GRID_COLS = 6  # Count of cols in the hex grid that makes the tube
+GRID_DIV_WIDTH = 2  # Thickeness of the divisions between the hex cells
 
-BASE_R = 45
-BASE_H = 5
+POSITIONING_R = (
+    28  # Radius of the circle on which the tubes tops / bottoms are positioned
+)
+# Radius of the circle the center of the tubes are positioned on
+# (position_r)**2  = center_positioning_r**2  + (sin(tilt) * tube_h / 2)**2
+CENTER_POSITIONING_R = np.sqrt(
+    np.square(POSITIONING_R) - np.square(np.sin(TILT) * TUBE_H / 2)
+)
 
+FONT = "Helvetica"  # Font for names
+FONT_H = TUBE_WALL  # Extruded height of the foont
+FONT_SIZE = 8  # font "size"
 
-COLS = 6
-GRID_DIV_WIDTH = 2
+BASE_R = 41  # Radius of the base
+BASE_H = 5  # Height (thickness) of the base
 
 
 def create_mesh() -> (
     Trimesh | list[Trimesh] | Generator[Trimesh | list[Trimesh], None, None]
 ):
-    first_loop = True
-    mesh = Trimesh()
-    displacement_dirs = np.linspace(0, 2 * np.pi, len(NAMES) + 1)[:-1]
-    base_grid = make_grid(TUBE_INNER_R, TUBE_H, TUBE_WALL, COLS, GRID_DIV_WIDTH)
-    for name, direction in zip(NAMES, displacement_dirs):
-        name_mesh = text(name, FONT_SIZE, font=FONT).apply_scale([1, 1, FONT_H])
+    hex_grid = make_grid(TUBE_INNER_R, TUBE_H, TUBE_WALL, HEX_GRID_COLS, GRID_DIV_WIDTH)
+    yield hex_grid
+
+    # Each tube is moved radially in evenly spaced directions around the circle
+    tube_move_directions = np.linspace(0.0, 2 * np.pi, len(NAMES) + 1)
+    mesh = Trimesh()  # Keep the type checking happy
+    mesh_started = False
+
+    for name, direction in zip(NAMES, tube_move_directions):
+        name_mesh = text(name, FONT_SIZE, font=FONT, halign="center").apply_scale(
+            [1, 1, -FONT_H]
+        )
         grid_mesh = add_name(
-            base_grid.copy(), TUBE_INNER_R, TUBE_H, TUBE_WALL, COLS, name_mesh
+            hex_grid.copy(),
+            TUBE_INNER_R,
+            TUBE_H,
+            TUBE_WALL,
+            HEX_GRID_COLS,
+            GRID_DIV_WIDTH,
+            name_mesh,
         )
-        tube = bend_grid(grid_mesh, TUBE_INNER_R, TUBE_H, TUBE_WALL, COLS)
-        twist_rot = transformations.rotation_matrix(TWIST, (0, 1, 0), (0, 0, 0))
-        tilt_rot = transformations.rotation_matrix(-TILT, (0, 0, 1), (0, 0, 0))
-        outward_rot = transformations.rotation_matrix(OUTWARD_ROT, [0, 1, 0], [0, 0, 0])
-        (
-            tube.apply_transform(twist_rot)
-            .apply_translation([TUBE_INNER_R, -TUBE_H / 2, 0])
-            .apply_transform(tilt_rot)
-            .apply_transform(outward_rot)
-            .apply_translation([0, 0, 2.0 * TUBE_INNER_R])
-            .apply_transform(
-                transformations.rotation_matrix(direction, [0, 1, 0], [0, 0, 0])
-            )
+        yield grid_mesh
+
+        tube = build_tube(
+            grid_mesh.copy(), TUBE_H, TILT, CENTER_POSITIONING_R, direction
         )
-        if first_loop:
+
+        if not mesh_started:
             mesh = tube
-            first_loop = False
+            mesh_started = True
         else:
             mesh = mesh.union(tube)
         yield mesh
 
-    base_mid_at = -TUBE_H / 2 * np.cos(TILT)
-    base = (
-        cylinder(BASE_R, BASE_H)
-        .apply_transform(
-            transformations.rotation_matrix(np.pi / 2, [1, 0, 0], [0, 0, 0])
-        )
-        .apply_translation([0, base_mid_at, 0])
-    )
-    cut_height = TUBE_INNER_R * 1.5
-    cut = (
-        cylinder(BASE_R, cut_height)
-        .apply_transform(
-            transformations.rotation_matrix(np.pi / 2, [1, 0, 0], [0, 0, 0])
-        )
-        .apply_translation([0, base_mid_at - BASE_H / 2.0 - cut_height / 2, 0])
-    )
-    # set_mesh_color(base, Color.GREEN, 0.3)
-    # set_mesh_color(cut, Color.RED, 0.3)
-    # return [mesh, base, cut]
+    base_top_at = (TUBE_INNER_R + TUBE_WALL + GRID_DIV_WIDTH * 2) * np.sin(TILT)
+    base = cylinder(BASE_R, BASE_H).apply_translation([0, 0, base_top_at - BASE_H / 2])
     mesh = mesh.union(base)
     yield mesh
+
+    # cut off anything extruding past the bottom of th base
+    cut_height = TUBE_H  # some high number
+    cut_top_at = base_top_at - BASE_H
+    cut_r = BASE_R * 1.1  # something bigger than the base radius
+
+    cut = cylinder(cut_r, cut_height).apply_translation(
+        [0, 0, cut_top_at - cut_height / 2]
+    )
     yield mesh.difference(cut)
 
 
@@ -102,7 +114,7 @@ def make_grid(
     grid_div_width: float,
 ):
     hex_cell_dims, rows = hex_cell_dims_for_tube(
-        tube_inner_r, tube_h, tube_wall, grid_cols
+        tube_inner_r, tube_h, tube_wall, grid_div_width, grid_cols
     )
     grid = hex_grid(hex_cell_dims, grid_cols, rows, grid_div_width)
     frame_dims = hex_grid_dims(hex_cell_dims, grid_cols, rows)
@@ -110,20 +122,32 @@ def make_grid(
         (frame_dims[0], grid_div_width, frame_dims[2])
     ).apply_translation((frame_dims[0] / 2, 0, frame_dims[2] / 2))
     top_frame = bottom_frame.copy().apply_translation((0, frame_dims[1], 0))
-    return grid.union(top_frame).union(bottom_frame)
+    return (
+        grid.union(top_frame)
+        .union(bottom_frame)
+        .apply_translation([0, grid_div_width / 2, 0])
+    )
 
 
 def hex_cell_dims_for_tube(
-    tube_inner_r: float, tube_h: float, tube_wall: float, cols: int
+    tube_inner_r: float,
+    tube_h: float,
+    tube_wall: float,
+    grid_div_width: float,
+    cols: int,
 ) -> tuple[tuple[float, float, float], int]:
-    # cols must be even for this to work and must satisfy
+    # cols must be even for this to work.
+    # The last col is only .75 wide so it can mate with its
+    # other side when bent into a tube
 
-    # 2 * pi * tube_inner_r = (cols - 1) * cell_dim_x * 0.75 + cell_dim_x,
-    # so cell_dim_x = 2 * pi * tube_inner_r / ((cols * .75 + .25)
+    # 2 * pi * tube_inner_r = cols * cell_dim_x * 0.75
+    # 2 * pi * tube_inner_r = cell_dim_x * ( 0.75 * (cols - 1) + 1)
+    # 2 * pi * tube_inner_r = cell_dim_x * ( 0.75 * cols + 0.25)
+    # so cell_dim_x = 2 * pi * tube_inner_r / (cols * .75)
 
-    cell_dim_x = 2 * np.pi * tube_inner_r / ((cols * 0.75) + 0.25)
+    cell_dim_x = 2 * np.pi * tube_inner_r / (cols * 0.75)
     rows = round(tube_h / cell_dim_x)
-    cell_dim_y = tube_h / rows
+    cell_dim_y = (tube_h - grid_div_width) / rows
     return (cell_dim_x, cell_dim_y, tube_wall), rows
 
 
@@ -133,13 +157,29 @@ def add_name(
     tube_h: float,
     tube_wall: float,
     grid_cols: int,
+    grid_div_width: float,
     name_mesh: Trimesh,
 ) -> Trimesh:
+    """
+    Place name at top of grid, standing up at 90 degrees
+    """
     hex_cell_dims, rows = hex_cell_dims_for_tube(
-        tube_inner_r, tube_h, tube_wall, grid_cols
+        tube_inner_r,
+        tube_h,
+        tube_wall,
+        grid_div_width,
+        grid_cols,
     )
     frame_dims = hex_grid_dims(hex_cell_dims, grid_cols, rows)
-    name_mesh.apply_translation((0, frame_dims[1], 0))
+    name_mesh.apply_transform(
+        transformations.rotation_matrix(np.pi, [0, 1, 0], [0, 0, 0])
+    )
+    name_mesh.apply_transform(
+        transformations.rotation_matrix(np.pi / 2, [1, 0, 0], [0, 0, 0])
+    )
+    name_mesh.apply_translation(
+        (frame_dims[0] / 2, frame_dims[1] + grid_div_width, frame_dims[2])
+    )
     return grid_mesh.union(name_mesh)
 
 
@@ -168,11 +208,6 @@ def hex_grid(
 
     """
     base_dims = hex_grid_dims(cell_dims, cols, rows)
-    # base_dims = (
-    #     (cols - 1) * cell_dims[0] * 0.75 + cell_dims[0],
-    #     rows * cell_dims[1],
-    #     cell_dims[2],
-    # )
     grid = box(base_dims).apply_translation(
         (base_dims[0] / 2, base_dims[1] / 2, base_dims[2] / 2)
     )
@@ -225,48 +260,66 @@ def hex_grid_dims(
     rows: int,
 ) -> tuple[float, float, float]:
     return (
-        (cols - 1) * cell_dims[0] * 0.75 + cell_dims[0],
+        cols * cell_dims[0] * 0.75,
         rows * cell_dims[1],
         cell_dims[2],
     )
 
 
+def build_tube(
+    grid_mesh: Trimesh,
+    tube_h: float,
+    tilt: float,
+    center_positioning_r: float,
+    direction: float,
+) -> Trimesh:
+    tube = bend_grid(
+        grid_mesh,
+    )
+    # Stand upright
+    tube.apply_transform(
+        transformations.rotation_matrix(np.pi / 2, [1, 0, 0], [0, 0, 0])
+    )
+    # Rotate to move name to outside
+    tube.apply_transform(transformations.rotation_matrix(np.pi, [0, 0, 1], [0, 0, 0]))
+    # Move center to origin
+    tube.apply_translation((0, 0, -tube_h / 2))
+    # Tilt
+    tube.apply_transform(transformations.rotation_matrix(tilt, [1, 0, 0], [0, 0, 0]))
+    # rotate around z
+    tube.apply_transform(
+        transformations.rotation_matrix(direction, [0, 0, 1], [0, 0, 0])
+    )
+    # Move bottom center to XY plane and push out to c center to CENTER_POSITIONING_R
+    tube.apply_translation(
+        (
+            -center_positioning_r * np.cos(direction),
+            -center_positioning_r * np.sin(direction),
+            np.cos(tilt) * tube_h / 2,
+        )
+    )
+    return tube
+
+
 def bend_grid(
     grid: Trimesh,
-    tube_inner_r: float,
-    tube_h: float,
-    tube_wall: float,
-    grid_cols: int,
 ) -> Trimesh:
-    WATERTIGHT_FUDGE = (
-        0.08  # amount to reduce bend to prevent breaking "watertight" in unions
-    )
     grid = grid.subdivide().subdivide().subdivide().subdivide()
-    hex_cell_dims, _ = hex_cell_dims_for_tube(
-        tube_inner_r, tube_h, tube_wall, grid_cols
-    )
-    bend = 2 * np.pi - WATERTIGHT_FUDGE  # Fudge factor to
+    bend = 2 * np.pi
     bent_verts = bend_x(
-        grid.vertices, arc_radians=bend, x_overlap=hex_cell_dims[0] * 0.25
+        grid.vertices,
+        arc_radians=bend,
     )
-    curved_mesh = Trimesh(vertices=bent_verts, faces=grid.faces)
-    # rotate about the y axis so curved mesh edges lie on the xy plane (90 degrees - curve in degreees / 2.0
-    rot = transformations.rotation_matrix(
-        angle=np.pi / 2.0 - bend / 2.0,
-        direction=[0, 1, 0],
-        point=(0, 0, 0),
-    )
-    curved_mesh.apply_transform(rot).apply_translation([0, 0, -tube_inner_r])
-    return curved_mesh
+    return Trimesh(vertices=bent_verts, faces=grid.faces)
 
 
 def bend_x(
-    vertices: np.ndarray, arc_radians: float = np.pi / 2.0, x_overlap=0.0
+    vertices: np.ndarray, arc_radians: float = np.pi / 2.0, x_gap=0.01
 ) -> np.ndarray:
     """
     Bend the mesh along the x-axis.
 
-    The x coords are mapped to an arc in the xz plane with the given inner radius.
+    The x coords are mapped to an arc in the xz plane.
     The arc starts at the minimum x value, and its length is equal to the range of x values in the mesh.
     rad_x = arc_radians * (x - min(x)) / (max(x) - min(x))
     inner_radius is computed so that inner_radius * arc_radians is the length of the arc.
@@ -278,9 +331,9 @@ def bend_x(
     x, y, z = vertices.T
     x_min = np.min(x)
     x_max = np.max(x)
-    x_span = x_max - x_min - x_overlap
+    x_span = x_max - x_min + x_gap
     inner_radius = x_span / arc_radians
     rad_x = arc_radians * (x - x_min) / x_span
-    x_new = -(inner_radius + z) * np.cos(rad_x) + inner_radius
+    x_new = -(inner_radius + z) * np.cos(rad_x)  # + inner_radius
     z_new = (inner_radius + z) * np.sin(rad_x)
     return np.stack((x_new, y, z_new), axis=-1)

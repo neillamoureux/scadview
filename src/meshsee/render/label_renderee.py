@@ -134,7 +134,6 @@ class LabelRenderee(Renderee):
                 logger.exception(f"Error creating vertex array: {e}")
                 self._ctx.disable(moderngl.BLEND)
                 return
-        logger.debug(f"Rendering label {self.label} on axis {self.axis}")
         self._vao.render(moderngl.TRIANGLE_STRIP)
         self._ctx.disable(moderngl.BLEND)
 
@@ -187,7 +186,6 @@ class LabelSetRenderee(Renderee):
         self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):
-        logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
         axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
         visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
         if len(visible_ranges) == 0:
@@ -213,7 +211,6 @@ class LabelSetRenderee(Renderee):
         char_width = label_char_width(
             min_value, max_value, step, self._max_label_frac_of_step
         )
-        logger.debug(f"LabelSetRenderee visible_ranges len: {len(visible_ranges)}")
         for visible in visible_ranges:
             axis = visible[0]
             min_value = visible[1][0]  # pyright: ignore [reportOptionalSubscript]
