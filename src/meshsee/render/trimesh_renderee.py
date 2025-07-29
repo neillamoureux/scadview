@@ -138,12 +138,10 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
         self._ctx.depth_mask = True  # type: ignore[attr-defined]
-        logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
         if (
             self._vao is None
         ):  # Lazily create the _vao so that it is created during the render when the context is active
             self._vao = create_vao_from_mesh(self._ctx, self._program, self._mesh)
-        logger.debug(f"VAO: {self._vao.glo}")
         self._vao.render()
 
 
@@ -226,7 +224,6 @@ class AlphaRenderee(Renderee):
         self._resort_verts = False
 
     def render(self):
-        logger.debug(f"FBO during render for {self.name}: {self._ctx.fbo.glo}")
         if self._resort_verts:
             self._sort_buffers()
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)

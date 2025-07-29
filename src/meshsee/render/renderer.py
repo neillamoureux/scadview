@@ -300,9 +300,7 @@ class Renderer:
         self._camera.move_to_screen(ndx, ndy, distance)
 
     def render(self, show_grid: bool, show_gnomon: bool):  # override
-        logger.debug(f"Active FBO before clear: {self._ctx.fbo.glo}")
         self._ctx.clear(*self._background_color, depth=1.0)
-        logger.debug(f"Viewport: {self._ctx.viewport}")
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self.show_grid = True
         self._ctx.enable(moderngl.DEPTH_TEST)
