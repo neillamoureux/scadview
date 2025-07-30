@@ -1,8 +1,8 @@
 import logging
 import queue
+from typing import Callable
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
-from PySide6.QtWidgets import QWidget
 
 from meshsee.controller import Controller
 from meshsee.mesh_loader import MeshLoader
@@ -29,21 +29,21 @@ class MeshHandler:
         self,
         controller: Controller,
         gl_widget: ModernglWidget,
-        reload_file_btn: QWidget,
-        export_btn: QWidget,
+        reload_enable_callback: Callable[[bool], None],
+        export_enable_callback: Callable[[bool], None],
     ):
         self._controller = controller
         self._gl_widget = gl_widget
-        self._reload_file_btn = reload_file_btn
-        self._export_btn = export_btn
+        self._enable_reload = reload_enable_callback
+        self._enable_export = export_enable_callback
         self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
         self._first_mesh = False
         self._mesh_name: str = "Unknown from MeshHandler"
 
     def load_mesh(self, file_path: str | None):
-        self._reload_file_btn.setEnabled(True)
-        self._export_btn.setDisabled(True)
+        self._enable_reload(True)
+        self._enable_export(False)
         self._mesh_name = file_path if file_path is not None else "Unknown"
         worker = LoadMeshRunnable(self._controller, file_path)
         if self._mesh_loading_worker is None:
@@ -93,7 +93,7 @@ class MeshHandler:
 
     def _load_successful(self):
         self._gl_widget.indicate_load_state("success")
-        self._export_btn.setEnabled(True)
+        self._enable_export(True)
 
     def _indicate_error(self):
         self._gl_widget.indicate_load_state("error")

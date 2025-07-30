@@ -1,10 +1,12 @@
 import logging
 
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
+    QLayout,
     QMainWindow,
-    QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
-    BUTTON_STRIP_HEIGHT = 50
+    BUTTON_STRIP_HEIGHT = 40
     UPDATE_MESH_INTERVAL_MS = 100
 
     def __init__(
@@ -32,13 +34,80 @@ class MainWindow(QMainWindow):
         self._gl_widget = gl_widget
         self.setWindowTitle(title)
         self.resize(*size)
+        self._create_file_actions()
+        self._create_view_actions()
+        self._create_menu_bar()
         self._main_layout = self._create_main_layout()
         self._mesh_handler = MeshHandler(
             controller=controller,
             gl_widget=self._gl_widget,
-            reload_file_btn=self._reload_file_btn,
-            export_btn=self._export_btn,
+            reload_enable_callback=self._reload_action.setEnabled,
+            export_enable_callback=self._export_action.setEnabled,
         )
+
+    def _create_file_actions(self) -> None:
+        self._load_action = QAction("&Load .py...", self)
+        self._load_action.setToolTip(
+            "Load a Python file containing a def create_mesh()..."
+        )
+        self._load_action.triggered.connect(self.load_file)
+
+        self._reload_action = QAction("&Reload .py", self)
+        self._reload_action.setToolTip("Reload the current mesh from the file")
+        self._reload_action.triggered.connect(self.reload)
+        self._reload_action.setDisabled(True)
+
+        self._export_action = QAction("&Export...", self)
+        self._export_action.setToolTip("Export the current mesh to a file")
+        self._export_action.triggered.connect(self.export)
+        self._export_action.setDisabled(True)
+
+    def _create_view_actions(self) -> None:
+        self._frame_action = QAction("Frame", self)
+        self._frame_action.triggered.connect(self._gl_widget.frame)
+        self._view_from_xyz_action = QAction("View from XYZ", self)
+        self._view_from_xyz_action.triggered.connect(self._gl_widget.view_from_xyz)
+        self._view_from_x_action = QAction("View from X+", self)
+        self._view_from_x_action.triggered.connect(self._gl_widget.view_from_x)
+        self._view_from_y_action = QAction("View from Y+", self)
+        self._view_from_y_action.triggered.connect(self._gl_widget.view_from_y)
+        self._view_from_z_action = QAction("View from Z+", self)
+        self._view_from_z_action.triggered.connect(self._gl_widget.view_from_z)
+
+        self._toggle_camera_action = QAction("Perspective Camera", self)
+        self._toggle_camera_action.setCheckable(True)
+        self._toggle_camera_action.triggered.connect(self._gl_widget.toggle_camera)
+        self._toggle_camera_action.setChecked(
+            self._gl_widget.camera_type == "perspective"
+        )
+
+        self._toggle_grid_action = QAction("Grid", self)
+        self._toggle_grid_action.triggered.connect(self._gl_widget.toggle_grid)
+        self._toggle_grid_action.setCheckable(True)
+        self._toggle_grid_action.setChecked(self._gl_widget.show_grid)
+
+        self._toggle_gnomon_action = QAction("Gnomon", self)
+        self._toggle_gnomon_action.triggered.connect(self._gl_widget.toggle_gnomon)
+        self._toggle_gnomon_action.setCheckable(True)
+        self._toggle_gnomon_action.setChecked(self._gl_widget.show_gnomon)
+
+    def _create_menu_bar(self) -> None:
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("&File")
+        file_menu.addAction(self._load_action)
+        file_menu.addAction(self._reload_action)
+        file_menu.addAction(self._export_action)
+        view_menu = menu_bar.addMenu("&View")
+        view_menu.addAction(self._frame_action)
+        view_menu.addAction(self._view_from_xyz_action)
+        view_menu.addAction(self._view_from_x_action)
+        view_menu.addAction(self._view_from_y_action)
+        view_menu.addAction(self._view_from_z_action)
+        view_menu.addAction(self._toggle_camera_action)
+        view_menu.addAction(self._toggle_grid_action)
+        # help_menu = menu_bar.addMenu("Help")
+        # help_menu.addAction("About", self._controller.show_about_dialog)
+        # help_menu.addAction("Documentation", self._controller.open_documentation)
 
     def _create_main_layout(self) -> QVBoxLayout:
         central_widget = QWidget(self)
@@ -47,8 +116,9 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self._gl_widget)
         file_buttons = self._create_file_buttons()
         main_layout.addWidget(file_buttons)
-        camera_buttons = self._create_camera_buttons()
+        camera_buttons = self._create_view_buttons()
         main_layout.addWidget(camera_buttons)
+        # self._init_buttons_state()
         return main_layout
 
     def _create_file_buttons(self) -> QWidget:
@@ -57,77 +127,49 @@ class MainWindow(QMainWindow):
         file_button_strip.setLayout(file_button_layout)
         file_button_strip.setFixedHeight(self.BUTTON_STRIP_HEIGHT)
 
-        load_file_btn = QPushButton("Load .py")
-        load_file_btn.clicked.connect(self.load_file)
-        file_button_layout.addWidget(load_file_btn)
-
-        self._reload_file_btn = QPushButton("Reload .py")
-        self._reload_file_btn.setDisabled(True)
-        self._reload_file_btn.clicked.connect(self.reload)
-        file_button_layout.addWidget(self._reload_file_btn)
-
-        self._export_btn = QPushButton("Export")
-        self._export_btn.setDisabled(True)
-        self._export_btn.clicked.connect(self.export)
-        file_button_layout.addWidget(self._export_btn)
-
+        self._load_file_btn = self._add_button(file_button_layout, self._load_action)
+        self._reload_file_btn = self._add_button(
+            file_button_layout, self._reload_action
+        )
+        self._export_btn = self._add_button(file_button_layout, self._export_action)
         return file_button_strip
 
-    def _create_camera_buttons(self) -> QWidget:
-        camera_button_strip = QWidget()
-        camera_button_layout = QHBoxLayout()
-        camera_button_strip.setLayout(camera_button_layout)
-        camera_button_strip.setFixedHeight(
+    def _create_view_buttons(self) -> QWidget:
+        view_button_strip = QWidget()
+        view_button_layout = QHBoxLayout()
+        view_button_strip.setLayout(view_button_layout)
+        view_button_strip.setFixedHeight(
             self.BUTTON_STRIP_HEIGHT
         )  # Set fixed height for the button strip
 
-        # Add buttons to the button layout
-        frame_btn = QPushButton("Frame")
-        frame_btn.clicked.connect(self._gl_widget.frame)
-        camera_button_layout.addWidget(frame_btn)
+        self._add_button(view_button_layout, self._frame_action)
+        self._add_button(view_button_layout, self._view_from_xyz_action)
+        self._add_button(view_button_layout, self._view_from_x_action)
+        self._add_button(view_button_layout, self._view_from_y_action)
+        self._add_button(view_button_layout, self._view_from_z_action)
+        self._add_button(view_button_layout, self._toggle_camera_action)
+        # self._add_button(view_button_layout, self._use_orthogonal_camera_action)
+        # self._add_button(view_button_layout, self._use_perspective_camera_action)
+        self._add_button(view_button_layout, self._toggle_grid_action)
+        self._add_button(view_button_layout, self._toggle_gnomon_action)
 
-        view_from_xyz_btn = QPushButton("View from XYZ")
-        view_from_xyz_btn.clicked.connect(self._gl_widget.view_from_xyz)
-        camera_button_layout.addWidget(view_from_xyz_btn)
+        return view_button_strip
 
-        view_from_x_btn = QPushButton("View from X+")
-        view_from_x_btn.clicked.connect(self._gl_widget.view_from_x)
-        camera_button_layout.addWidget(view_from_x_btn)
-
-        view_from_y_btn = QPushButton("View from Y+")
-        view_from_y_btn.clicked.connect(self._gl_widget.view_from_y)
-        camera_button_layout.addWidget(view_from_y_btn)
-
-        view_from_z_btn = QPushButton("View from Z+")
-        view_from_z_btn.clicked.connect(self._gl_widget.view_from_z)
-        camera_button_layout.addWidget(view_from_z_btn)
-
-        orthogonal_camera_btn = QPushButton("Ortho")
-        orthogonal_camera_btn.clicked.connect(self._gl_widget.use_orthogonal_camera)
-        camera_button_layout.addWidget(orthogonal_camera_btn)
-
-        perspective_camera_btn = QPushButton("Persp")
-        perspective_camera_btn.clicked.connect(self._gl_widget.use_perspective_camera)
-        camera_button_layout.addWidget(perspective_camera_btn)
-
-        grid_btn = QPushButton("Grid")
-        grid_btn.setCheckable(True)
-        grid_btn.setChecked(self._gl_widget.show_grid)
-        grid_btn.clicked.connect(self._gl_widget.toggle_grid)
-        camera_button_layout.addWidget(grid_btn)
-
-        grid_btn = QPushButton("Gnomon")
-        grid_btn.setCheckable(True)
-        grid_btn.setChecked(self._gl_widget.show_gnomon)
-        grid_btn.clicked.connect(self._gl_widget.toggle_gnomon)
-        camera_button_layout.addWidget(grid_btn)
-
-        return camera_button_strip
+    def _add_button(self, layout: QLayout, action: QAction) -> QToolButton:
+        """
+        Helper method to add a button with an action to a layout.
+        """
+        button = QToolButton()
+        button.setDefaultAction(action)
+        layout.addWidget(button)
+        return button
 
     def load_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open File", "", "Python Files (*.py)"
         )
+        if file_path == "":
+            return
         self._load_mesh(file_path)
 
     def reload(self):

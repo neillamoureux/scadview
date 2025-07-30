@@ -41,6 +41,8 @@ class GlUi:
         self.__class__._instance = self
         prepare_surface_format(self.GL_VERSION)
         self._app = QApplication(sys.argv)
+        self._app.setApplicationDisplayName(self.MAIN_WINDOW_TITLE)
+        self._app.setApplicationName(self.MAIN_WINDOW_TITLE)
         self._show_splash()
         gl_widget = create_graphics_widget(gl_widget_adapter)
         self._main_window = MainWindow(
