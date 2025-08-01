@@ -30,14 +30,15 @@ NAMES = [
 
 TUBE_INNER_R = 9.5  #  Tube size for a toothbrush (radius)
 TUBE_H = 100  # height of tube when standing upright
-TILT = np.deg2rad(30)  # tilt of tube
+TILT = np.deg2rad(-30)  # tilt of tube
 TUBE_COUNT = len(NAMES)  # number of toothbrushes to hold
-TUBE_WALL = 4  # Thickness of the tube wall
-HEX_GRID_COLS = 6  # Count of cols in the hex grid that makes the tube
-GRID_DIV_WIDTH = 2  # Thickeness of the divisions between the hex cells
+TUBE_WALL = 3  # Thickness of the tube wall
+HEX_GRID_COLS = 8  # Count of cols in the hex grid that makes the tube
+GRID_DIV_WIDTH = 1.5  # Thickeness of the divisions between the hex cells
 
 POSITIONING_R = (
-    28  # Radius of the circle on which the tubes tops / bottoms are positioned
+    28  # Radius of the circle on which the center of the tubes tops / bottoms are positioned
+    # If the tubes intersect too deeply, increase this.
 )
 # Radius of the circle the center of the tubes are positioned on
 # (position_r)**2  = center_positioning_r**2  + (sin(tilt) * tube_h / 2)**2
@@ -46,10 +47,12 @@ CENTER_POSITIONING_R = np.sqrt(
 )
 
 FONT = "Helvetica"  # Font for names
-FONT_H = TUBE_WALL  # Extruded height of the foont
+FONT_H = TUBE_WALL  # Extruded height of the font
 FONT_SIZE = 8  # font "size"
+NAME_PLATE_H = 3  # Height of base under name
+NAME_PLATE_BORDER = 2
 
-BASE_R = 41  # Radius of the base
+BASE_R = 41  # Radius of the base - make large enough so that the tube bottom ends are completely embedded in the base
 BASE_H = 5  # Height (thickness) of the base
 
 
@@ -59,29 +62,29 @@ def create_mesh() -> (
     hex_grid = make_grid(TUBE_INNER_R, TUBE_H, TUBE_WALL, HEX_GRID_COLS, GRID_DIV_WIDTH)
     yield hex_grid
 
-    # Each tube is moved radially in evenly spaced directions around the circle
+    # Each tube is moved radially in evenly spaced directions around a full circle
     tube_move_directions = np.linspace(0.0, 2 * np.pi, len(NAMES) + 1)
     mesh = Trimesh()  # Keep the type checking happy
     mesh_started = False
 
     for name, direction in zip(NAMES, tube_move_directions):
-        name_mesh = text(name, FONT_SIZE, font=FONT, halign="center").apply_scale(
-            [1, 1, -FONT_H]
-        )
+        name_mesh = text(
+            name,
+            FONT_SIZE,
+            font=FONT,
+            halign="center",
+        ).apply_scale([1, 1, FONT_H])
+        yield name_mesh
+
         grid_mesh = add_name(
             hex_grid.copy(),
-            TUBE_INNER_R,
-            TUBE_H,
-            TUBE_WALL,
-            HEX_GRID_COLS,
-            GRID_DIV_WIDTH,
             name_mesh,
+            NAME_PLATE_H,
+            NAME_PLATE_BORDER,
         )
         yield grid_mesh
 
-        tube = build_tube(
-            grid_mesh.copy(), TUBE_H, TILT, CENTER_POSITIONING_R, direction
-        )
+        tube = build_tube(grid_mesh, TUBE_H, TILT, CENTER_POSITIONING_R, direction)
 
         if not mesh_started:
             mesh = tube
@@ -90,7 +93,7 @@ def create_mesh() -> (
             mesh = mesh.union(tube)
         yield mesh
 
-    base_top_at = (TUBE_INNER_R + TUBE_WALL + GRID_DIV_WIDTH * 2) * np.sin(TILT)
+    base_top_at = (TUBE_INNER_R + TUBE_WALL + GRID_DIV_WIDTH * 2) * np.sin(-TILT)
     base = cylinder(BASE_R, BASE_H).apply_translation([0, 0, base_top_at - BASE_H / 2])
     mesh = mesh.union(base)
     yield mesh
@@ -153,33 +156,31 @@ def hex_cell_dims_for_tube(
 
 def add_name(
     grid_mesh: Trimesh,
-    tube_inner_r: float,
-    tube_h: float,
-    tube_wall: float,
-    grid_cols: int,
-    grid_div_width: float,
     name_mesh: Trimesh,
+    name_plate_h: float,
+    name_plate_border: float,
 ) -> Trimesh:
     """
-    Place name at top of grid, standing up at 90 degrees
+    Place name so that it will run vertically along the tube.
+    Add a plate behind it.
     """
-    hex_cell_dims, rows = hex_cell_dims_for_tube(
-        tube_inner_r,
-        tube_h,
-        tube_wall,
-        grid_div_width,
-        grid_cols,
+    name_mesh_dims = name_mesh.bounds[1] - name_mesh.bounds[0]
+    base_dims = [
+        name_mesh_dims[0] + name_plate_border,  # Only add the border at end of name
+        # Add border on top and bottom of name:
+        name_mesh_dims[1] + name_plate_border * 2,
+        name_plate_h,
+    ]
+    base = box(base_dims).apply_translation(
+        (2, base_dims[1] / 2 - name_plate_border, -base_dims[2] / 2)
     )
-    frame_dims = hex_grid_dims(hex_cell_dims, grid_cols, rows)
+    name_mesh = name_mesh.union(base)
+    name_mesh.apply_translation((name_mesh_dims[0] / 2, 0, name_plate_h))
     name_mesh.apply_transform(
-        transformations.rotation_matrix(np.pi, [0, 1, 0], [0, 0, 0])
+        transformations.rotation_matrix(-np.pi / 2, [0, 0, 1], [0, 0, 0])
     )
-    name_mesh.apply_transform(
-        transformations.rotation_matrix(np.pi / 2, [1, 0, 0], [0, 0, 0])
-    )
-    name_mesh.apply_translation(
-        (frame_dims[0] / 2, frame_dims[1] + grid_div_width, frame_dims[2])
-    )
+    grid_mesh_center = (grid_mesh.bounds[1] + grid_mesh.bounds[0]) / 2
+    name_mesh.apply_translation((grid_mesh_center[0], grid_mesh.bounds[1, 1], 0))
     return grid_mesh.union(name_mesh)
 
 
@@ -314,7 +315,7 @@ def bend_grid(
 
 
 def bend_x(
-    vertices: np.ndarray, arc_radians: float = np.pi / 2.0, x_gap=0.01
+    vertices: np.ndarray, arc_radians: float = np.pi / 2.0, x_gap=0.001
 ) -> np.ndarray:
     """
     Bend the mesh along the x-axis.
