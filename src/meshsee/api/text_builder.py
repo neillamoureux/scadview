@@ -94,7 +94,10 @@ def text(
         ordered_text = text[::-1]
     else:
         raise ValueError("direction must be ltr or rtl")
-    font_path = list_system_fonts().get(font, None)
+    if font == DEFAULT_FONT:
+        font_path = DEFAULT_FONT_PATH
+    else:
+        font_path = list_system_fonts().get(font, None)
     if not font_path:
         logger.warning(
             f"Font '{font}' not found in system fonts. Using default font: {DEFAULT_FONT_PATH}"
