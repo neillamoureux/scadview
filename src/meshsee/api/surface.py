@@ -5,22 +5,35 @@ import trimesh
 from numpy.typing import NDArray
 from PIL import Image
 
+GRAYSCALE_IMAGE_MAX = 255.0
+
 
 def surface(
-    file: str, scale: tuple = (1.0, 1.0, 1.0), base: float = 0.0, invert: bool = False
+    file: str,
+    scale: tuple = (1.0, 1.0, 1.0),
+    base: float = 0.0,
+    invert: bool = False,
+    binary_split: bool = False,
+    binary_split_value: float = 0.5,
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh on a base at z = 0.0 from a file containing heightmap data.
     The file can be a CSV, TSV, TXT, DAT, or an image file (PNG, JPEG, etc.).
+    Image files are converted to grayscale and generate heights between 0.0 and 1.0
 
     Args:
         file: The file path to get the data from.
         scale: A 3-tuple that scales in each dimension.
         base: The base height of the pedestal upon which the mesh will be placed.
-        invert: If True, inverts the heightmap values (useful for some heightmaps).
+        invert: If True, inverts the heightmap values between min and max values.
+        binary_split: Converts the heightmap to 0s or 1s only,
+        based on whether the height is below or equal (changes to 0) or above (changes to 1) the
+        binary_split_value.
+        binary_split_value: Only usedif binary_splt=ut it True.
+
 
     Returns:
-        Trimesh: A 3d mesh object representing the surface.
+        Trimesh: A 3d mesh object representing the surface on a pedestal.
 
     """
     delimiter = None
@@ -32,19 +45,35 @@ def surface(
         delimiter = " "
     if delimiter is not None:
         # Load heightmap from text file
-        heightmap = np.loadtxt(file, delimiter=delimiter)
-        return _solid_from_heightmap(heightmap, scale=scale, base=base, invert=invert)
+        heightmap = np.loadtxt(file, delimiter=delimiter).astype(np.float32)
+        return _solid_from_heightmap(
+            heightmap,
+            scale,
+            base,
+            invert,
+            binary_split,
+            binary_split_value,
+        )
     else:
         # Assume it's an image file
         with open(file, "rb") as img_file:
-            return _solid_from_image(img_file, scale=scale, base=base, invert=invert)
+            return _solid_from_image(
+                img_file,
+                scale,
+                base,
+                invert,
+                binary_split,
+                binary_split_value,
+            )
 
 
 def _solid_from_image(
     image_file: IO,
-    scale: tuple = (1.0, 1.0, 1.0),
-    base: float = 0.0,
-    invert: bool = False,
+    scale: tuple,
+    base: float,
+    invert: bool,
+    binary_split: bool,
+    binary_split_value: float,
 ) -> trimesh.Trimesh:
     """
     Create a 3D mesh from an image file.
@@ -67,19 +96,35 @@ def _solid_from_image(
     img_gray = img.convert("L")
     # Convert to numpy array and normalize to [0, 1]
     if invert:
-        heightmap = (255.0 - np.array(img_gray, dtype=np.float32)) / 255.0
+        heightmap = (255.0 - np.array(img_gray, dtype=np.float32)) / GRAYSCALE_IMAGE_MAX
     else:
-        heightmap = np.array(img_gray, dtype=np.float32) / 255.0
+        heightmap = np.array(img_gray, dtype=np.float32) / GRAYSCALE_IMAGE_MAX
 
     # Create a mesh from the heightmap
     # Note: values already inverted if invert=True
     heightmap = np.flipud(heightmap)  # preserve image orientation
-    return _solid_from_heightmap(heightmap, scale=scale, base=base)
+    return _solid_from_heightmap(
+        heightmap,
+        scale=scale,
+        base=base,
+        invert=False,
+        binary_split=binary_split,
+        binary_split_value=binary_split_value,
+    )
 
 
 def _solid_from_heightmap(
-    heightmap, scale=(1.0, 1.0, 1.0), base: float = 0.0, invert: bool = False
+    heightmap: NDArray[np.float32],
+    scale: tuple,
+    base: float,
+    invert: bool,
+    binary_split: bool,
+    binary_split_value: float,
 ) -> trimesh.Trimesh:
+    # Binarize the heightmap: set all nonzero values to 1, zeros remain
+    if binary_split:
+        heightmap = (heightmap > binary_split_value).astype(np.float32)
+
     y_span, x_span = heightmap.shape
     v_count = y_span * x_span
 
@@ -95,8 +140,8 @@ def _solid_from_heightmap(
 def _create_top_vertices(
     heightmap: NDArray[np.float32],
     scale: tuple,
-    base: float = 0.0,
-    invert: bool = False,
+    base: float,
+    invert: bool,
 ) -> NDArray[np.float32]:
     y_span, x_span = heightmap.shape
     xs = np.arange(x_span) * scale[0]
