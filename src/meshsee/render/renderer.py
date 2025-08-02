@@ -24,7 +24,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-AXIS_LENGTH = 1000.0
+AXIS_LENGTH = 10000.0
 AXIS_WIDTH = 1.0
 AXIS_DEPTH = 1.0
 AXIS_SCALE_FACTOR = 0.005
