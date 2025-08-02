@@ -89,7 +89,7 @@ class MeshHandler:
                 self._first_mesh = False
                 self._gl_widget.frame()
         except queue.Empty:
-            pass
+            logger.debug("There is no mesh in the queue")
 
     def _load_successful(self):
         self._gl_widget.indicate_load_state("success")

@@ -263,6 +263,7 @@ class Renderer:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR
 
     def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str = "Unknown load_mesh"):
+        logger.debug("load_mesh started")
         self._main_renderee = create_trimesh_renderee(
             self._ctx,
             self._main_prog.program,
@@ -277,6 +278,7 @@ class Renderer:
             self.scale = mesh.scale
         self._main_renderee.subscribe_to_updates(self.on_program_value_change)
         self._framing_points = self._main_renderee.points
+        logger.debug("load_mesh_finished")
 
     def frame(self, direction=None, up=None):
         self._camera.frame(self._framing_points, direction, up)

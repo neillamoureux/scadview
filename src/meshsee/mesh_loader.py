@@ -17,7 +17,8 @@ class MeshLoader:
     Pure python mesh loader to be run in a thread.
     """
 
-    UPDATE_MESH_INTERVAL_MS = 100
+    FRAME_PER_SECOND = 30
+    UPDATE_MESH_INTERVAL_MS = 1000 / FRAME_PER_SECOND
 
     def __init__(
         self,
