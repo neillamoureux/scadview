@@ -1,3 +1,4 @@
+from datetime import datetime
 from meshsee import text, set_mesh_color, Color
 from trimesh.creation import box
 from trimesh.transformations import rotation_matrix
@@ -5,6 +6,8 @@ import numpy as np
 
 LETTER_DEPTH = 10
 FRAME = 2
+RPS = 0.3
+ALPHA = 0.5
 
 
 def create_mesh():
@@ -31,11 +34,19 @@ def create_mesh():
     x.apply_scale((1.1 * frame_dims[0] / LETTER_DEPTH, 1, 1))
     y.apply_scale((1, 1.1 * frame_dims[1] / LETTER_DEPTH, 1))
     z.apply_scale((1, 1, 1.1 * frame_dims[2] / LETTER_DEPTH))
-
+    start_time = datetime.now()
     frame = box(frame_dims)
-    return set_mesh_color(
-        frame.difference(y).difference(x).difference(z), Color.SILVER, 0.7
-    )
+    while True:
+        yield set_mesh_color(
+            frame.difference(x.union(y).union(z)).apply_transform(
+                rotation_matrix(
+                    2 * np.pi * (datetime.now() - start_time).total_seconds() * RPS,
+                    (1.0, 0.5, 0.3),
+                )
+            ),
+            Color.SILVER,
+            ALPHA,
+        )
 
 
 def create_letter(letter: str, depth: float):
