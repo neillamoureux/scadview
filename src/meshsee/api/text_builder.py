@@ -1,18 +1,18 @@
 import logging
 import os
 from copy import copy
-from functools import cache
 from typing import Any
 
 import numpy as np
 import trimesh
-from matplotlib import font_manager, ft2font
 from matplotlib.font_manager import FontProperties
 from matplotlib.textpath import TextPath, TextToPath
 from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 from trimesh import Trimesh
 from trimesh.creation import extrude_polygon
+
+from meshsee.fonts import list_system_fonts
 
 logger = logging.getLogger(__name__)
 
@@ -23,38 +23,6 @@ DEFAULT_FONT_PATH = os.path.join(
     os.path.dirname(__file__), RELATIVE_PATH_TO_FONT, FONT_FILE
 )
 SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
-
-
-@cache
-def list_system_fonts() -> dict[str, str]:
-    """List system font you can use in text().
-
-
-    Returns:
-    A dict mapping font family names -> font file paths
-    (only TrueType/OpenType fonts).
-    """
-    logger.info("Finding system fonts - this can take some time")
-    # findSystemFonts returns absolute paths to .ttf/.otf files
-    font_paths = font_manager.findSystemFonts(fontpaths=None, fontext="ttf")
-    # also add OpenType fonts
-    font_paths += font_manager.findSystemFonts(fontpaths=None, fontext="otf")
-    fonts = {}
-    for fp in font_paths:
-        try:
-            ft = ft2font.FT2Font(fp)
-            fonts.setdefault(f"{ft.family_name}:style={ft.style_name}", fp)
-            if ft.style_name == "Regular":
-                # also add the font without style
-                fonts.setdefault(f"{ft.family_name}", fp)
-        except Exception:
-            # corrupted font? skip
-            continue
-    if logger.isEnabledFor(logging.DEBUG):
-        for font in sorted(fonts.keys()):
-            logger.debug(f"Font: {font}")
-    logger.info("Found system fonts")
-    return fonts
 
 
 def text(
