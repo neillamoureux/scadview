@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from meshsee.controller import Controller, export_formats
+from meshsee.ui.font_dialog import FontDialog
 from meshsee.ui.mesh_handler import MeshHandler
 from meshsee.ui.moderngl_widget import ModernglWidget
 
@@ -36,7 +37,9 @@ class MainWindow(QMainWindow):
         self.resize(*size)
         self._create_file_actions()
         self._create_view_actions()
+        self._create_help_actions()
         self._create_menu_bar()
+        self.font_dialog: FontDialog | None = None
         self._main_layout = self._create_main_layout()
         self._mesh_handler = MeshHandler(
             controller=controller,
@@ -91,12 +94,24 @@ class MainWindow(QMainWindow):
         self._toggle_gnomon_action.setCheckable(True)
         self._toggle_gnomon_action.setChecked(self._gl_widget.show_gnomon)
 
+    def _create_help_actions(self) -> None:
+        self._show_font_action = QAction("Fonts", self)
+        self._show_font_action.triggered.connect(self._open_font_dialog)
+
+    def _open_font_dialog(self):
+        if self.font_dialog is None:
+            self.font_dialog = FontDialog()
+        self.font_dialog.show()
+        self.font_dialog.raise_()  # bring it to front
+        self.font_dialog.activateWindow()
+
     def _create_menu_bar(self) -> None:
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("&File")
         file_menu.addAction(self._load_action)
         file_menu.addAction(self._reload_action)
         file_menu.addAction(self._export_action)
+
         view_menu = menu_bar.addMenu("&View")
         view_menu.addAction(self._frame_action)
         view_menu.addAction(self._view_from_xyz_action)
@@ -105,7 +120,9 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._view_from_z_action)
         view_menu.addAction(self._toggle_camera_action)
         view_menu.addAction(self._toggle_grid_action)
-        # help_menu = menu_bar.addMenu("Help")
+
+        help_menu = menu_bar.addMenu("Help")
+        help_menu.addAction(self._show_font_action)
         # help_menu.addAction("About", self._controller.show_about_dialog)
         # help_menu.addAction("Documentation", self._controller.open_documentation)
 
