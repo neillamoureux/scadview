@@ -13,7 +13,7 @@ def create_mesh():
         STAMP_DIMS[1] / IMAGE_DIMS[1],
         STAMP_DIMS[2],
     )
-    img_path = os.path.join(os.path.dirname(__file__), "ladybug.png")
+    img_path = os.path.join(os.path.dirname(__file__), "ladybug_thick_nodots.png")
     ladybug = surface(
         img_path, scale=scale, base=BASE_HEIGHT, invert=INVERT, binary_split=True
     )
