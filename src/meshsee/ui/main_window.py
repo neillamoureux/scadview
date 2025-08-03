@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     BUTTON_STRIP_HEIGHT = 40
     UPDATE_MESH_INTERVAL_MS = 100
+    FONT_DIALOG_OFFSET = (50, 50)
 
     def __init__(
         self,
@@ -101,6 +102,11 @@ class MainWindow(QMainWindow):
     def _open_font_dialog(self):
         if self.font_dialog is None:
             self.font_dialog = FontDialog()
+        # Offset dialog from main window
+        main_geom = self.geometry()
+        offset_x = main_geom.x() + self.FONT_DIALOG_OFFSET[0]
+        offset_y = main_geom.y() + self.FONT_DIALOG_OFFSET[1]
+        self.font_dialog.move(offset_x, offset_y)
         self.font_dialog.show()
         self.font_dialog.raise_()  # bring it to front
         self.font_dialog.activateWindow()
