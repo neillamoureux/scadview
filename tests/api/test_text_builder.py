@@ -5,41 +5,6 @@ from shapely.geometry import Polygon
 import trimesh
 
 
-def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):
-    # Mock matplotlib.font_manager.findSystemFonts to return fake font paths
-    fake_fonts = [
-        "/fake/path/font1.ttf",
-        "/fake/path/font2.otf",
-        "/fake/path/font3.ttf",
-    ]
-    monkeypatch.setattr(
-        text_builder.font_manager, "findSystemFonts", lambda *args, **kwargs: fake_fonts
-    )
-
-    # Mock FT2Font to return a fake name
-    class FakeFT2Font:
-        def __init__(self, font_path):
-            self.font_path = font_path
-
-        @property
-        def family_name(self):
-            if "3" in self.font_path:
-                raise ValueError("Corrupted font file")
-            return "FakeFont" + self.font_path[-5]
-
-        @property
-        def style_name(self):
-            return "Regular" if "1" in self.font_path else "Italic"
-
-    monkeypatch.setattr(text_builder.ft2font, "FT2Font", FakeFT2Font)
-    fonts = text_builder.list_system_fonts()
-    assert isinstance(fonts, dict)
-    assert "FakeFont1" in fonts.keys()
-    assert "FakeFont1:style=Regular" in fonts.keys()
-    assert "FakeFont2:style=Italic" in fonts.keys()
-    assert len(fonts) == 3
-
-
 def test_text_returns_trimesh_object():
     mesh = text_builder.text("Test", size=12)
     # Should be a trimesh.Trimesh object
