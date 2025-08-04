@@ -1,5 +1,4 @@
 import logging
-import os
 from copy import copy
 from typing import Any
 
@@ -12,16 +11,10 @@ from shapely.geometry import Point, Polygon
 from trimesh import Trimesh
 from trimesh.creation import extrude_polygon
 
-from meshsee.fonts import list_system_fonts
+from meshsee.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_FONT = "DejaVuSansMono"  # Default font to use if not specified
-RELATIVE_PATH_TO_FONT = "../resources/"
-FONT_FILE = "DejaVuSansMono.ttf"  # Default font file name
-DEFAULT_FONT_PATH = os.path.join(
-    os.path.dirname(__file__), RELATIVE_PATH_TO_FONT, FONT_FILE
-)
 SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
 
 
