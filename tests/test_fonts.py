@@ -21,11 +21,17 @@ def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):
         def family_name(self):
             if "3" in self.font_path:
                 raise ValueError("Corrupted font file")
+            if self.font_path == fonts.DEFAULT_FONT_PATH:
+                return "Default Font"
             return "FakeFont" + self.font_path[-5]
 
         @property
         def style_name(self):
-            return "Regular" if "1" in self.font_path else "Italic"
+            if self.font_path == fonts.DEFAULT_FONT_PATH:
+                return "default"
+            if "1" in self.font_path:
+                return "Regular"
+            return "Italic"
 
     monkeypatch.setattr(fonts.ft2font, "FT2Font", FakeFT2Font)
     fnts = fonts.list_system_fonts()
@@ -33,4 +39,5 @@ def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):
     assert "FakeFont1" in fnts.keys()
     assert "FakeFont1:style=Regular" in fnts.keys()
     assert "FakeFont2:style=Italic" in fnts.keys()
-    assert len(fnts) == 3
+    assert "Default Font:style=default" in fnts.keys()
+    assert len(fnts) == 4
