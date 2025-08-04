@@ -35,7 +35,7 @@ PER_NUMBER_FRAC_OF_AXIS = 0.04
 
 
 def _make_default_mesh() -> Trimesh:
-    return box([50.0, 40.0, 30.0])
+    return box([1.0, 1.0, 1.0])
 
 
 def _make_base_axes() -> Trimesh:
@@ -252,6 +252,14 @@ class Renderer:
     def indicate_load_state(self, state: str):
         if state == "loading":
             self.background_color = self.LOADING_BACKGROUND_COLOR
+            self._main_renderee = create_trimesh_renderee(
+                self._ctx,
+                self._main_prog.program,
+                _make_default_mesh(),
+                self._m_model,
+                self._camera.view_matrix,
+                name="loading",
+            )
         elif state == "success":
             if isinstance(self._main_renderee, TrimeshListRenderee):
                 self.background_color = self.DEBUG_BACKGROUND_COLOR
