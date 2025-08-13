@@ -57,10 +57,12 @@ def _as_polygon_2d(profile: ProfileType):
                 raise ValueError("Invalid polygon after dropping Z.")
         return _orient_like_openscad(poly)
 
-    pts = np.asarray(profile, dtype=float)
+    pts = np.asarray(profile, dtype=np.float32)
     if pts.ndim != 2 or pts.shape[1] not in (2, 3):
         raise ValueError("profile must be shapely.Polygon or Nx2/Nx3 points")
 
+    if pts.shape[1] == 3:
+        pts = pts[:, :2]
     if pts.shape[1] == 2:
         if not np.allclose(pts[0], pts[-1]):
             pts = np.vstack([pts, pts[0]])
@@ -72,22 +74,22 @@ def _as_polygon_2d(profile: ProfileType):
         return _orient_like_openscad(poly)
 
     # Nx3 -> best-fit plane (right-handed)
-    c = pts.mean(axis=0)
-    X = pts - c
-    _, _, Vt = np.linalg.svd(X, full_matrices=False)
-    Q = Vt.T
-    if np.linalg.det(Q) < 0:
-        Q[:, 2] *= -1.0  # force right-handed
-    local = X @ Q
-    ring2d = local[:, :2]
-    if not np.allclose(ring2d[0], ring2d[-1]):
-        ring2d = np.vstack([ring2d, ring2d[0]])
-    poly = sg.Polygon(ring2d)
-    if not poly.is_valid:
-        poly = so.unary_union(poly.buffer(0))
-        if not isinstance(poly, sg.Polygon) or not poly.is_valid:
-            raise ValueError("Projected profile isn't a valid simple polygon.")
-    return _orient_like_openscad(poly)
+    # c = pts.mean(axis=0)
+    # X = pts - c
+    # _, _, Vt = np.linalg.svd(X, full_matrices=False)
+    # Q = Vt.T
+    # if np.linalg.det(Q) < 0:
+    #     Q[:, 2] *= -1.0  # force right-handed
+    # local = X @ Q
+    # ring2d = local[:, :2]
+    # if not np.allclose(ring2d[0], ring2d[-1]):
+    #     ring2d = np.vstack([ring2d, ring2d[0]])
+    # poly = sg.Polygon(ring2d)
+    # if not poly.is_valid:
+    #     poly = so.unary_union(poly.buffer(0))
+    #     if not isinstance(poly, sg.Polygon) or not poly.is_valid:
+    #         raise ValueError("Projected profile isn't a valid simple polygon.")
+    # return _orient_like_openscad(poly)
 
 
 # ---------- OpenSCAD-parity extrude ----------
