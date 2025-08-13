@@ -67,6 +67,15 @@ def test_center_true():
 def test_projection_from_3d_loop():
     prof3d = _square_3d(size=2.0, tilt_deg=30, axis="y")
     m = linear_extrude(prof3d, height=5.0)
+    # Assert bottom face has same vertices as prof3d without the z coord
+    # Do not check the last vertex on prof3d since it just closes the poly
+    # and is removed by linear_extrude
+    verts_near_z0 = m.vertices[np.isclose(m.vertices[:, 2], 0.0, atol=1e-6)]
+    assert np.allclose(
+        verts_near_z0,
+        np.column_stack([prof3d[:-1, :2], np.zeros(prof3d.shape[0] - 1)]),
+        atol=1e-6,
+    )
     assert m.is_watertight
     # Bounds should start at z=0 when center=False
     zmin, zmax = _bounds_z(m)
