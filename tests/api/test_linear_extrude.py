@@ -1,6 +1,5 @@
 import numpy as np
 import shapely.geometry as sg
-import pytest
 import trimesh
 
 # Change this to your module path

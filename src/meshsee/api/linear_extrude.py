@@ -63,15 +63,14 @@ def _as_polygon_2d(profile: ProfileType):
 
     if pts.shape[1] == 3:
         pts = pts[:, :2]
-    if pts.shape[1] == 2:
-        if not np.allclose(pts[0], pts[-1]):
-            pts = np.vstack([pts, pts[0]])
-        poly = sg.Polygon(pts)
-        if not poly.is_valid:
-            poly = so.unary_union(poly.buffer(0))
-            if not isinstance(poly, sg.Polygon) or not poly.is_valid:
-                raise ValueError("Invalid 2D polygon.")
-        return _orient_like_openscad(poly)
+    if not np.allclose(pts[0], pts[-1]):
+        pts = np.vstack([pts, pts[0]])
+    poly = sg.Polygon(pts)
+    if not poly.is_valid:
+        poly = so.unary_union(poly.buffer(0))
+        if not isinstance(poly, sg.Polygon) or not poly.is_valid:
+            raise ValueError("Invalid 2D polygon.")
+    return _orient_like_openscad(poly)
 
     # Nx3 -> best-fit plane (right-handed)
     # c = pts.mean(axis=0)
@@ -127,8 +126,8 @@ def linear_extrude(
 
     # triangulate face (handles holes)
     verts2d, faces2d = trimesh.creation.triangulate_polygon(poly_2d)
-    v2 = np.asarray(verts2d)
-    faces2d = np.asarray(faces2d, dtype=np.int64)
+    v2 = np.asarray(verts2d, dtype=np.float32)
+    faces2d = np.asarray(faces2d, dtype=np.int32)
 
     # boundary loops for walls
     rings = [np.asarray(poly_2d.exterior.coords[:-1])]
@@ -138,7 +137,6 @@ def linear_extrude(
 
     kdt = KDTree(v2)
     ring_idx = [kdt.query(r, k=1)[1] for r in rings]
-
     z0, z1 = (-height / 2.0, height / 2.0) if center else (0.0, height)
     zs = np.linspace(z0, z1, slices + 1)
 
@@ -171,6 +169,9 @@ def linear_extrude(
 
     # walls (outer + holes)
     for loop in ring_idx:
+        # Check that loop is a numpy array of dtype np.intp (KDTree returns np.ndarray)
+        if not (isinstance(loop, np.ndarray) and np.issubdtype(loop.dtype, np.intp)):
+            continue
         for k in range(slices):
             o0, o1 = N * k, N * (k + 1)
             for a, b in zip(loop, np.roll(loop, -1)):
