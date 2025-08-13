@@ -17,6 +17,7 @@ dependencies = [
     "pyright>=1.1.401",
     "pyrr>=0.10.3",
     "pyside6==6.*",
+    "scipy>=1.16.1",
     "shapely>=2.1.1",
     "trimesh>=4.6.1",
 ]
