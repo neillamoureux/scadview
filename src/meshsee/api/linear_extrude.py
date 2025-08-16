@@ -14,84 +14,10 @@ ProfileType = (
     | list[tuple[float, float, float]]
 )
 
-
-# ---------- helpers (unchanged in spirit) ----------
-def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
-    x, y = ring_xy[:, 0], ring_xy[:, 1]
-    return 0.5 * np.sum(x * np.roll(y, -1) - y * np.roll(x, -1))
+DEFAULT_SLICES = 20  # reasonable OpenSCAD-like fallback for slices
 
 
-def _orient_like_openscad(poly: sg.Polygon) -> sg.Polygon:
-    # Exterior CCW, holes CW
-    ext = np.asarray(poly.exterior.coords, dtype=np.float32)
-    if not np.allclose(ext[0], ext[-1]):
-        ext = np.vstack([ext, ext[0]])
-    if _signed_area2d(ext[:-1]) < 0:  # CW -> flip
-        ext = ext[::-1]
-    holes = []
-    for r in poly.interiors:
-        h = np.asarray(r.coords, dtype=np.float32)
-        if not np.allclose(h[0], h[-1]):
-            h = np.vstack([h, h[0]])
-        if _signed_area2d(h[:-1]) > 0:  # CCW -> flip
-            h = h[::-1]
-        holes.append(h)
-    return sg.Polygon(ext, [h[:-1] for h in holes])
-
-
-def _as_polygon_2d(profile: ProfileType):
-    """
-    Accept:
-      - shapely.Polygon (2D/3D) -> drop Z
-      - Nx2 points
-      - Nx3 coplanar points -> best-fit plane, right-handed, drop Z
-    Returns shapely.Polygon oriented like OpenSCAD.
-    """
-    if isinstance(profile, sg.Polygon):
-        ext2 = np.asarray([(x, y) for x, y, *rest in profile.exterior.coords])
-        holes2 = [[(x, y) for x, y, *rest in r.coords] for r in profile.interiors]
-        poly = sg.Polygon(ext2, holes2)
-        if not poly.is_valid:
-            poly = so.unary_union(poly.buffer(0))  # "tidy" the polygon
-            if not isinstance(poly, sg.Polygon) or not poly.is_valid:
-                raise ValueError("Invalid polygon after dropping Z.")
-        return _orient_like_openscad(poly)
-
-    pts = np.asarray(profile, dtype=np.float32)
-    if pts.ndim != 2 or pts.shape[1] not in (2, 3):
-        raise ValueError("profile must be shapely.Polygon or Nx2/Nx3 points")
-
-    if pts.shape[1] == 3:
-        pts = pts[:, :2]
-    if not np.allclose(pts[0], pts[-1]):
-        pts = np.vstack([pts, pts[0]])
-    poly = sg.Polygon(pts)
-    if not poly.is_valid:
-        poly = so.unary_union(poly.buffer(0))
-        if not isinstance(poly, sg.Polygon) or not poly.is_valid:
-            raise ValueError("Invalid 2D polygon.")
-    return _orient_like_openscad(poly)
-
-    # Nx3 -> best-fit plane (right-handed)
-    # c = pts.mean(axis=0)
-    # X = pts - c
-    # _, _, Vt = np.linalg.svd(X, full_matrices=False)
-    # Q = Vt.T
-    # if np.linalg.det(Q) < 0:
-    #     Q[:, 2] *= -1.0  # force right-handed
-    # local = X @ Q
-    # ring2d = local[:, :2]
-    # if not np.allclose(ring2d[0], ring2d[-1]):
-    #     ring2d = np.vstack([ring2d, ring2d[0]])
-    # poly = sg.Polygon(ring2d)
-    # if not poly.is_valid:
-    #     poly = so.unary_union(poly.buffer(0))
-    #     if not isinstance(poly, sg.Polygon) or not poly.is_valid:
-    #         raise ValueError("Projected profile isn't a valid simple polygon.")
-    # return _orient_like_openscad(poly)
-
-
-# ---------- OpenSCAD-parity extrude ----------
+#  OpenSCAD-like extrude
 def linear_extrude(
     profile,
     height: float,
@@ -101,7 +27,7 @@ def linear_extrude(
     slices: int | None = None,
     *,
     scale: float | tuple[float, float] | list[float] | NDArray[np.float32] = 1.0,
-    fn: int | None = None,  # mimic $fn fallback for slices if you want
+    fn: int | None = None,  # mimic $fn fallback for slices
 ) -> trimesh.Trimesh:
     """
     OpenSCAD-like linear_extrude(project-to-XY first).
@@ -122,7 +48,7 @@ def linear_extrude(
         if fn is not None and fn > 0:
             slices = int(fn)
         else:
-            slices = 20  # pragmatic default when $fn is effectively 0/unspecified
+            slices = DEFAULT_SLICES
 
     # triangulate face (handles holes)
     verts2d, faces2d = trimesh.creation.triangulate_polygon(poly_2d)
@@ -190,32 +116,58 @@ def linear_extrude(
     return mesh
 
 
-# ---------- Example ----------
-if __name__ == "__main__":
-    # simple 2D star to demo twist/taper; will be projected if 3D is passed
-    n = 5
-    r1, r2 = 1.0, 2.0
-    star = [
-        (
-            (r2 * np.cos(2 * np.pi * i / (2 * n)), r2 * np.sin(2 * np.pi * i / (2 * n)))
-            if i % 2 == 0
-            else (
-                r1 * np.cos(2 * np.pi * i / (2 * n)),
-                r1 * np.sin(2 * np.pi * i / (2 * n)),
-            )
-        )
-        for i in range(2 * n)
-    ]
-    poly = sg.Polygon(star)
+def _as_polygon_2d(profile: ProfileType):
+    """
+    Accept:
+      - shapely.Polygon (2D/3D) -> drop Z
+      - Nx2 points
+      - Nx3 coplanar points -> best-fit plane, right-handed, drop Z
+    Returns shapely.Polygon oriented like OpenSCAD.
+    """
+    if isinstance(profile, sg.Polygon):
+        ext2 = np.asarray([(x, y) for x, y, *rest in profile.exterior.coords])
+        holes2 = [[(x, y) for x, y, *rest in r.coords] for r in profile.interiors]
+        poly = sg.Polygon(ext2, holes2)
+        if not poly.is_valid:
+            poly = so.unary_union(poly.buffer(0))  # "tidy" the polygon
+            if not isinstance(poly, sg.Polygon) or not poly.is_valid:
+                raise ValueError("Invalid polygon after dropping Z.")
+        return _orient_like_openscad(poly)
 
-    m = linear_extrude(
-        poly,
-        height=20,  # OpenSCAD: required
-        center=False,  # OpenSCAD default
-        convexity=10,  # accepted/ignored
-        twist=270,  # total degrees
-        slices=None,  # use fn if given; else 20
-        scale=0.6,  # scalar or (sx, sy)
-        fn=120,  # optional OpenSCAD-like override for slices
-    )
-    m.show()
+    pts = np.asarray(profile, dtype=np.float32)
+    if pts.ndim != 2 or pts.shape[1] not in (2, 3):
+        raise ValueError("profile must be shapely.Polygon or Nx2/Nx3 points")
+
+    if pts.shape[1] == 3:
+        pts = pts[:, :2]
+    if not np.allclose(pts[0], pts[-1]):
+        pts = np.vstack([pts, pts[0]])
+    poly = sg.Polygon(pts)
+    if not poly.is_valid:
+        poly = so.unary_union(poly.buffer(0))
+        if not isinstance(poly, sg.Polygon) or not poly.is_valid:
+            raise ValueError("Invalid 2D polygon.")
+    return _orient_like_openscad(poly)
+
+
+def _orient_like_openscad(poly: sg.Polygon) -> sg.Polygon:
+    # Exterior CCW, holes CW
+    ext = np.asarray(poly.exterior.coords, dtype=np.float32)
+    if not np.allclose(ext[0], ext[-1]):
+        ext = np.vstack([ext, ext[0]])
+    if _signed_area2d(ext[:-1]) < 0:  # CW -> flip
+        ext = ext[::-1]
+    holes = []
+    for r in poly.interiors:
+        h = np.asarray(r.coords, dtype=np.float32)
+        if not np.allclose(h[0], h[-1]):
+            h = np.vstack([h, h[0]])
+        if _signed_area2d(h[:-1]) > 0:  # CCW -> flip
+            h = h[::-1]
+        holes.append(h)
+    return sg.Polygon(ext, [h[:-1] for h in holes])
+
+
+def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
+    x, y = ring_xy[:, 0], ring_xy[:, 1]
+    return 0.5 * np.sum(x * np.roll(y, -1) - y * np.roll(x, -1))
