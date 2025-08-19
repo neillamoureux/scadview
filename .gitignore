@@ -15,6 +15,16 @@ wheels/
 # model files
 **/*.stl
 **/*.3mf
+**/*.obj
+**/*.dict 
+**/*.dict64 
+**/*.glb
+**/*.gltf
+**/*.stl_ascii
+**/*.ply
+**/*.off
+**/*.xyz
+
 
 # documetation build
 site/
