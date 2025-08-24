@@ -30,10 +30,12 @@ class MainWindow(QMainWindow):
         size: tuple[int, int],
         controller: Controller,
         gl_widget: ModernglWidget,
+        add_gl_widget: bool = True,  # Set to False for testing
     ):
         super().__init__()
         self._controller = controller
         self._gl_widget = gl_widget
+        self._add_gl_widget = add_gl_widget
         self.setWindowTitle(title)
         self.resize(*size)
         self._create_file_actions()
@@ -136,7 +138,8 @@ class MainWindow(QMainWindow):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.addWidget(self._gl_widget)
+        if self._add_gl_widget:
+            main_layout.addWidget(self._gl_widget)
         file_buttons = self._create_file_buttons()
         main_layout.addWidget(file_buttons)
         camera_buttons = self._create_view_buttons()
@@ -165,16 +168,28 @@ class MainWindow(QMainWindow):
             self.BUTTON_STRIP_HEIGHT
         )  # Set fixed height for the button strip
 
-        self._add_button(view_button_layout, self._frame_action)
-        self._add_button(view_button_layout, self._view_from_xyz_action)
-        self._add_button(view_button_layout, self._view_from_x_action)
-        self._add_button(view_button_layout, self._view_from_y_action)
-        self._add_button(view_button_layout, self._view_from_z_action)
-        self._add_button(view_button_layout, self._toggle_camera_action)
-        # self._add_button(view_button_layout, self._use_orthogonal_camera_action)
-        # self._add_button(view_button_layout, self._use_perspective_camera_action)
-        self._add_button(view_button_layout, self._toggle_grid_action)
-        self._add_button(view_button_layout, self._toggle_gnomon_action)
+        self._frame_btn = self._add_button(view_button_layout, self._frame_action)
+        self._view_from_xyz_btn = self._add_button(
+            view_button_layout, self._view_from_xyz_action
+        )
+        self._view_from_x_btn = self._add_button(
+            view_button_layout, self._view_from_x_action
+        )
+        self._view_from_y_btn = self._add_button(
+            view_button_layout, self._view_from_y_action
+        )
+        self._view_from_z_btn = self._add_button(
+            view_button_layout, self._view_from_z_action
+        )
+        self._toggle_camera_btn = self._add_button(
+            view_button_layout, self._toggle_camera_action
+        )
+        self._toggle_grid_btn = self._add_button(
+            view_button_layout, self._toggle_grid_action
+        )
+        self._toggle_gnomon_btn = self._add_button(
+            view_button_layout, self._toggle_gnomon_action
+        )
 
         return view_button_strip
 
