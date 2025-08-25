@@ -29,9 +29,42 @@ def mock_moderngl_widget(mock_gl_widget_adapter):
 
 
 @pytest.fixture
-def main_window(mock_controller, mock_moderngl_widget, qtbot):
+def main_window(mock_controller, mock_moderngl_widget, monkeypatch, qtbot):
     window = MainWindow(
         "Test", (800, 600), mock_controller, mock_moderngl_widget, add_gl_widget=False
+    )
+    monkeypatch.setattr(
+        "meshsee.ui.main_window.QFileDialog.getOpenFileName",
+        lambda *args, **kwargs: ("tests/data/test_mesh.py", "Python Files (*.py)"),
+    )
+
+    qtbot.addWidget(window)
+    window.show()
+    return window
+
+
+@pytest.fixture
+def controlller_failing_load():
+    with patch("meshsee.ui.main_window.Controller") as MockController:
+        mock_controller = MockController()
+        mock_controller.load_mesh.side_effect = Exception("Load failed")
+        yield mock_controller
+
+
+@pytest.fixture
+def main_window_failing_load(
+    controlller_failing_load, mock_moderngl_widget, monkeypatch, qtbot
+):
+    window = MainWindow(
+        "Test",
+        (800, 600),
+        controlller_failing_load,
+        mock_moderngl_widget,
+        add_gl_widget=False,
+    )
+    monkeypatch.setattr(
+        "meshsee.ui.main_window.QFileDialog.getOpenFileName",
+        lambda *args, **kwargs: ("tests/data/test_mesh.py", "Python Files (*.py)"),
     )
     qtbot.addWidget(window)
     window.show()
@@ -67,15 +100,11 @@ def test_initial_action_states(main_window):
     assert main_window._show_font_action.isEnabled()
 
 
-def test_load_button_calls_load_mesh(main_window, qtbot, monkeypatch):
+def test_load_button_calls_load_mesh(main_window, qtbot):
     load_file_btn = main_window._load_file_btn
     assert load_file_btn.isEnabled()
     assert main_window._load_action.isEnabled()
 
-    monkeypatch.setattr(
-        "meshsee.ui.main_window.QFileDialog.getOpenFileName",
-        lambda *args, **kwargs: ("tests/data/test_mesh.py", "Python Files (*.py)"),
-    )
     with patch.object(main_window, "_load_mesh") as mock_load_mesh:
         qtbot.mouseClick(load_file_btn, Qt.MouseButton.LeftButton)
         mock_load_mesh.assert_called_once_with("tests/data/test_mesh.py")
@@ -95,3 +124,19 @@ def test_load_button_calls_load_mesh(main_window, qtbot, monkeypatch):
         and main_window._export_btn.isEnabled(),
         timeout=100,
     )
+
+
+def test_export_disabled_if_load_error(main_window_failing_load, qtbot):
+    load_file_btn = main_window_failing_load._load_file_btn
+    qtbot.mouseClick(load_file_btn, Qt.MouseButton.LeftButton)
+    qtbot.waitSignal(
+        main_window_failing_load._mesh_handler._mesh_loading_worker.signals.error,
+        timeout=100,
+    )
+    main_window_failing_load._controller.load_mesh.assert_called_once_with(
+        "tests/data/test_mesh.py"
+    )
+    assert main_window_failing_load._reload_file_btn.isEnabled()
+    assert main_window_failing_load._reload_action.isEnabled()
+    assert not main_window_failing_load._export_btn.isEnabled()
+    assert not main_window_failing_load._export_action.isEnabled()
