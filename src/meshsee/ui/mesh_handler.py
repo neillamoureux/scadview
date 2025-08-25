@@ -92,6 +92,7 @@ class MeshHandler:
             logger.debug("There is no mesh in the queue")
 
     def _load_successful(self):
+        logger.debug("Mesh load successful")
         self._gl_widget.indicate_load_state("success")
         self._enable_export(True)
 

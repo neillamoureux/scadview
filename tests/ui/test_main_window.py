@@ -12,7 +12,7 @@ from trimesh.creation import box
 def mock_controller():
     with patch("meshsee.ui.main_window.Controller") as MockController:
         mock_controller = MockController()
-        mock_controller.load_mesh.return_value = lambda: iter([box()])
+        mock_controller.load_mesh.return_value = iter([box()])
         yield mock_controller
 
 
@@ -90,9 +90,8 @@ def test_load_button_calls_load_mesh(main_window, qtbot, monkeypatch):
     assert main_window._reload_action.isEnabled()
     assert not main_window._export_btn.isEnabled()
     assert not main_window._export_action.isEnabled()
-    qtbot.waitSignal(
-        main_window._mesh_handler._mesh_loading_worker.signals.stopped,
+    qtbot.waitUntil(
+        lambda: main_window._export_action.isEnabled()
+        and main_window._export_btn.isEnabled(),
         timeout=100,
     )
-    assert main_window._export_btn.isEnabled()
-    assert main_window._export_action.isEnabled()
