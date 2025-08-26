@@ -2,10 +2,10 @@ from unittest.mock import patch
 
 import pytest
 from PySide6.QtCore import Qt
+from trimesh.creation import box
 
 from meshsee.ui.main_window import MainWindow
 from meshsee.ui.moderngl_widget import ModernglWidget
-from trimesh.creation import box
 
 
 @pytest.fixture
