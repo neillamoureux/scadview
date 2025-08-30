@@ -99,7 +99,6 @@ def test_load_successfule_callback(mesh_loader, load_successful_callback):
 
 
 def test_error_callback_called_on_error(mesh_loader, mock_controller, error_callback):
-
     def load_mesh_with_error(file_path):
         raise RuntimeError("Test error")
 
@@ -132,7 +131,6 @@ def test_multiple_meshes_in_queue(mock_controller, mesh_loader):
 
 
 def test_convert_manifold_to_trimesh(mock_controller, mesh_loader):
-
     def load_manifold(file_path):
         yield Manifold.cube([1, 1, 1], True)
 

@@ -131,6 +131,7 @@ class MainWindow(QMainWindow):
 
         help_menu = menu_bar.addMenu("Help")
         help_menu.addAction(self._show_font_action)
+        self._help_menu = help_menu
         # help_menu.addAction("About", self._controller.show_about_dialog)
         # help_menu.addAction("Documentation", self._controller.open_documentation)
 
