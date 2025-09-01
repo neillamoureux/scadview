@@ -116,7 +116,7 @@ class Camera:
         self.gnomon_projection_matrix
         self.gnomon_view_matrix
 
-    def orbit(self, angle_from_up, rotation_angle):
+    def orbit(self, angle_from_up: float, rotation_angle: float):
         """
         Rotate the camera around the look_at point.
         Angles are in radians.
@@ -282,9 +282,9 @@ class Camera:
         self.look_at = self.look_at + right * distance
         self.update_matrices()
 
-    def move_along(self, vector, halves: float):
+    def move_along(self, vector: NDArray[np.float32], halves: float):
         displacement = vector * self._move_distance(halves) / np.linalg.norm(vector)
-        self.move_along_by(displacement)
+        self.move_along_by(displacement.astype(np.float32))
         self.update_matrices()
 
     def move_along_by(self, vector: NDArray[np.float32]):

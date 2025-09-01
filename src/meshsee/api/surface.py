@@ -10,7 +10,7 @@ GRAYSCALE_IMAGE_MAX = 255.0
 
 def surface(
     file: str,
-    scale: tuple = (1.0, 1.0, 1.0),
+    scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
     base: float = 0.0,
     invert: bool = False,
     binary_split: bool = False,
@@ -68,8 +68,8 @@ def surface(
 
 
 def _solid_from_image(
-    image_file: IO,
-    scale: tuple,
+    image_file: IO[bytes],
+    scale: tuple[float, float, float],
     base: float,
     invert: bool,
     binary_split: bool,
@@ -81,7 +81,11 @@ def _solid_from_image(
     Parameters
     ----------
     image_file : IO
-        A file-like object containing the image data.
+        A file-like object containing the image data. Options for IO include:
+        - File path string (open with open(path, "rb"))
+        - BytesIO or other file-like objects
+        - Any object implementing .read() and .seek() methods
+
     scale : tuple
         A tuple of three values (X, Y, Z) to scale the mesh in the respective dimensions.
 
@@ -115,7 +119,7 @@ def _solid_from_image(
 
 def _solid_from_heightmap(
     heightmap: NDArray[np.float32],
-    scale: tuple,
+    scale: tuple[float, float, float],
     base: float,
     invert: bool,
     binary_split: bool,
@@ -139,7 +143,7 @@ def _solid_from_heightmap(
 
 def _create_top_vertices(
     heightmap: NDArray[np.float32],
-    scale: tuple,
+    scale: tuple[float, float, float],
     base: float,
     invert: bool,
 ) -> NDArray[np.float32]:
@@ -177,7 +181,7 @@ def _create_side_faces(y_span: int, x_span: int, v_count: int) -> NDArray[np.flo
     side_faces = []
 
     # helper to add two tris between a top edge (i→j) and bottom (i+N→j+N)
-    def wall(i, j):
+    def wall(i: int, j: int):
         side_faces.append([i, j, j + v_count])
         side_faces.append([i, j + v_count, i + v_count])
 
@@ -216,7 +220,7 @@ def _assemble_solid(
 
 
 def mesh_from_heightmap(
-    heightmap: NDArray[np.float32], scale: tuple = (1.0, 1.0, 1.0)
+    heightmap: NDArray[np.float32], scale: tuple[float, float, float] = (1.0, 1.0, 1.0)
 ) -> trimesh.Trimesh:
     """Create a 3D mesh from a heightmap.
 

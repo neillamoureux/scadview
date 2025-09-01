@@ -64,7 +64,9 @@ def _determine_slice_value(slices: int | None, fn: int | None):
     return DEFAULT_SLICES
 
 
-def _determine_final_scale(scale) -> tuple[float, float]:
+def _determine_final_scale(
+    scale: float | tuple[float, float] | list[float] | NDArray[np.float32],
+) -> tuple[float, float]:
     if not isinstance(scale, (tuple, list, np.ndarray)):
         scale = (float(scale), float(scale))
     return (float(scale[0]), float(scale[1]))

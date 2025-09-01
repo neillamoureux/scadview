@@ -194,7 +194,7 @@ class AlphaRenderee(Renderee):
         return self._view_matrix
 
     @view_matrix.setter
-    def view_matrix(self, value):
+    def view_matrix(self, value: NDArray[np.float32]):
         self._view_matrix = value
         self._resort_verts = True
 
@@ -406,7 +406,7 @@ def create_trimesh_list_renderee(
     return TrimeshListRenderee(opaques_renderee, alphas_renderee)
 
 
-def split_opaque_alpha(meshes: list[Trimesh]):
+def split_opaque_alpha(meshes: list[Trimesh]) -> tuple[list[Trimesh], list[Trimesh]]:
     alphas = []
     opaques = []
     for mesh in meshes:

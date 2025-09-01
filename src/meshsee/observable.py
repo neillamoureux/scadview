@@ -27,7 +27,7 @@ class Observable:
         # compare original to dereferenced weakrefs
         self._subscribers[:] = [r for r in self._subscribers if r() is not callback]
 
-    def notify(self, *args, **kwargs):
+    def notify(self, *args: Any, **kwargs: Any):
         """Call every subscriber, pass along any arguments."""
         dead = []
         for ref in self._subscribers:

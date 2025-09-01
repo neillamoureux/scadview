@@ -1,8 +1,9 @@
 import numpy as np
 import trimesh
+import manifold3d
 
 
-def manifold_to_trimesh(manifold):
+def manifold_to_trimesh(manifold: manifold3d.Manifold) -> trimesh.Trimesh:
     """
     Convert a manifold object to a Trimesh object.
     From [Manifold](https://colab.research.google.com/drive/1VxrFYHPSHZgUbl9TeWzCeovlpXrPQ5J5?usp=sharing#scrollTo=xCHqkWeJXgmJ)

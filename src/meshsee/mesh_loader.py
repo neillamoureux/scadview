@@ -27,8 +27,8 @@ class MeshLoader:
         load_start_callback: Callable[[], None],
         mesh_update_callback: Callable[[], None],
         load_successful_callback: Callable[[], None],
-        stopped_callback=Callable[[], None],
-        error_callback=Callable[[], None],
+        stopped_callback: Callable[[], None],
+        error_callback: Callable[[], None],
     ):
         self._controller = controller
         self._file_path = file_path
@@ -95,7 +95,7 @@ class MeshLoader:
         else:
             self._latest_unloaded_mesh = mesh
 
-    def _update_mesh(self, mesh):
+    def _update_mesh(self, mesh: Trimesh | Manifold):
         logger.debug("_update_mesh")
         mesh2 = mesh
         if isinstance(mesh, Manifold):

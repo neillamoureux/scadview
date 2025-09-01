@@ -20,11 +20,11 @@ def _load_font() -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(font_path, FONT_SIZE)
 
 
-def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple:
+def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple[int, int]:
     cell_bbox = font.getbbox("0")
     cell_height = cell_bbox[3]  # Height of a character cell
     cell_width = cell_bbox[2]  # Width of a character cell
-    return (cell_width, cell_height)
+    return (int(cell_width), int(cell_height))
 
 
 class LabelAtlas:
@@ -66,7 +66,11 @@ class LabelAtlas:
             self._draw_char(draw, font, char, i)
 
     def _draw_char(
-        self, draw: ImageDraw.ImageDraw, font, char: str, index: int
+        self,
+        draw: ImageDraw.ImageDraw,
+        font: ImageFont.FreeTypeFont,
+        char: str,
+        index: int,
     ) -> None:
         WHITE = 255
         x = index * self._cell_width
