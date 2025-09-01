@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from meshsee import Color, set_mesh_color, text
-
 import numpy as np
 from trimesh.creation import box
 from trimesh.transformations import rotation_matrix
 
+from meshsee import Color, set_mesh_color, text
 
 LETTER_DEPTH = 10
 FRAME = 2
