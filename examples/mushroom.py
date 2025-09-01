@@ -1,4 +1,4 @@
-from trimesh.creation import icosphere, box, annulus
+from trimesh.creation import annulus, box, icosphere
 
 MILLIS_PER_INCH = 25.4
 STEM_R_MAX = 6.5 / 2.0

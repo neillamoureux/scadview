@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import moderngl
@@ -6,21 +7,19 @@ from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import box
 
+from meshsee.observable import Observable
 from meshsee.render.camera import Camera, copy_camera_state
 from meshsee.render.label_atlas import LabelAtlas
-
-from meshsee.observable import Observable
-from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.label_renderee import (
     LabelSetRenderee,
 )
 from meshsee.render.renderee import GnomonRenderee
+from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.trimesh_renderee import (
-    create_trimesh_renderee,
     TrimeshListRenderee,
     TrimeshOpaqueRenderee,
+    create_trimesh_renderee,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 

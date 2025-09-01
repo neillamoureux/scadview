@@ -1,5 +1,6 @@
-from trimesh import Trimesh
 from enum import Enum
+
+from trimesh import Trimesh
 
 
 class Color(Enum):

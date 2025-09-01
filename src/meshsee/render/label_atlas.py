@@ -1,9 +1,9 @@
-from PIL import Image, ImageFont, ImageDraw
+import os
 
 import moderngl
 import numpy as np
 from numpy.typing import NDArray
-import os
+from PIL import Image, ImageDraw, ImageFont
 
 LABEL_CHARS = "0123456789-."
 # MINUS_INDEX = LABEL_CHARS.index("-")
