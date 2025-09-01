@@ -64,8 +64,10 @@ class MeshLoader:
                     self._signal_stop()
                     return
                 self._update_if_time(mesh)
+            logger.info(f"Finished loading {self._file_path}")
             self._load_successful_callback()
-        except Exception:
+        except Exception as e:
+            logger.exception(f"Error while loading mesh: {e}")
             self._error_callback()
         finally:
             if self._latest_unloaded_mesh is not None:

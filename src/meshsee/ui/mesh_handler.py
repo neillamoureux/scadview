@@ -45,7 +45,7 @@ class MeshHandler:
         self._enable_reload(True)
         self._enable_export(False)
         self._mesh_name = file_path if file_path is not None else "Unknown"
-        worker = LoadMeshRunnable(self._controller, file_path)
+        worker = LoadMeshRunnable(self._controller, self._gl_widget, file_path)
         if self._mesh_loading_worker is None:
             logger.debug(
                 f"No current worker. Starting mesh loading worker for {self._mesh_name}"
@@ -92,21 +92,30 @@ class MeshHandler:
             logger.debug("There is no mesh in the queue")
 
     def _load_successful(self):
+        logger.debug("Mesh load successful")
         self._gl_widget.indicate_load_state("success")
         self._enable_export(True)
 
     def _indicate_error(self):
         self._gl_widget.indicate_load_state("error")
 
+    def stop(self):
+        if self._mesh_loading_worker is not None:
+            self._mesh_loading_worker.stop()
+            self._mesh_loading_worker = None
+        self._next_mesh_loading_worker = None
+
 
 class LoadMeshRunnable(QRunnable):
     def __init__(
         self,
         controller: Controller,
+        parent_signals_owner: QObject,
         file_path: str | None,
     ):
         super().__init__()
-        signals = MeshUpdateSignals()
+        self.setAutoDelete(False)  # Don't auto-delete in pool thread
+        signals = MeshUpdateSignals(parent_signals_owner)
         self._mesh_loader = MeshLoader(
             file_path=file_path,
             controller=controller,
