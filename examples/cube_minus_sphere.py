@@ -1,4 +1,5 @@
 from trimesh.creation import box, icosphere
+
 from meshsee import Color, set_mesh_color
 
 

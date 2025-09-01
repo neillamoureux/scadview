@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
-from meshsee.api.surface import surface, mesh_from_heightmap
 import trimesh
 from PIL import Image
+
+from meshsee.api.surface import mesh_from_heightmap, surface
 
 
 @pytest.fixture

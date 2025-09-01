@@ -1,8 +1,9 @@
-import pytest
 import numpy as np
-from meshsee.api import text_builder
-from shapely.geometry import Polygon
+import pytest
 import trimesh
+from shapely.geometry import Polygon
+
+from meshsee.api import text_builder
 
 
 def test_text_returns_trimesh_object():

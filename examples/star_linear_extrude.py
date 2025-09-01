@@ -1,6 +1,7 @@
-from meshsee import linear_extrude
 import numpy as np
 import shapely.geometry as sg
+
+from meshsee import linear_extrude
 
 POINTS = 5
 R1, R2 = 1.0, 2.0

@@ -1,9 +1,9 @@
 import logging
+
 import numpy as np
 
-
+from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
-from meshsee.render.camera import CameraPerspective, CameraOrthogonal
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 import logging
-from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 from PySide6.QtCore import Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-
 from trimesh import Trimesh
+
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 logger = logging.getLogger(__name__)
 

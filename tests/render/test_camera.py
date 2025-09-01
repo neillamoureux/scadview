@@ -1,12 +1,12 @@
 from copy import copy, deepcopy
 
-from pytest import approx, mark
 import numpy as np
+from pytest import approx, mark
 
 from meshsee.render.camera import (
     Camera,
-    CameraPerspective,
     CameraOrthogonal,
+    CameraPerspective,
     copy_camera_state,
     intersection,
 )
