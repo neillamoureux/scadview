@@ -3,5 +3,7 @@
         "src/meshsee"
     ],
     "reportUnknownArgumentType": "error",
-    "reportUnknownParameterType": "error"
+    "reportUnknownParameterType": "error",
+    "reportUnknownLambdaType": "error",
+    "reportUnknownVariableType": "error"
 }

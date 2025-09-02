@@ -12,6 +12,22 @@ from meshsee.controller import Controller
 logger = logging.getLogger(__name__)
 
 
+class MeshQueue:
+    def __init__(self):
+        self._queue = queue.Queue(maxsize=1)
+
+    def get_nowait(self) -> Trimesh:
+        mesh = self._queue.get_nowait()  # type: ignore[reportUnknowVariableType] - can't resolve
+        if isinstance(mesh, Trimesh):
+            return mesh
+        if isinstance(mesh, object):
+            raise ValueError(f"Mesh queue has a non-mesh item of type {type(mesh)}")
+        raise ValueError(f"Mesh queue as a non-mesh item {mesh}")
+
+    def put_nowait(self, mesh: Trimesh):
+        return self._queue.put_nowait(mesh)
+
+
 class MeshLoader:
     """
     Pure python mesh loader to be run in a thread.
@@ -42,7 +58,7 @@ class MeshLoader:
         self._first_mesh = True
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None
-        self.mesh_queue = queue.Queue(maxsize=1)
+        self.mesh_queue = MeshQueue()
 
     def run(self):
         logger.info("Mesh loading about to start.")
@@ -97,9 +113,10 @@ class MeshLoader:
 
     def _update_mesh(self, mesh: Trimesh | Manifold):
         logger.debug("_update_mesh")
-        mesh2 = mesh
         if isinstance(mesh, Manifold):
             mesh2 = manifold_to_trimesh(mesh)
+        elif isinstance(mesh, Trimesh):
+            mesh2 = mesh
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None
         logger.debug("Placing latest mesh in queue for viewing")

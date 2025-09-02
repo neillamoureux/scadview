@@ -113,7 +113,7 @@ class MeshHandler:
         try:
             if self._mesh_loading_worker is None:
                 raise ValueError("There is no worker to update the mesh")
-            mesh = self._mesh_loading_worker.mesh_queue.get_nowait()
+            mesh = self._mesh_loading_worker.mesh_queue.get_nowait()  # typeL
             mesh = self._check_mesh_type(mesh)
             self._gl_widget.load_mesh(mesh, self._mesh_name)
             if self._first_mesh:
@@ -127,8 +127,8 @@ class MeshHandler:
             return mesh
         if isinstance(mesh, list):
             if len(mesh) > 0:  # type: ignore[reportUnknownArgumentType] - can't resolve
-                if all([isinstance(mesh_item, Trimesh) for mesh_item in mesh]):
-                    return mesh
+                if all([isinstance(mesh_item, Trimesh) for mesh_item in mesh]):  # type: ignore[reportUnknownVariableType] - can't resolve
+                    return mesh  # type: ignore[reportUnknownVariableType] - can't resolve
             else:
                 raise ValueError("The mesh is an empty list")
         raise ValueError(
