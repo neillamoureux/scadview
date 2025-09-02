@@ -1,8 +1,9 @@
 import logging
 import queue
-from typing import Callable
+from typing import Any, Callable
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+from trimesh import Trimesh
 
 from meshsee.controller import Controller
 from meshsee.mesh_loader import MeshLoader
@@ -113,12 +114,26 @@ class MeshHandler:
             if self._mesh_loading_worker is None:
                 raise ValueError("There is no worker to update the mesh")
             mesh = self._mesh_loading_worker.mesh_queue.get_nowait()
+            mesh = self._check_mesh_type(mesh)
             self._gl_widget.load_mesh(mesh, self._mesh_name)
             if self._first_mesh:
                 self._first_mesh = False
                 self._gl_widget.frame()
         except queue.Empty:
             logger.debug("There is no mesh in the queue")
+
+    def _check_mesh_type(self, mesh: Any) -> Trimesh | list[Trimesh]:
+        if isinstance(mesh, Trimesh):
+            return mesh
+        if isinstance(mesh, list):
+            if len(mesh) > 0:  # type: ignore[reportUnknownArgumentType] - can't resolve
+                if all([isinstance(mesh_item, Trimesh) for mesh_item in mesh]):
+                    return mesh
+            else:
+                raise ValueError("The mesh is an empty list")
+        raise ValueError(
+            f"The mesh is not a Trimesh or a list of Trimesh, it is a {type(mesh)}"  # type: ignore[reportUnknownArgumentType] - can't resolve
+        )
 
     def _load_successful(self):
         logger.debug("Mesh load successful")

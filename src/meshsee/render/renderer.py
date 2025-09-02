@@ -4,7 +4,6 @@ from typing import Any
 import moderngl
 import numpy as np
 from numpy.typing import NDArray
-
 from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import box

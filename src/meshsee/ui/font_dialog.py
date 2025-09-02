@@ -1,4 +1,4 @@
-from PySide6.QtCore import QSortFilterProxyModel, Qt, QModelIndex, QPersistentModelIndex
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QClipboard, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,

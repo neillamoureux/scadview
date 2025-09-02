@@ -35,7 +35,14 @@ def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.uint8]:
 def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
     if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
         if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
-            return convert_color_to_uint8(mesh.metadata["meshsee"]["color"])
+            if isinstance(mesh.metadata["meshsee"]["color"], list) and all(
+                isinstance(c, float) for c in mesh.metadata["meshsee"]["color"]
+            ):
+                return convert_color_to_uint8(mesh.metadata["meshsee"]["color"])  # type: ignore[arg-type]
+            else:
+                raise ValueError(
+                    "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
+                )
     return convert_color_to_uint8(DEFAULT_COLOR)
 
 
@@ -87,12 +94,15 @@ def create_vao(
 
 
 def concat_colors(meshes: list[Trimesh]) -> NDArray[np.uint8]:
-    colors_list = []
+    colors_list = np.empty(
+        (0, 12),
+        dtype=np.uint8,  # 12 = 4 color components * 3 vertices per triangle
+    )
     for mesh in meshes:
         color = get_metadata_color(mesh)
         n_triangles = mesh.triangles.shape[0]
-        colors_list.append(np.tile(color, (n_triangles, 3)))
-    return np.concatenate(colors_list, axis=0).astype(np.uint8)
+        colors_list = np.append(colors_list, np.tile(color, (n_triangles, 3)), axis=0)
+    return colors_list
 
 
 class TrimeshRenderee(Renderee):

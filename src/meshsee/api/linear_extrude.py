@@ -121,7 +121,7 @@ def _orient_like_openscad(poly: sg.Polygon) -> sg.Polygon:
         if _signed_area2d(h[:-1]) > 0:  # CCW -> flip
             h = h[::-1]
         holes.append(h)
-    return sg.Polygon(ext, [h[:-1] for h in holes])
+    return sg.Polygon(ext, [h[:-1] for h in holes])  # type: ignore[reportInvalidArgumentType] - can't resolve
 
 
 def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
@@ -166,7 +166,7 @@ def _build_layers(
     layer_heights: NDArray[np.float32],
     centroid: sg.Point,
 ) -> NDArray[np.float32]:
-    layers = []
+    layers = np.empty((0, 3), dtype=np.float32)
     for i, layer_height in enumerate(layer_heights):
         t = i / slices
         sx = 1.0 + t * (final_scale[0] - 1.0)
@@ -181,8 +181,8 @@ def _build_layers(
             centroid.y,
         ]
         layer = np.column_stack([pts, np.full(len(pts), layer_height)])
-        layers.append(layer)
-    return np.vstack(layers)
+        layers = np.append(layers, layer, axis=0)
+    return layers
 
 
 def _make_faces(

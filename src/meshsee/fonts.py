@@ -28,7 +28,7 @@ def list_system_fonts(duplicate_regular: bool = True) -> dict[str, str]:
     font_paths += font_manager.findSystemFonts(fontpaths=None, fontext="ttf")
     # also add OpenType fonts
     font_paths += font_manager.findSystemFonts(fontpaths=None, fontext="otf")
-    fonts = {}
+    fonts: dict[str, str] = {}
     for fp in font_paths:
         try:
             ft = ft2font.FT2Font(fp)

@@ -129,7 +129,9 @@ class Camera:
         rotated_up = matrix33.apply_to_vector(rotated_up_mat, self.up)
         rotation_axis = np.cross(self.direction, rotated_up)
         rotation = matrix33.create_from_axis_rotation(
-            rotation_axis, rotation_angle, dtype="f4"
+            rotation_axis,  # pyright: ignore [reportUnknownArgumentType] - Can't resolve
+            rotation_angle,
+            dtype="f4",
         )
         new_direction = matrix33.apply_to_vector(rotation, self.direction)
         new_up = matrix33.apply_to_vector(rotation, perp_up)

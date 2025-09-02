@@ -2,11 +2,10 @@ import logging
 
 import numpy as np
 from numpy.typing import NDArray
+from trimesh import Trimesh
 
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
-
-from trimesh import Trimesh
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +133,7 @@ class GlWidgetAdapter:
     def indicate_load_state(self, state: str):
         self._renderer.indicate_load_state(state)
 
-    def load_mesh(self, mesh: Trimesh, name: str):
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._renderer.load_mesh(mesh, name)
 
     def frame(

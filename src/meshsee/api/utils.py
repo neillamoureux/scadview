@@ -1,6 +1,6 @@
+import manifold3d
 import numpy as np
 import trimesh
-import manifold3d
 
 
 def manifold_to_trimesh(manifold: manifold3d.Manifold) -> trimesh.Trimesh:

@@ -193,6 +193,7 @@ class LabelSetRenderee(Renderee):
         spans = [
             rng[1][1] - rng[1][0]  # pyright: ignore [reportOptionalSubscript]
             for rng in visible_ranges
+            if rng[1] is not None
         ]
         max_span = max(spans)
         step = label_step(max_span, self._max_labels_per_axis)
@@ -200,12 +201,14 @@ class LabelSetRenderee(Renderee):
             [
                 visible_range[1][0]  # pyright: ignore [reportOptionalSubscript]
                 for visible_range in visible_ranges
+                if visible_range[1] is not None
             ]
         )
         max_value = max(
             [
                 visible_range[1][1]  # pyright: ignore [reportOptionalSubscript]
                 for visible_range in visible_ranges
+                if visible_range[1] is not None
             ]
         )
         char_width = label_char_width(
@@ -213,8 +216,12 @@ class LabelSetRenderee(Renderee):
         )
         for visible in visible_ranges:
             axis = visible[0]
-            min_value = visible[1][0]  # pyright: ignore [reportOptionalSubscript]
-            max_value = visible[1][1]  # pyright: ignore [reportOptionalSubscript]
+            if visible[1] is None:
+                continue
+            min_value = visible[1][0]
+            max_value = visible[1][1]
+            if not (isinstance(min_value, float) and isinstance(max_value, float)):
+                continue
             show = labels_to_show(min_value, max_value, step)
             for label in show:
                 if label not in self._label_renderees.keys():

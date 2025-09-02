@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def export_formats() -> list[str]:
-    return list(export._mesh_exporters.keys())
+    return [fmt for fmt in export._mesh_exporters.keys()]
 
 
 class Controller:

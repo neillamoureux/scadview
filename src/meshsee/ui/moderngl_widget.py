@@ -1,9 +1,9 @@
 import logging
 
-from PySide6.QtCore import Qt
 from PySide6 import QtGui
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from PySide6.QtWidgets import QWidget
 from trimesh import Trimesh
 
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
@@ -107,7 +107,7 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.frame()
         self.update()
 
-    def load_mesh(self, mesh: Trimesh, name: str):
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._gl_widget_adapter.load_mesh(mesh, name)
         self.update()
 

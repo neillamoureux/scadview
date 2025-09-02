@@ -186,5 +186,13 @@ def _assemble_polys(
                 for k in loops_cont[j]["contains"]:
                     if k in loops_cont[i]["holes"]:
                         loops_cont[i]["holes"].remove(k)
-            polys.append(Polygon(loops[i], [loops[j] for j in loops_cont[i]["holes"]]))
+            polys.append(
+                Polygon(
+                    loops[i],
+                    [
+                        loops[j]
+                        for j in loops_cont[i]["holes"]  # type: ignore[reportUnknownArgumentType] can't resolve
+                    ],
+                )
+            )
     return polys
