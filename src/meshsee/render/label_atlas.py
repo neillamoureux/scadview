@@ -32,6 +32,7 @@ class LabelAtlas:
         self._create_label_atlas()
         self._texture = None
         self._sampler = None
+        self._uv_data: dict[str, NDArray[np.float32]] = {}
 
     def uv(self, char: str) -> NDArray[np.float32]:
         return self._uv_data[char]
@@ -55,13 +56,10 @@ class LabelAtlas:
 
     def _draw_chars(self, chars: str, font: ImageFont.FreeTypeFont) -> None:
         # Create a new image for the atlas
-
-        # Create a new image for the atlas
         self._image = Image.new("L", (self._width, self._height))
         draw = ImageDraw.Draw(self._image)
 
         # Draw each character into its cell
-        self._uv_data = {}
         for i, char in enumerate(chars):
             self._draw_char(draw, font, char, i)
 

@@ -6,7 +6,9 @@ import numpy as np
 from numpy.typing import NDArray
 from pyrr import Matrix44
 from trimesh import Trimesh
-from trimesh.creation import box
+from trimesh.creation import (
+    box,  # pyright: ignore[reportUnknownVariableType] can't resolve
+)
 
 from meshsee.observable import Observable
 from meshsee.render.camera import Camera, copy_camera_state

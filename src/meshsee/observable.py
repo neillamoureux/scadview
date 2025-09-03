@@ -10,7 +10,7 @@ class Observable:
 
     def __init__(self):
         # store weak refs to bound methods or functions
-        self._subscribers: list[weakref.ReferenceType] = []
+        self._subscribers: list[weakref.ReferenceType[Callable[..., Any]]] = []
 
     def subscribe(self, callback: Callable[..., Any]):
         """Register a callable to be notified."""
@@ -29,7 +29,7 @@ class Observable:
 
     def notify(self, *args: Any, **kwargs: Any):
         """Call every subscriber, pass along any arguments."""
-        dead: list[weakref.ReferenceType] = []
+        dead: list[weakref.ReferenceType[Callable[..., Any]]] = []
         for ref in self._subscribers:
             fn = ref()
             if fn is None:

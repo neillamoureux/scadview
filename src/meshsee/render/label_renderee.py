@@ -143,25 +143,35 @@ class LabelRenderee(Renderee):
 
     def _calc_base_scale_at_label_matrix(self) -> Matrix44:
         m_shift_up = Matrix44.from_translation([0.0, self.shift_up, 0.0], dtype="f4")
-        m_base_scale_at_label = (
+        m_base_scale_at_label = (  # # pyright: ignore[reportUnknownVariableType] can't resolve
             m_shift_up
             * self._translate_from_origin
             * self._m_base_scale
             * self._translate_to_origin
         )
-        return m_base_scale_at_label
+        return m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
 
     def _calc_scale_matrix_for_axis(self, m_base_scale_at_label: Matrix44) -> Matrix44:
         if self.axis == 0:
             return m_base_scale_at_label
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label
+            return (
+                rotation * m_base_scale_at_label
+            )  # pyright: ignore[reportUnknownVariableType] can't resolve
+        # if self.axis == 2:
+        #     return (
+        #         rotation * m_base_scale_at_label
+        #     )  # pyright: ignore[reportUnknownVariableType] can't resolve
         if self.axis == 2:
-            rotation = Matrix44.from_z_rotation(
+            rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
                 pi, dtype="f4"
-            ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label
+            ) * Matrix44.from_y_rotation(
+                pi / 2.0, dtype="f4"
+            )
+            return (
+                rotation * m_base_scale_at_label
+            )  # pyright: ignore[reportUnknownVariableType] can't resolve
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
 
@@ -182,7 +192,7 @@ class LabelSetRenderee(Renderee):
         self.camera = camera
         self._max_labels_per_axis = max_labels_per_axis
         self._max_label_frac_of_step = max_label_frac_of_step
-        self._label_renderees = {}
+        self._label_renderees: dict[str, LabelRenderee] = {}
         self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):

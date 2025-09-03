@@ -20,7 +20,7 @@ class Controller:
 
     def __init__(self):
         self._module_loader = ModuleLoader(self.CREATE_MESH_FUNCTION_NAME)
-        self.current_mesh = None
+        self._current_mesh: Trimesh | None = None
         self._last_module_path = None
         self._last_export_path = None
 
@@ -63,11 +63,13 @@ class Controller:
             logger.info("No mesh to export")
             return
         if isinstance(self.current_mesh, list):
-            export_mesh = self.current_mesh[-1]
+            export_mesh = (  # pyright: ignore[reportUnknownVariableType]
+                self.current_mesh[-1]
+            )
         else:
             export_mesh = self.current_mesh
         self._last_export_path = file_path
-        export_mesh.export(file_path)
+        export_mesh.export(file_path)  # pyright: ignore[reportUnknownVariableType]
 
     def default_export_path(self) -> str:
         if self._last_export_path is not None:

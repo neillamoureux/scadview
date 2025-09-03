@@ -9,8 +9,9 @@ from matplotlib.textpath import TextPath, TextToPath
 from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 from trimesh import Trimesh
-from trimesh.creation import extrude_polygon
-
+from trimesh.creation import (
+    extrude_polygon,  # pyright: ignore[reportUnknownVariableType] - trimesh function
+)
 from meshsee.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,9 @@ def text(
     # polys = polygons_with_holes(loops, _is_loop_orientation_reversed(loops))
     polys = _make_polys(loops)
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
-    return trimesh.util.concatenate(meshes)
+    return trimesh.util.concatenate(
+        meshes
+    )  # pyright: ignore[reportUnknownVariableType] - trimesh function
 
 
 def _loops_from_text(
@@ -83,7 +86,7 @@ def _loops_from_text(
     x_offset, y_offset = _calc_offsets(text, fp, halign, valign)
 
     tp = TextPath((0, 0), text, prop=fp)
-    loops = []
+    loops: list[NDArray[np.float32]] = []
     for poly in tp.to_polygons():
         verts = np.array(poly, dtype="f4")
         loops.append(verts + np.array([x_offset, y_offset], dtype="f4"))
@@ -154,7 +157,9 @@ def _make_polys(loops: list[NDArray[np.float32]]) -> list[Polygon]:
 
 def _track_containment(loops: list[NDArray[np.float32]]) -> list[dict[str, Any]]:
     # Track containment relationships between loops
-    loops_cont = [{"contains": [], "exterior": True} for _ in loops]
+    loops_cont: list[dict[str, Any]] = [
+        {"contains": [], "exterior": True} for _ in loops
+    ]
     simple_polys = [Polygon(loop) for loop in loops]
     first_points = [Point(loop[0]) for loop in loops]
     for i, first_point_i in enumerate(first_points):
@@ -178,12 +183,18 @@ def _assemble_polys(
             loop_cont["holes"] = copy(
                 loop_cont["contains"]
             )  # initialize holes with contained loops
-    polys = []
+    polys: list[Polygon] = []
     for i in range(len(loops)):
         if loops_cont[i]["exterior"]:
             for j in loops_cont[i]["contains"]:
                 # remove contained loops that are also contained in interior loops from the holes list
-                for k in loops_cont[j]["contains"]:
+                for (
+                    k
+                ) in loops_cont[  # pyright: ignore[reportUnknownVariableType] - is Any
+                    j
+                ][
+                    "contains"
+                ]:
                     if k in loops_cont[i]["holes"]:
                         loops_cont[i]["holes"].remove(k)
             polys.append(

@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class MeshQueue:
+    """
+    Wrapper around queue to ensure only Trimesh is in the queue
+    """
+
     def __init__(self):
         self._queue = queue.Queue(maxsize=1)
 

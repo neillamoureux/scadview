@@ -5,8 +5,9 @@ import moderngl
 import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
-from trimesh.bounds import corners
-
+from trimesh.bounds import (
+    corners,  # pyright: ignore[reportUnknownVariableType] can't resolve
+)
 from meshsee.observable import Observable
 from meshsee.render.label_renderee import Renderee
 from meshsee.render.shader_program import ShaderVar
@@ -36,9 +37,18 @@ def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
     if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
         if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
             if isinstance(mesh.metadata["meshsee"]["color"], list) and all(
-                isinstance(c, float) for c in mesh.metadata["meshsee"]["color"]
+                isinstance(c, float)
+                for c in mesh.metadata[  # pyright: ignore[reportUnknownVariableType] can't resolve
+                    "meshsee"
+                ][
+                    "color"
+                ]
             ):
-                return convert_color_to_uint8(mesh.metadata["meshsee"]["color"])  # type: ignore[arg-type]
+                return convert_color_to_uint8(
+                    mesh.metadata["meshsee"][
+                        "color"
+                    ]  # pyright: ignore[reportUnknownArgumentType] - can't resolve
+                )
             else:
                 raise ValueError(
                     "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
@@ -417,8 +427,8 @@ def create_trimesh_list_renderee(
 
 
 def split_opaque_alpha(meshes: list[Trimesh]) -> tuple[list[Trimesh], list[Trimesh]]:
-    alphas = []
-    opaques = []
+    alphas: list[Trimesh] = []
+    opaques: list[Trimesh] = []
     for mesh in meshes:
         if is_alpha(mesh):
             alphas.append(mesh)

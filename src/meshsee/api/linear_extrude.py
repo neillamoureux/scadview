@@ -146,9 +146,14 @@ def _index_boundaries_verts(
 
     # map ring vertices -> triangulation indices
     kdt = KDTree(verts2d)
-    boundaries_verts_idx = [kdt.query(r, k=1)[1] for r in boundaries]
+    boundaries_verts_idx = [  # pyright: ignore[reportUnknownVariableType] - scipy fn
+        kdt.query(r, k=1)[1] for r in boundaries
+    ]
     # ensure indices are intp
-    return [np.asarray(bvi, dtype=np.intp) for bvi in boundaries_verts_idx]
+    return [
+        np.asarray(bvi, dtype=np.intp)
+        for bvi in boundaries_verts_idx  # pyright: ignore[reportUnknownVariableType] - scipy
+    ]
 
 
 def _calc_layer_heights(
