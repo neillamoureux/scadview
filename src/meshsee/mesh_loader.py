@@ -1,7 +1,7 @@
 import logging
 import queue
 from time import time
-from typing import Callable
+from typing import Any, Callable
 
 from manifold3d import Manifold
 from trimesh import Trimesh
@@ -20,13 +20,10 @@ class MeshQueue:
     def __init__(self):
         self._queue = queue.Queue(maxsize=1)
 
-    def get_nowait(self) -> Trimesh:
+    def get_nowait(self) -> Trimesh | list[Trimesh]:
         mesh = self._queue.get_nowait()  # type: ignore[reportUnknowVariableType] - can't resolve
-        if isinstance(mesh, Trimesh):
-            return mesh
-        if isinstance(mesh, object):
-            raise ValueError(f"Mesh queue has a non-mesh item of type {type(mesh)}")
-        raise ValueError(f"Mesh queue as a non-mesh item {mesh}")
+        mesh = self._check_mesh_type(mesh)
+        return mesh
 
     def put_nowait(self, mesh: Trimesh):
         return self._queue.put_nowait(mesh)
@@ -36,6 +33,19 @@ class MeshQueue:
 
     def get(self) -> Trimesh:
         return self._queue.get()  # type: ignore[reportUnknowVariableType] - can't resolve
+
+    def _check_mesh_type(self, mesh: Any) -> Trimesh | list[Trimesh]:
+        if isinstance(mesh, Trimesh):
+            return mesh
+        if isinstance(mesh, list):
+            if len(mesh) > 0:  # type: ignore[reportUnknownArgumentType] - can't resolve
+                if all([isinstance(mesh_item, Trimesh) for mesh_item in mesh]):  # type: ignore[reportUnknownVariableType] - can't resolve
+                    return mesh  # type: ignore[reportUnknownVariableType] - can't resolve
+            else:
+                raise ValueError("The mesh is an empty list")
+        raise ValueError(
+            f"The mesh is not a Trimesh or a list of Trimesh, it is a {type(mesh)}"  # type: ignore[reportUnknownArgumentType] - can't resolve
+        )
 
 
 class MeshLoader:
