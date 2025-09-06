@@ -81,8 +81,8 @@ def _as_polygon_2d(profile: ProfileType) -> sg.Polygon:
     Returns shapely.Polygon oriented like OpenSCAD.
     """
     if isinstance(profile, sg.Polygon):
-        ext2 = np.asarray([(x, y) for x, y, *rest in profile.exterior.coords])
-        holes2 = [[(x, y) for x, y, *rest in r.coords] for r in profile.interiors]
+        ext2 = np.asarray([(x, y) for x, y, *_rest in profile.exterior.coords])
+        holes2 = [[(x, y) for x, y, *_rest in r.coords] for r in profile.interiors]
         poly = sg.Polygon(ext2, holes2)
         if not poly.is_valid:
             poly = so.unary_union(poly.buffer(0))  # "tidy" the polygon

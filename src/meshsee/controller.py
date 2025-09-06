@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def export_formats() -> list[str]:
-    return [fmt for fmt in export._mesh_exporters.keys()]
+    return [
+        fmt
+        for fmt in export._mesh_exporters.keys()  # pyright: ignore[reportPrivateUsage] - only way to access this
+    ]
 
 
 class Controller:
