@@ -12,6 +12,7 @@ from trimesh import Trimesh
 from trimesh.creation import (
     extrude_polygon,  # pyright: ignore[reportUnknownVariableType] - trimesh function
 )
+
 from meshsee.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
 
 logger = logging.getLogger(__name__)
@@ -70,9 +71,7 @@ def text(
     # polys = polygons_with_holes(loops, _is_loop_orientation_reversed(loops))
     polys = _make_polys(loops)
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
-    return trimesh.util.concatenate(
-        meshes
-    )  # pyright: ignore[reportUnknownVariableType] - trimesh function
+    return trimesh.util.concatenate(meshes)  # pyright: ignore[reportUnknownVariableType] - trimesh function
 
 
 def _loops_from_text(
@@ -188,13 +187,9 @@ def _assemble_polys(
         if loops_cont[i]["exterior"]:
             for j in loops_cont[i]["contains"]:
                 # remove contained loops that are also contained in interior loops from the holes list
-                for (
-                    k
-                ) in loops_cont[  # pyright: ignore[reportUnknownVariableType] - is Any
+                for k in loops_cont[  # pyright: ignore[reportUnknownVariableType] - is Any
                     j
-                ][
-                    "contains"
-                ]:
+                ]["contains"]:
                     if k in loops_cont[i]["holes"]:
                         loops_cont[i]["holes"].remove(k)
             polys.append(
