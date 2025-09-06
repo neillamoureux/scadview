@@ -41,3 +41,66 @@ dev = [
 
 [tool.uv.sources]
 meshsee = { workspace = true }
+
+[tool.pyright]
+include = ["src"]
+exclude = [".venv", ".git", "**/__pycache__", "build", "dist"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+useLibraryCodeForTypes = true
+
+# Treat "unknown"/"untyped" as errors
+reportUnknownParameterType = "error"
+reportUnknownArgumentType = "error"
+reportUnknownVariableType = "error"
+reportUnknownMemberType = "none"
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+reportUntypedNamedTuple = "error"
+
+# Everything correctness-related stays strict
+reportMissingImports = "error"
+reportMissingModuleSource = "error"
+reportPrivateUsage = "warning"
+reportIncompatibleMethodOverride = "error"
+reportIncompatibleVariableOverride = "error"
+reportInvalidTypeVarUse = "error"
+reportMissingTypeArgument = "error"
+reportOptionalMemberAccess = "error"
+reportOptionalSubscript = "error"
+reportOptionalCall = "error"
+reportReturnType = "error"
+reportAssignmentType = "error"
+reportCallIssue = "error"
+reportGeneralTypeIssues = "error"
+reportMatchNotExhaustive = "error"
+reportUninitializedInstanceVariable = "warning"
+reportUnboundVariable = "error"
+
+# Ignore missing type stubs
+reportMissingTypeStubs = "none"
+
+# Hygiene
+reportUnusedImport = "warning"
+reportUnusedClass = "warning"
+reportUnusedFunction = "warning"
+reportUnusedVariable = "warning"
+reportDuplicateImport = "warning"
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnnecessaryCast = "warning"
+reportImplicitStringConcatenation = "warning"
+
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+
+# [tool.pyright.executionEnvironments]
+# 0.root = "src"
+# 0.pythonVersion = "3.11"
+
+# 1.root = "tests"
+# # keep tests strict too, but you can flip to "basic" if needed:
+# 1.typeCheckingMode = "basic"

@@ -119,7 +119,7 @@ class MeshLoader:
         logger.debug("_update_mesh")
         if isinstance(mesh, Manifold):
             mesh2 = manifold_to_trimesh(mesh)
-        elif isinstance(mesh, Trimesh):
+        else:
             mesh2 = mesh
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None

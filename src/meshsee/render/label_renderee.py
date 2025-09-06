@@ -181,7 +181,7 @@ class LabelSetRenderee(Renderee):
         max_labels_per_axis: int,
         max_label_frac_of_step: float,
         camera: Camera,
-        name="Unknown Label Set",
+        name: str = "Unknown Label Set",
     ):
         super().__init__(ctx, program, name)
         self._label_atlas = label_atlas

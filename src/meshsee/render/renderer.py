@@ -180,8 +180,7 @@ class Renderer:
     def window_size(self, value: tuple[int, int]):
         self._window_size = value
         self._ctx.viewport = (0, 0, value[0], value[1])
-        if self._camera is not None:
-            self._camera.aspect_ratio = self.aspect_ratio
+        self._camera.aspect_ratio = self.aspect_ratio
         self._gnomon_renderee.window_size = value
 
     @property
