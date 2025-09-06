@@ -64,7 +64,7 @@ reportUntypedNamedTuple = "error"
 # Everything correctness-related stays strict
 reportMissingImports = "error"
 reportMissingModuleSource = "error"
-reportPrivateUsage = "warning"
+reportPrivateUsage = "error"
 reportIncompatibleMethodOverride = "error"
 reportIncompatibleVariableOverride = "error"
 reportInvalidTypeVarUse = "error"
@@ -77,21 +77,21 @@ reportAssignmentType = "error"
 reportCallIssue = "error"
 reportGeneralTypeIssues = "error"
 reportMatchNotExhaustive = "error"
-reportUninitializedInstanceVariable = "warning"
+reportUninitializedInstanceVariable = "none"
 reportUnboundVariable = "error"
 
 # Ignore missing type stubs
 reportMissingTypeStubs = "none"
 
 # Hygiene
-reportUnusedImport = "warning"
-reportUnusedClass = "warning"
-reportUnusedFunction = "warning"
-reportUnusedVariable = "warning"
-reportDuplicateImport = "warning"
-reportUnnecessaryTypeIgnoreComment = "warning"
-reportUnnecessaryCast = "warning"
-reportImplicitStringConcatenation = "warning"
+reportUnusedImport = "error"
+reportUnusedClass = "error"
+reportUnusedFunction = "error"
+reportUnusedVariable = "error"
+reportDuplicateImport = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnnecessaryCast = "error"
+reportImplicitStringConcatenation = "error"
 
 strictListInference = true
 strictDictionaryInference = true
