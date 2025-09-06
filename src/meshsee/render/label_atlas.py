@@ -29,10 +29,10 @@ def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple[int, int]:
 
 class LabelAtlas:
     def __init__(self, ctx: moderngl.Context):
+        self._uv_data: dict[str, NDArray[np.float32]] = {}
         self._create_label_atlas()
         self._texture = None
         self._sampler = None
-        self._uv_data: dict[str, NDArray[np.float32]] = {}
 
     def uv(self, char: str) -> NDArray[np.float32]:
         return self._uv_data[char]

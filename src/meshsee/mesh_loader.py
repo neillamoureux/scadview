@@ -31,6 +31,12 @@ class MeshQueue:
     def put_nowait(self, mesh: Trimesh):
         return self._queue.put_nowait(mesh)
 
+    def empty(self) -> bool:
+        return self._queue.empty()
+
+    def get(self) -> Trimesh:
+        return self._queue.get()  # type: ignore[reportUnknowVariableType] - can't resolve
+
 
 class MeshLoader:
     """

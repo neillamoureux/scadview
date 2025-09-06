@@ -46,13 +46,14 @@ def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
             metadata["meshsee"]
             is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
             and "color" in metadata["meshsee"]
-            and all(isinstance(c, float) for c in metadata["meshsee"]["color"])
         ):
-            return convert_color_to_uint8(metadata["meshsee"]["color"])
-        else:
-            raise ValueError(
-                "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
-            )
+            color = metadata["meshsee"]["color"]
+            if len(color) == 4 and all(isinstance(c, float) for c in color):
+                return convert_color_to_uint8(metadata["meshsee"]["color"])
+            else:
+                raise ValueError(
+                    "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
+                )
     return convert_color_to_uint8(DEFAULT_COLOR)
 
 
