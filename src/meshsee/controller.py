@@ -69,7 +69,7 @@ class Controller:
         else:
             export_mesh = self.current_mesh
         self._last_export_path = file_path
-        export_mesh.export(file_path)  # pyright: ignore[reportUnknownVariableType]
+        export_mesh.export(file_path)
 
     def default_export_path(self) -> str:
         if self._last_export_path is not None:

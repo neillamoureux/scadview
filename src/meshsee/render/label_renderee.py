@@ -159,10 +159,6 @@ class LabelRenderee(Renderee):
             return (
                 rotation * m_base_scale_at_label
             )  # pyright: ignore[reportUnknownVariableType] can't resolve
-        # if self.axis == 2:
-        #     return (
-        #         rotation * m_base_scale_at_label
-        #     )  # pyright: ignore[reportUnknownVariableType] can't resolve
         if self.axis == 2:
             rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
                 pi, dtype="f4"
@@ -200,23 +196,19 @@ class LabelSetRenderee(Renderee):
         visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
         if len(visible_ranges) == 0:
             return
-        spans = [
-            rng[1][1] - rng[1][0]  # pyright: ignore [reportOptionalSubscript]
-            for rng in visible_ranges
-            if rng[1] is not None
-        ]
+        spans = [rng[1][1] - rng[1][0] for rng in visible_ranges if rng[1] is not None]
         max_span = max(spans)
         step = label_step(max_span, self._max_labels_per_axis)
         min_value = min(
             [
-                visible_range[1][0]  # pyright: ignore [reportOptionalSubscript]
+                visible_range[1][0]
                 for visible_range in visible_ranges
                 if visible_range[1] is not None
             ]
         )
         max_value = max(
             [
-                visible_range[1][1]  # pyright: ignore [reportOptionalSubscript]
+                visible_range[1][1]
                 for visible_range in visible_ranges
                 if visible_range[1] is not None
             ]

@@ -34,21 +34,14 @@ def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.uint8]:
 
 
 def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
-    if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
-        if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
-            if isinstance(mesh.metadata["meshsee"]["color"], list) and all(
-                isinstance(c, float)
-                for c in mesh.metadata[  # pyright: ignore[reportUnknownVariableType] can't resolve
-                    "meshsee"
-                ][
-                    "color"
-                ]
+    metadata: dict[str, dict[str, list[float]]]
+    metadata = mesh.metadata  # pyright: ignore[reportUnknownVariableType]
+    if isinstance(metadata, dict) and "meshsee" in metadata:
+        if metadata["meshsee"] is not None and "color" in metadata["meshsee"]:
+            if isinstance(metadata["meshsee"]["color"], list) and all(
+                isinstance(c, float) for c in metadata["meshsee"]["color"]
             ):
-                return convert_color_to_uint8(
-                    mesh.metadata["meshsee"][
-                        "color"
-                    ]  # pyright: ignore[reportUnknownArgumentType] - can't resolve
-                )
+                return convert_color_to_uint8(metadata["meshsee"]["color"])
             else:
                 raise ValueError(
                     "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
