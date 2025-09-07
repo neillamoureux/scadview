@@ -11,6 +11,7 @@ wheels/
 
 # Test coverage
 .coverage
+coverage.xml
 
 # model files
 **/*.stl

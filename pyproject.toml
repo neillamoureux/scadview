@@ -96,11 +96,3 @@ reportImplicitStringConcatenation = "error"
 strictListInference = true
 strictDictionaryInference = true
 strictSetInference = true
-
-# [tool.pyright.executionEnvironments]
-# 0.root = "src"
-# 0.pythonVersion = "3.11"
-
-# 1.root = "tests"
-# # keep tests strict too, but you can flip to "basic" if needed:
-# 1.typeCheckingMode = "basic"
