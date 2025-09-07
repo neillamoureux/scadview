@@ -43,8 +43,7 @@ dev = [
 meshsee = { workspace = true }
 
 [tool.pyright]
-include = ["src"]
-exclude = [".venv", ".git", "**/__pycache__", "build", "dist"]
+include = ["src/meshsee"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"
