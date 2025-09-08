@@ -9,7 +9,8 @@ echo "CI is ${CI:-}"
 # In CI, prevent external plugin autoload (blocks pytest-qt import of Qt),
 # and explicitly disable pytest-qt just in case.
 if [[ -n "${CI:-}" ]]; then
-  extra="-p no:pytestqt"
+  export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  extra="-p no:pytestqt -p pytest_cov"
 else
   extra=""
 fi
