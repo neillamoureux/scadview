@@ -3,9 +3,12 @@ from typing import Any
 
 import moderngl
 import numpy as np
+from numpy.typing import NDArray
 from pyrr import Matrix44
 from trimesh import Trimesh
-from trimesh.creation import box
+from trimesh.creation import (
+    box,  # pyright: ignore[reportUnknownVariableType] can't resolve
+)
 
 from meshsee.observable import Observable
 from meshsee.render.camera import Camera, copy_camera_state
@@ -123,7 +126,7 @@ class Renderer:
         return self._scale
 
     @scale.setter
-    def scale(self, value):
+    def scale(self, value: float):
         if self.scale != value:
             self._scale = value
             self._axes_renderee = self._create_axes_renderee()
@@ -177,8 +180,7 @@ class Renderer:
     def window_size(self, value: tuple[int, int]):
         self._window_size = value
         self._ctx.viewport = (0, 0, value[0], value[1])
-        if self._camera is not None:
-            self._camera.aspect_ratio = self.aspect_ratio
+        self._camera.aspect_ratio = self.aspect_ratio
         self._gnomon_renderee.window_size = value
 
     @property
@@ -287,19 +289,23 @@ class Renderer:
         self._framing_points = self._main_renderee.points
         logger.debug("load_mesh_finished")
 
-    def frame(self, direction=None, up=None):
+    def frame(
+        self,
+        direction: NDArray[np.float32] | None = None,
+        up: NDArray[np.float32] | None = None,
+    ):
         self._camera.frame(self._framing_points, direction, up)
 
-    def orbit(self, angle_from_up, rotation_angle):
+    def orbit(self, angle_from_up: float, rotation_angle: float):
         self._camera.orbit(angle_from_up, rotation_angle)
 
-    def move(self, distance):
+    def move(self, distance: float):
         self._camera.move(distance)
 
-    def move_up(self, distance):
+    def move_up(self, distance: float):
         self._camera.move_up(distance)
 
-    def move_right(self, distance):
+    def move_right(self, distance: float):
         self._camera.move_right(distance)
 
     def move_to_screen(self, ndx: float, ndy: float, distance: float):

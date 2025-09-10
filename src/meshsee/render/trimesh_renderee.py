@@ -5,7 +5,9 @@ import moderngl
 import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
-from trimesh.bounds import corners
+from trimesh.bounds import (
+    corners,  # pyright: ignore[reportUnknownVariableType] can't resolve
+)
 
 from meshsee.observable import Observable
 from meshsee.render.label_renderee import Renderee
@@ -33,9 +35,23 @@ def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.uint8]:
 
 
 def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
-    if isinstance(mesh.metadata, dict) and "meshsee" in mesh.metadata:
-        if mesh.metadata["meshsee"] is not None and "color" in mesh.metadata["meshsee"]:
-            return convert_color_to_uint8(mesh.metadata["meshsee"]["color"])
+    metadata: dict[str, dict[str, list[float]]]
+    metadata = mesh.metadata  # pyright: ignore[reportUnknownVariableType]
+    if (
+        isinstance(metadata, dict)  # pyright: ignore[reportUnnecessaryIsInstance] - needed since ignoring type in line above
+        and "meshsee" in metadata
+    ):
+        if (
+            metadata["meshsee"] is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
+            and "color" in metadata["meshsee"]
+        ):
+            color = metadata["meshsee"]["color"]
+            if len(color) == 4 and all(isinstance(c, float) for c in color):
+                return convert_color_to_uint8(metadata["meshsee"]["color"])
+            else:
+                raise ValueError(
+                    "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
+                )
     return convert_color_to_uint8(DEFAULT_COLOR)
 
 
@@ -87,12 +103,15 @@ def create_vao(
 
 
 def concat_colors(meshes: list[Trimesh]) -> NDArray[np.uint8]:
-    colors_list = []
+    colors_list = np.empty(
+        (0, 12),
+        dtype=np.uint8,  # 12 = 4 color components * 3 vertices per triangle
+    )
     for mesh in meshes:
         color = get_metadata_color(mesh)
         n_triangles = mesh.triangles.shape[0]
-        colors_list.append(np.tile(color, (n_triangles, 3)))
-    return np.concatenate(colors_list, axis=0).astype(np.uint8)
+        colors_list = np.append(colors_list, np.tile(color, (n_triangles, 3)), axis=0)
+    return colors_list
 
 
 class TrimeshRenderee(Renderee):
@@ -194,7 +213,7 @@ class AlphaRenderee(Renderee):
         return self._view_matrix
 
     @view_matrix.setter
-    def view_matrix(self, value):
+    def view_matrix(self, value: NDArray[np.float32]):
         self._view_matrix = value
         self._resort_verts = True
 
@@ -284,7 +303,7 @@ class TrimeshListOpaqueRenderee(TrimeshRenderee):
             return np.empty((1, 3), dtype="f4")
         return np.concatenate([r.points for r in self._renderees], axis=0, dtype="f4")
 
-    def subscribe_to_updates(self, updates):
+    def subscribe_to_updates(self, updates: Observable):
         pass
 
     def render(self):
@@ -360,8 +379,6 @@ def create_trimesh_renderee(
     name: str = "Unknown create_trimesh_renderee",
 ) -> TrimeshRenderee:
     if isinstance(mesh, list):
-        if not all(isinstance(m, Trimesh) for m in mesh):
-            raise TypeError("All elements in the mesh list must be Trimesh instances.")
         return create_trimesh_list_renderee(
             ctx,
             program,
@@ -370,7 +387,7 @@ def create_trimesh_renderee(
             view_matrix,
             name,
         )
-    elif isinstance(mesh, Trimesh):
+    else:
         return create_single_trimesh_renderee(
             ctx,
             program,
@@ -379,8 +396,6 @@ def create_trimesh_renderee(
             view_matrix,
             name,
         )
-    else:
-        raise TypeError("mesh must be a Trimesh or a list of Trimesh objects.")
 
 
 def create_trimesh_list_renderee(
@@ -391,8 +406,6 @@ def create_trimesh_list_renderee(
     view_matrix: NDArray[np.float32],
     name: str,
 ) -> TrimeshListRenderee:
-    if not all(isinstance(m, Trimesh) for m in meshes):
-        raise TypeError("All elements in the mesh list must be Trimesh instances.")
     opaques, alphas = split_opaque_alpha(meshes)
     opaques_renderee = create_trimesh_list_opaque_renderee(ctx, program, opaques)
     alphas_renderee = create_trimesh_list_alpha_renderee(
@@ -406,9 +419,9 @@ def create_trimesh_list_renderee(
     return TrimeshListRenderee(opaques_renderee, alphas_renderee)
 
 
-def split_opaque_alpha(meshes: list[Trimesh]):
-    alphas = []
-    opaques = []
+def split_opaque_alpha(meshes: list[Trimesh]) -> tuple[list[Trimesh], list[Trimesh]]:
+    alphas: list[Trimesh] = []
+    opaques: list[Trimesh] = []
     for mesh in meshes:
         if is_alpha(mesh):
             alphas.append(mesh)

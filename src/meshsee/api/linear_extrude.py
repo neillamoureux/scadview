@@ -64,7 +64,9 @@ def _determine_slice_value(slices: int | None, fn: int | None):
     return DEFAULT_SLICES
 
 
-def _determine_final_scale(scale) -> tuple[float, float]:
+def _determine_final_scale(
+    scale: float | tuple[float, float] | list[float] | NDArray[np.float32],
+) -> tuple[float, float]:
     if not isinstance(scale, (tuple, list, np.ndarray)):
         scale = (float(scale), float(scale))
     return (float(scale[0]), float(scale[1]))
@@ -79,8 +81,8 @@ def _as_polygon_2d(profile: ProfileType) -> sg.Polygon:
     Returns shapely.Polygon oriented like OpenSCAD.
     """
     if isinstance(profile, sg.Polygon):
-        ext2 = np.asarray([(x, y) for x, y, *rest in profile.exterior.coords])
-        holes2 = [[(x, y) for x, y, *rest in r.coords] for r in profile.interiors]
+        ext2 = np.asarray([(x, y) for x, y, *_rest in profile.exterior.coords])
+        holes2 = [[(x, y) for x, y, *_rest in r.coords] for r in profile.interiors]
         poly = sg.Polygon(ext2, holes2)
         if not poly.is_valid:
             poly = so.unary_union(poly.buffer(0))  # "tidy" the polygon
@@ -119,7 +121,7 @@ def _orient_like_openscad(poly: sg.Polygon) -> sg.Polygon:
         if _signed_area2d(h[:-1]) > 0:  # CCW -> flip
             h = h[::-1]
         holes.append(h)
-    return sg.Polygon(ext, [h[:-1] for h in holes])
+    return sg.Polygon(ext, [h[:-1] for h in holes])  # type: ignore[reportInvalidArgumentType] - can't resolve
 
 
 def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
@@ -144,9 +146,14 @@ def _index_boundaries_verts(
 
     # map ring vertices -> triangulation indices
     kdt = KDTree(verts2d)
-    boundaries_verts_idx = [kdt.query(r, k=1)[1] for r in boundaries]
+    boundaries_verts_idx = [  # pyright: ignore[reportUnknownVariableType] - scipy fn
+        kdt.query(r, k=1)[1] for r in boundaries
+    ]
     # ensure indices are intp
-    return [np.asarray(bvi, dtype=np.intp) for bvi in boundaries_verts_idx]
+    return [
+        np.asarray(bvi, dtype=np.intp)
+        for bvi in boundaries_verts_idx  # pyright: ignore[reportUnknownVariableType] - scipy
+    ]
 
 
 def _calc_layer_heights(
@@ -164,7 +171,7 @@ def _build_layers(
     layer_heights: NDArray[np.float32],
     centroid: sg.Point,
 ) -> NDArray[np.float32]:
-    layers = []
+    layers = np.empty((0, 3), dtype=np.float32)
     for i, layer_height in enumerate(layer_heights):
         t = i / slices
         sx = 1.0 + t * (final_scale[0] - 1.0)
@@ -179,8 +186,8 @@ def _build_layers(
             centroid.y,
         ]
         layer = np.column_stack([pts, np.full(len(pts), layer_height)])
-        layers.append(layer)
-    return np.vstack(layers)
+        layers = np.append(layers, layer, axis=0)
+    return layers
 
 
 def _make_faces(

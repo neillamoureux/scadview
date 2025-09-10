@@ -19,6 +19,35 @@ class MeshUpdateSignals(QObject):
     error = Signal()
 
 
+class LoadMeshRunnable(QRunnable):
+    def __init__(
+        self,
+        controller: Controller,
+        parent_signals_owner: QObject,
+        file_path: str | None,
+    ):
+        super().__init__()
+        self.setAutoDelete(False)  # Don't auto-delete in pool thread
+        signals = MeshUpdateSignals(parent_signals_owner)
+        self._mesh_loader = MeshLoader(
+            file_path=file_path,
+            controller=controller,
+            load_start_callback=signals.load_start.emit,
+            mesh_update_callback=signals.mesh_update.emit,
+            load_successful_callback=signals.load_successful.emit,
+            stopped_callback=signals.stopped.emit,
+            error_callback=signals.error.emit,
+        )
+        self.signals = signals
+        self.mesh_queue = self._mesh_loader.mesh_queue
+
+    def run(self):
+        self._mesh_loader.run()
+
+    def stop(self):
+        self._mesh_loader.stop()
+
+
 class MeshHandler:
     """
     Handle logic of starting thread to load a mesh,
@@ -58,7 +87,7 @@ class MeshHandler:
             self._next_mesh_loading_worker = worker
             self._mesh_loading_worker.stop()
 
-    def _start_worker(self, worker):
+    def _start_worker(self, worker: LoadMeshRunnable):
         self._mesh_loading_worker = worker
         self._mesh_loading_worker.signals.mesh_update.connect(self._update_mesh)
         self._mesh_loading_worker.signals.load_start.connect(self._start_load)
@@ -104,32 +133,3 @@ class MeshHandler:
             self._mesh_loading_worker.stop()
             self._mesh_loading_worker = None
         self._next_mesh_loading_worker = None
-
-
-class LoadMeshRunnable(QRunnable):
-    def __init__(
-        self,
-        controller: Controller,
-        parent_signals_owner: QObject,
-        file_path: str | None,
-    ):
-        super().__init__()
-        self.setAutoDelete(False)  # Don't auto-delete in pool thread
-        signals = MeshUpdateSignals(parent_signals_owner)
-        self._mesh_loader = MeshLoader(
-            file_path=file_path,
-            controller=controller,
-            load_start_callback=signals.load_start.emit,
-            mesh_update_callback=signals.mesh_update.emit,
-            load_successful_callback=signals.load_successful.emit,
-            stopped_callback=signals.stopped.emit,
-            error_callback=signals.error.emit,
-        )
-        self.signals = signals
-        self.mesh_queue = self._mesh_loader.mesh_queue
-
-    def run(self):
-        self._mesh_loader.run()
-
-    def stop(self):
-        self._mesh_loader.stop()

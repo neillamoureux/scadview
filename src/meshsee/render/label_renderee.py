@@ -143,25 +143,25 @@ class LabelRenderee(Renderee):
 
     def _calc_base_scale_at_label_matrix(self) -> Matrix44:
         m_shift_up = Matrix44.from_translation([0.0, self.shift_up, 0.0], dtype="f4")
-        m_base_scale_at_label = (
+        m_base_scale_at_label = (  # # pyright: ignore[reportUnknownVariableType] can't resolve
             m_shift_up
             * self._translate_from_origin
             * self._m_base_scale
             * self._translate_to_origin
         )
-        return m_base_scale_at_label
+        return m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
 
     def _calc_scale_matrix_for_axis(self, m_base_scale_at_label: Matrix44) -> Matrix44:
         if self.axis == 0:
             return m_base_scale_at_label
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label
+            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
         if self.axis == 2:
-            rotation = Matrix44.from_z_rotation(
+            rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
                 pi, dtype="f4"
             ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label
+            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
 
@@ -175,14 +175,14 @@ class LabelSetRenderee(Renderee):
         max_labels_per_axis: int,
         max_label_frac_of_step: float,
         camera: Camera,
-        name="Unknown Label Set",
+        name: str = "Unknown Label Set",
     ):
         super().__init__(ctx, program, name)
         self._label_atlas = label_atlas
         self.camera = camera
         self._max_labels_per_axis = max_labels_per_axis
         self._max_label_frac_of_step = max_label_frac_of_step
-        self._label_renderees = {}
+        self._label_renderees: dict[str, LabelRenderee] = {}
         self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):
@@ -190,22 +190,21 @@ class LabelSetRenderee(Renderee):
         visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
         if len(visible_ranges) == 0:
             return
-        spans = [
-            rng[1][1] - rng[1][0]  # pyright: ignore [reportOptionalSubscript]
-            for rng in visible_ranges
-        ]
+        spans = [rng[1][1] - rng[1][0] for rng in visible_ranges if rng[1] is not None]
         max_span = max(spans)
         step = label_step(max_span, self._max_labels_per_axis)
         min_value = min(
             [
-                visible_range[1][0]  # pyright: ignore [reportOptionalSubscript]
+                visible_range[1][0]
                 for visible_range in visible_ranges
+                if visible_range[1] is not None
             ]
         )
         max_value = max(
             [
-                visible_range[1][1]  # pyright: ignore [reportOptionalSubscript]
+                visible_range[1][1]
                 for visible_range in visible_ranges
+                if visible_range[1] is not None
             ]
         )
         char_width = label_char_width(
@@ -213,8 +212,12 @@ class LabelSetRenderee(Renderee):
         )
         for visible in visible_ranges:
             axis = visible[0]
-            min_value = visible[1][0]  # pyright: ignore [reportOptionalSubscript]
-            max_value = visible[1][1]  # pyright: ignore [reportOptionalSubscript]
+            if visible[1] is None:
+                continue
+            min_value = visible[1][0]
+            max_value = visible[1][1]
+            if not (isinstance(min_value, float) and isinstance(max_value, float)):
+                continue
             show = labels_to_show(min_value, max_value, step)
             for label in show:
                 if label not in self._label_renderees.keys():

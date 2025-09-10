@@ -72,7 +72,7 @@ def labels_to_show(min_value: float, max_value: float, step: float) -> list[str]
     The labels are generated based on the range and the step size.
     """
 
-    labels = []
+    labels: list[str] = []
     label_min = ceil(min_value / step) * step
     label_max = floor(max_value / step) * step
     i = 0

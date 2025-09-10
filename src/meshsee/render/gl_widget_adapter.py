@@ -1,6 +1,8 @@
 import logging
 
 import numpy as np
+from numpy.typing import NDArray
+from trimesh import Trimesh
 
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
@@ -64,7 +66,7 @@ class GlWidgetAdapter:
         self._gl_initialized = True
         self.resize(width, height)
 
-    def resize(self, width, height):  # override
+    def resize(self, width: int, height: int):  # override
         self._width = width
         self._height = height
         if self._gl_initialized:
@@ -84,21 +86,21 @@ class GlWidgetAdapter:
         self._last_y = y
         angle_from_up = np.arctan2(dy, dx) + np.pi / 2.0
         rotation_angle = np.linalg.norm([dx, dy]) * self.ORBIT_ROTATION_SPEED
-        self.orbit(angle_from_up, rotation_angle)
+        self.orbit(angle_from_up, float(rotation_angle))
 
     def end_orbit(self):
         self._orbiting = False
 
-    def orbit(self, angle_from_up, rotation_angle):
+    def orbit(self, angle_from_up: float, rotation_angle: float):
         self._renderer.orbit(angle_from_up, rotation_angle)
 
-    def move(self, distance):
+    def move(self, distance: float):
         self._renderer.move(distance * self.MOVE_STEP)
 
-    def move_up(self, distance):
+    def move_up(self, distance: float):
         self._renderer.move_up(distance * self.MOVE_STEP)
 
-    def move_right(self, distance):
+    def move_right(self, distance: float):
         self._renderer.move_right(distance * self.MOVE_STEP)
 
     def move_to_screen(self, x: int, y: int, distance: float):
@@ -131,10 +133,14 @@ class GlWidgetAdapter:
     def indicate_load_state(self, state: str):
         self._renderer.indicate_load_state(state)
 
-    def load_mesh(self, mesh, name: str):
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._renderer.load_mesh(mesh, name)
 
-    def frame(self, direction=None, up=None):
+    def frame(
+        self,
+        direction: NDArray[np.float32] | None = None,
+        up: NDArray[np.float32] | None = None,
+    ):
         self._renderer.frame(direction, up)
 
     def use_orthogonal_camera(self):

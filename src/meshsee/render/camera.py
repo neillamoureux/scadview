@@ -116,20 +116,24 @@ class Camera:
         self.gnomon_projection_matrix
         self.gnomon_view_matrix
 
-    def orbit(self, angle_from_up, rotation_angle):
+    def orbit(self, angle_from_up: float, rotation_angle: float):
         """
         Rotate the camera around the look_at point.
         Angles are in radians.
         """
         # perp_up = self.up
         perp_up = self.perpendicular_up
-        rotated_up_mat = matrix33.create_from_axis_rotation(
+        rotated_up_mat = matrix33.create_from_axis_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
             self.direction, angle_from_up, dtype="f4"
         )
         rotated_up = matrix33.apply_to_vector(rotated_up_mat, self.up)
-        rotation_axis = np.cross(self.direction, rotated_up)
-        rotation = matrix33.create_from_axis_rotation(
-            rotation_axis, rotation_angle, dtype="f4"
+        rotation_axis = (  # pyright: ignore[reportUnknownVariableType] can't resolve
+            np.cross(self.direction, rotated_up)
+        )
+        rotation = matrix33.create_from_axis_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
+            rotation_axis,  # pyright: ignore[reportUnknownArgumentType] - Can't resolve
+            rotation_angle,
+            dtype="f4",
         )
         new_direction = matrix33.apply_to_vector(rotation, self.direction)
         new_up = matrix33.apply_to_vector(rotation, perp_up)
@@ -282,9 +286,9 @@ class Camera:
         self.look_at = self.look_at + right * distance
         self.update_matrices()
 
-    def move_along(self, vector, halves: float):
+    def move_along(self, vector: NDArray[np.float32], halves: float):
         displacement = vector * self._move_distance(halves) / np.linalg.norm(vector)
-        self.move_along_by(displacement)
+        self.move_along_by(displacement.astype(np.float32))
         self.update_matrices()
 
     def move_along_by(self, vector: NDArray[np.float32]):

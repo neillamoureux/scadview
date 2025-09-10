@@ -119,15 +119,19 @@ def test_no_mesh_in_queue_initially(mesh_loader):
 
 
 def test_multiple_meshes_in_queue(mock_controller, mesh_loader):
+    mesh_1 = Trimesh()
+    mesh_2 = Trimesh()
+    mesh_3 = Trimesh()
+
     def load_mesh_multiple(file_path):
-        yield "mesh1"
-        yield "mesh2"
-        yield "mesh3"
+        yield mesh_1
+        yield mesh_2
+        yield mesh_3
 
     mock_controller.load_mesh = load_mesh_multiple
     mesh_loader.run()
     assert not mesh_loader.mesh_queue.empty()
-    assert mesh_loader.mesh_queue.get() == "mesh3"  # Only the last mesh should remain
+    assert mesh_loader.mesh_queue.get() == mesh_3  # Only the last mesh should remain
 
 
 def test_convert_manifold_to_trimesh(mock_controller, mesh_loader):

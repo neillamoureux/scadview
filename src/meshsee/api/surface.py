@@ -10,7 +10,7 @@ GRAYSCALE_IMAGE_MAX = 255.0
 
 def surface(
     file: str,
-    scale: tuple = (1.0, 1.0, 1.0),
+    scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
     base: float = 0.0,
     invert: bool = False,
     binary_split: bool = False,
@@ -68,8 +68,8 @@ def surface(
 
 
 def _solid_from_image(
-    image_file: IO,
-    scale: tuple,
+    image_file: IO[bytes],
+    scale: tuple[float, float, float],
     base: float,
     invert: bool,
     binary_split: bool,
@@ -81,7 +81,11 @@ def _solid_from_image(
     Parameters
     ----------
     image_file : IO
-        A file-like object containing the image data.
+        A file-like object containing the image data. Options for IO include:
+        - File path string (open with open(path, "rb"))
+        - BytesIO or other file-like objects
+        - Any object implementing .read() and .seek() methods
+
     scale : tuple
         A tuple of three values (X, Y, Z) to scale the mesh in the respective dimensions.
 
@@ -115,7 +119,7 @@ def _solid_from_image(
 
 def _solid_from_heightmap(
     heightmap: NDArray[np.float32],
-    scale: tuple,
+    scale: tuple[float, float, float],
     base: float,
     invert: bool,
     binary_split: bool,
@@ -139,13 +143,13 @@ def _solid_from_heightmap(
 
 def _create_top_vertices(
     heightmap: NDArray[np.float32],
-    scale: tuple,
+    scale: tuple[float, float, float],
     base: float,
     invert: bool,
 ) -> NDArray[np.float32]:
     y_span, x_span = heightmap.shape
-    xs = np.arange(x_span) * scale[0]
-    ys = np.arange(y_span) * scale[1]
+    xs = np.arange(x_span, dtype=np.float32) * scale[0]
+    ys = np.arange(y_span, dtype=np.float32) * scale[1]
     xx, yy = np.meshgrid(xs, ys)
     if invert:
         heightmap = heightmap.max() - heightmap + heightmap.min()
@@ -159,8 +163,8 @@ def _create_bottom_vertices(verts_top: NDArray[np.float32]) -> NDArray[np.float3
     return verts_bot
 
 
-def _create_faces(y_span: int, x_span: int) -> NDArray[np.float32]:
-    faces = []
+def _create_faces(y_span: int, x_span: int) -> NDArray[np.uint32]:
+    faces = np.empty((0, 3), dtype=np.uint32)
     for i in range(y_span - 1):
         for j in range(x_span - 1):
             v0 = i * x_span + j
@@ -168,16 +172,16 @@ def _create_faces(y_span: int, x_span: int) -> NDArray[np.float32]:
             v2 = v0 + x_span
             v3 = v2 + 1
             # two triangles per cell
-            faces.append([v0, v2, v1])  # top
-            faces.append([v1, v2, v3])
-    return np.array(faces)
+            faces = np.append(faces, [[v0, v2, v1]], axis=0)  # top
+            faces = np.append(faces, [[v1, v2, v3]], axis=0)  # bottom
+    return np.array(faces, dtype=np.uint32)
 
 
 def _create_side_faces(y_span: int, x_span: int, v_count: int) -> NDArray[np.float32]:
     side_faces = []
 
     # helper to add two tris between a top edge (i→j) and bottom (i+N→j+N)
-    def wall(i, j):
+    def wall(i: int, j: int):
         side_faces.append([i, j, j + v_count])
         side_faces.append([i, j + v_count, i + v_count])
 
@@ -203,7 +207,7 @@ def _create_side_faces(y_span: int, x_span: int, v_count: int) -> NDArray[np.flo
 def _assemble_solid(
     verts_top: NDArray[np.float32],
     verts_bot: NDArray[np.float32],
-    faces: NDArray[np.float32],
+    faces: NDArray[np.uint32],
     faces_bot: NDArray[np.float32],
     side_faces: NDArray[np.float32],
 ) -> trimesh.Trimesh:
@@ -216,7 +220,7 @@ def _assemble_solid(
 
 
 def mesh_from_heightmap(
-    heightmap: NDArray[np.float32], scale: tuple = (1.0, 1.0, 1.0)
+    heightmap: NDArray[np.float32], scale: tuple[float, float, float] = (1.0, 1.0, 1.0)
 ) -> trimesh.Trimesh:
     """Create a 3D mesh from a heightmap.
 
@@ -229,15 +233,15 @@ def mesh_from_heightmap(
     """
     H, W = heightmap.shape
     # 1) grid coordinates
-    xs = np.arange(W) * scale[0]
-    ys = np.arange(H) * scale[1]
+    xs = np.arange(W, dtype=np.float32) * scale[0]
+    ys = np.arange(H, dtype=np.float32) * scale[1]
     xx, yy = np.meshgrid(xs, ys)
 
     # 2) vertices: (N,3) array
     verts = np.column_stack([xx.ravel(), yy.ravel(), heightmap.ravel() * scale[2]])
 
     # 3) faces: two triangles per grid square
-    faces = []
+    faces = np.empty((0, 3), dtype=np.int32)
     for i in range(H - 1):
         for j in range(W - 1):
             v0 = i * W + j
@@ -245,10 +249,10 @@ def mesh_from_heightmap(
             v2 = v0 + W
             v3 = v2 + 1
             # triangle 1
-            faces.append([v0, v2, v1])
+            faces = np.append(faces, [[v0, v2, v1], [v1, v2, v3]], axis=0)
             # triangle 2
-            faces.append([v1, v2, v3])
-    faces = np.array(faces)
+            # faces = np.append(faces, [[v1, v2, v3]], axis=0)
+    # faces = np.array(faces)
 
     # 4) build mesh
     return trimesh.Trimesh(vertices=verts, faces=faces)

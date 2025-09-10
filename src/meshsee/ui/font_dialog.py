@@ -1,4 +1,4 @@
-from PySide6.QtCore import QSortFilterProxyModel, Qt
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QClipboard, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QTableView,
     QVBoxLayout,
+    QWidget,
 )
 
 from meshsee.fonts import list_system_fonts, split_family_style
@@ -20,11 +21,13 @@ class FontFilterProxyModel(QSortFilterProxyModel):
         super().__init__()
         self._filter_string = ""
 
-    def setFilterString(self, text):
+    def setFilterString(self, text: str):
         self._filter_string = text.lower()
         self.invalidateFilter()
 
-    def filterAcceptsRow(self, source_row, source_parent):
+    def filterAcceptsRow(
+        self, source_row: int, source_parent: QModelIndex | QPersistentModelIndex
+    ) -> bool:
         index = self.sourceModel().index(source_row, 0, source_parent)
         font_name = self.sourceModel().data(index)
         return self._filter_string in font_name.lower()
@@ -108,7 +111,7 @@ class FontDialog(QDialog):
 class LoadingDialog(QDialog):
     LOADING_DIALOG_DIMS = (400, 100)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Please Wait")
         self.setModal(True)

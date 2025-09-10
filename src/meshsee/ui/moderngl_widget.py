@@ -1,7 +1,9 @@
 import logging
 
+from PySide6 import QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from PySide6.QtWidgets import QWidget
 from trimesh import Trimesh
 
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
@@ -10,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class ModernglWidget(QOpenGLWidget):
-    def __init__(self, gl_widget_adapter: GlWidgetAdapter, parent=None):
+    def __init__(
+        self, gl_widget_adapter: GlWidgetAdapter, parent: QWidget | None = None
+    ):
         super().__init__(parent)
         self._gl_widget_adapter = gl_widget_adapter
         self._render_twice = False
@@ -32,34 +36,36 @@ class ModernglWidget(QOpenGLWidget):
             self._render_twice = False
             self.update()
 
-    def resizeGL(self, width, height):  # override
+    def resizeGL(self, width: int, height: int):  # override
         self._gl_widget_adapter.resize(width, height)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self._gl_widget_adapter.start_orbit(
-                event.position().x(), event.position().y()
+                int(event.position().x()), int(event.position().y())
             )
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self._gl_widget_adapter.end_orbit()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         """
         Rotate the camera based on mouse movement.
         """
-        self._gl_widget_adapter.do_orbit(event.position().x(), event.position().y())
-        self.update()
-
-    def wheelEvent(self, event):
-        distance = event.angleDelta().y()
-        self._gl_widget_adapter.move_to_screen(
-            event.position().x(), event.position().y(), distance
+        self._gl_widget_adapter.do_orbit(
+            int(event.position().x()), int(event.position().y())
         )
         self.update()
 
-    def keyPressEvent(self, event):
+    def wheelEvent(self, event: QtGui.QWheelEvent):
+        distance = event.angleDelta().y()
+        self._gl_widget_adapter.move_to_screen(
+            int(event.position().x()), int(event.position().y()), distance
+        )
+        self.update()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
         if key == Qt.Key.Key_W or key == Qt.Key.Key_Up:
             self._gl_widget_adapter.move(1.0)
@@ -101,7 +107,7 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.frame()
         self.update()
 
-    def load_mesh(self, mesh: Trimesh, name: str):
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._gl_widget_adapter.load_mesh(mesh, name)
         self.update()
 

@@ -20,15 +20,16 @@ def _load_font() -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(font_path, FONT_SIZE)
 
 
-def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple:
+def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple[int, int]:
     cell_bbox = font.getbbox("0")
     cell_height = cell_bbox[3]  # Height of a character cell
     cell_width = cell_bbox[2]  # Width of a character cell
-    return (cell_width, cell_height)
+    return (int(cell_width), int(cell_height))
 
 
 class LabelAtlas:
     def __init__(self, ctx: moderngl.Context):
+        self._uv_data: dict[str, NDArray[np.float32]] = {}
         self._create_label_atlas()
         self._texture = None
         self._sampler = None
@@ -55,18 +56,19 @@ class LabelAtlas:
 
     def _draw_chars(self, chars: str, font: ImageFont.FreeTypeFont) -> None:
         # Create a new image for the atlas
-
-        # Create a new image for the atlas
         self._image = Image.new("L", (self._width, self._height))
         draw = ImageDraw.Draw(self._image)
 
         # Draw each character into its cell
-        self._uv_data = {}
         for i, char in enumerate(chars):
             self._draw_char(draw, font, char, i)
 
     def _draw_char(
-        self, draw: ImageDraw.ImageDraw, font, char: str, index: int
+        self,
+        draw: ImageDraw.ImageDraw,
+        font: ImageFont.FreeTypeFont,
+        char: str,
+        index: int,
     ) -> None:
         WHITE = 255
         x = index * self._cell_width

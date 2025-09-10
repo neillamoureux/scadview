@@ -1,7 +1,7 @@
 import logging
 import queue
 from time import time
-from typing import Callable
+from typing import Any, Callable
 
 from manifold3d import Manifold
 from trimesh import Trimesh
@@ -10,6 +10,42 @@ from meshsee.api.utils import manifold_to_trimesh
 from meshsee.controller import Controller
 
 logger = logging.getLogger(__name__)
+
+
+class MeshQueue:
+    """
+    Wrapper around queue to ensure only Trimesh is in the queue
+    """
+
+    def __init__(self):
+        self._queue = queue.Queue(maxsize=1)
+
+    def get_nowait(self) -> Trimesh | list[Trimesh]:
+        mesh = self._queue.get_nowait()  # type: ignore[reportUnknowVariableType] - can't resolve
+        mesh = self._check_mesh_type(mesh)
+        return mesh
+
+    def put_nowait(self, mesh: Trimesh):
+        return self._queue.put_nowait(mesh)
+
+    def empty(self) -> bool:
+        return self._queue.empty()
+
+    def get(self) -> Trimesh:
+        return self._queue.get()  # type: ignore[reportUnknowVariableType] - can't resolve
+
+    def _check_mesh_type(self, mesh: Any) -> Trimesh | list[Trimesh]:
+        if isinstance(mesh, Trimesh):
+            return mesh
+        if isinstance(mesh, list):
+            if len(mesh) > 0:  # type: ignore[reportUnknownArgumentType] - can't resolve
+                if all([isinstance(mesh_item, Trimesh) for mesh_item in mesh]):  # type: ignore[reportUnknownVariableType] - can't resolve
+                    return mesh  # type: ignore[reportUnknownVariableType] - can't resolve
+            else:
+                raise ValueError("The mesh is an empty list")
+        raise ValueError(
+            f"The mesh is not a Trimesh or a list of Trimesh, it is a {type(mesh)}"  # type: ignore[reportUnknownArgumentType] - can't resolve
+        )
 
 
 class MeshLoader:
@@ -27,8 +63,8 @@ class MeshLoader:
         load_start_callback: Callable[[], None],
         mesh_update_callback: Callable[[], None],
         load_successful_callback: Callable[[], None],
-        stopped_callback=Callable[[], None],
-        error_callback=Callable[[], None],
+        stopped_callback: Callable[[], None],
+        error_callback: Callable[[], None],
     ):
         self._controller = controller
         self._file_path = file_path
@@ -42,7 +78,7 @@ class MeshLoader:
         self._first_mesh = True
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None
-        self.mesh_queue = queue.Queue(maxsize=1)
+        self.mesh_queue = MeshQueue()
 
     def run(self):
         logger.info("Mesh loading about to start.")
@@ -95,11 +131,12 @@ class MeshLoader:
         else:
             self._latest_unloaded_mesh = mesh
 
-    def _update_mesh(self, mesh):
+    def _update_mesh(self, mesh: Trimesh | Manifold):
         logger.debug("_update_mesh")
-        mesh2 = mesh
         if isinstance(mesh, Manifold):
             mesh2 = manifold_to_trimesh(mesh)
+        else:
+            mesh2 = mesh
         self._last_mesh_update = time()
         self._latest_unloaded_mesh = None
         logger.debug("Placing latest mesh in queue for viewing")

@@ -44,7 +44,7 @@ class GnomonRenderee(Renderee):
     def window_size(self, value: tuple[int, int]):
         self._window_size = value
 
-    def _vertices(self) -> NDArray:
+    def _vertices(self) -> NDArray[np.float32]:
         # fmt: off
         return np.array([ # 
             0, 0, 0, 1, 0, 0,  # Red X
