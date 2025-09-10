@@ -4,7 +4,9 @@ help:
 	@echo "            	This creates the virtual environment if it does not already exist"
 	@echo "The following require you have run make shell first"
 	@echo "  test    	- Run tests"
-	@echo "  run     	- Run the application"
+	@echo "  run 		- Run the application"
+	@echo "  			  Set the ARGS env var or param to pass args eg make run ARGS=-vv"
+	@echo "  			  make run ARGS=--help for more info"
 	@echo "  format  	- Format the code"
 	@echo "  lint    	- Lint the code"
 	@echo "  type		- Type check the code"
@@ -43,7 +45,7 @@ test: check-venv
 
 run: check-venv
 	@echo "Running the application..."
-	@python -m meshsee
+	@python -m meshsee $(ARGS)
 
 format: check-venv
 	@echo "Formatting the code..."

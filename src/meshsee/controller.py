@@ -50,16 +50,12 @@ class Controller:
             self._last_module_path = module_path
         logger.info(f"Starting load of {module_path}")
         t0 = time()
-        try:
-            for i, mesh in enumerate(self._module_loader.run_function(module_path)):
-                self.current_mesh = mesh
-                logger.info(f"Loading mesh #{i + 1}")
-                yield mesh
-            t1 = time()
-            logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
-        except Exception as e:
-            logger.exception(f"Error while loading {module_path}: {e}")
-            raise e
+        for i, mesh in enumerate(self._module_loader.run_function(module_path)):
+            self.current_mesh = mesh
+            logger.info(f"Loading mesh #{i + 1}")
+            yield mesh
+        t1 = time()
+        logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
 
     def export(self, file_path: str):
         if not self.current_mesh:
