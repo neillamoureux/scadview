@@ -10,7 +10,7 @@ echo "CI is ${CI:-}"
 # and explicitly disable pytest-qt just in case.
 if [[ -n "${CI:-}" ]]; then
   export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
-  extra="-p no:pytestqt -p pytest_cov"
+  extra=("-p" "no:pytestqt" "-p" "pytest_cov")
 else
   extra=""
 fi
