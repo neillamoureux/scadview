@@ -1,6 +1,6 @@
+import numpy as np
 from shapely import box
 from trimesh.creation import sweep_polygon
-import numpy as np
 
 WIDTH = 10.0
 THICK = 0.5
