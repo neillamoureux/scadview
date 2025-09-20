@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from math import pi
 
 import moderngl
@@ -9,9 +10,16 @@ from meshsee.render.camera import Camera
 from meshsee.render.label_atlas import LabelAtlas
 from meshsee.render.label_metrics import label_char_width, label_step, labels_to_show
 from meshsee.render.renderee import Renderee
+from meshsee.render.span import Span
 
 logger = logging.getLogger(__name__)
 DEFAULT_SHIFT_UP = 0.01
+
+
+@dataclass
+class _AxisSpan:
+    axis: int
+    range: Span
 
 
 class LabelRenderee(Renderee):
@@ -156,12 +164,18 @@ class LabelRenderee(Renderee):
             return m_base_scale_at_label
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
+            return (
+                rotation * m_base_scale_at_label
+            )  # pyright: ignore[reportUnknownVariableType] can't resolve
         if self.axis == 2:
             rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
                 pi, dtype="f4"
-            ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
+            ) * Matrix44.from_y_rotation(
+                pi / 2.0, dtype="f4"
+            )
+            return (
+                rotation * m_base_scale_at_label
+            )  # pyright: ignore[reportUnknownVariableType] can't resolve
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
 
@@ -186,29 +200,30 @@ class LabelSetRenderee(Renderee):
         self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):
-        visible_ranges = self._get_visible_axis_ranges()
-        if len(visible_ranges) == 0:
+        visible_axis_spans = self._get_visible_axis_spans()
+        if len(visible_axis_spans) == 0:
             return
-        step = self._calc_label_step(visible_ranges)
-        char_width = self._calc_char_width(visible_ranges, step)
-        self._render_labels(visible_ranges, step, char_width)
+        step = self._calc_label_step(visible_axis_spans)
+        char_width = self._calc_char_width(visible_axis_spans, step)
+        self._render_labels(visible_axis_spans, step, char_width)
 
-    def _calc_char_width(
-        self, visible_ranges: list[tuple[int, tuple[float, float] | None]], step: float
-    ) -> float:
+    def _get_visible_axis_spans(self) -> list[_AxisSpan]:
+        axis_spans = [_AxisSpan(i, self.camera.axis_visible_span(i)) for i in range(3)]
+        visible_spans = list(filter(lambda x: not x.range.is_empty(), axis_spans))
+        return visible_spans
+
+    def _calc_label_step(self, visible_spans: list[_AxisSpan]) -> float:
+        axis_lengths = [float(vs.range.max - vs.range.min) for vs in visible_spans]
+        max_length = max(axis_lengths)
+        step = label_step(max_length, self._max_labels_per_axis)
+        return step
+
+    def _calc_char_width(self, visible_spans: list[_AxisSpan], step: float) -> float:
         min_value = min(
-            [
-                visible_range[1][0]
-                for visible_range in visible_ranges
-                if visible_range[1] is not None
-            ]
+            [float(visible_span.range.min) for visible_span in visible_spans]
         )
         max_value = max(
-            [
-                visible_range[1][1]
-                for visible_range in visible_ranges
-                if visible_range[1] is not None
-            ]
+            [float(visible_span.range.max) for visible_span in visible_spans]
         )
         char_width = label_char_width(
             min_value, max_value, step, self._max_label_frac_of_step
@@ -216,37 +231,19 @@ class LabelSetRenderee(Renderee):
 
         return char_width
 
-    def _get_visible_axis_ranges(self) -> list[tuple[int, tuple[float, float] | None]]:
-        axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
-        visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
-        return visible_ranges
-
-    def _calc_label_step(
-        self, visible_ranges: list[tuple[int, tuple[float, float] | None]]
-    ) -> float:
-        spans = [rng[1][1] - rng[1][0] for rng in visible_ranges if rng[1] is not None]
-        max_span = max(spans)
-        step = label_step(max_span, self._max_labels_per_axis)
-        return step
-
     def _render_labels(
         self,
-        visible_ranges: list[tuple[int, tuple[float, float] | None]],
+        visible_spans: list[_AxisSpan],
         step: float,
         char_width: float,
     ):
-        for visible in visible_ranges:
-            axis = visible[0]
-            if visible[1] is None:
+        for visible in visible_spans:
+            axis = visible.axis
+            if visible.range.is_empty():
                 continue
-            min_value = visible[1][0]
-            max_value = visible[1][1]
-            if not (
-                np.issubdtype(type(min_value), np.floating)
-                and np.issubdtype(type(max_value), np.floating)
-            ):
-                continue
-            show = labels_to_show(min_value, max_value, step)
+            min_value = visible.range.min
+            max_value = visible.range.max
+            show = labels_to_show(float(min_value), float(max_value), step)
             self._render_labels_for_axis(char_width, axis, show)
 
     def _render_labels_for_axis(self, char_width: float, axis: int, labels: list[str]):
