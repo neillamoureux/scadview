@@ -156,18 +156,12 @@ class LabelRenderee(Renderee):
             return m_base_scale_at_label
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            return (
-                rotation * m_base_scale_at_label
-            )  # pyright: ignore[reportUnknownVariableType] can't resolve
+            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
         if self.axis == 2:
             rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
                 pi, dtype="f4"
-            ) * Matrix44.from_y_rotation(
-                pi / 2.0, dtype="f4"
-            )
-            return (
-                rotation * m_base_scale_at_label
-            )  # pyright: ignore[reportUnknownVariableType] can't resolve
+            ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
+            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
 
@@ -192,13 +186,16 @@ class LabelSetRenderee(Renderee):
         self.shift_up = DEFAULT_SHIFT_UP
 
     def render(self):
-        axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
-        visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
+        visible_ranges = self._get_visible_axis_ranges()
         if len(visible_ranges) == 0:
             return
-        spans = [rng[1][1] - rng[1][0] for rng in visible_ranges if rng[1] is not None]
-        max_span = max(spans)
-        step = label_step(max_span, self._max_labels_per_axis)
+        step = self._calc_label_step(visible_ranges)
+        char_width = self._calc_char_width(visible_ranges, step)
+        self._render_labels(visible_ranges, step, char_width)
+
+    def _calc_char_width(
+        self, visible_ranges: list[tuple[int, tuple[float, float] | None]], step: float
+    ) -> float:
         min_value = min(
             [
                 visible_range[1][0]
@@ -216,6 +213,28 @@ class LabelSetRenderee(Renderee):
         char_width = label_char_width(
             min_value, max_value, step, self._max_label_frac_of_step
         )
+
+        return char_width
+
+    def _get_visible_axis_ranges(self) -> list[tuple[int, tuple[float, float] | None]]:
+        axis_ranges = [(i, self.camera.axis_visible_range(i)) for i in range(3)]
+        visible_ranges = list(filter(lambda x: x[1] is not None, axis_ranges))
+        return visible_ranges
+
+    def _calc_label_step(
+        self, visible_ranges: list[tuple[int, tuple[float, float] | None]]
+    ) -> float:
+        spans = [rng[1][1] - rng[1][0] for rng in visible_ranges if rng[1] is not None]
+        max_span = max(spans)
+        step = label_step(max_span, self._max_labels_per_axis)
+        return step
+
+    def _render_labels(
+        self,
+        visible_ranges: list[tuple[int, tuple[float, float] | None]],
+        step: float,
+        char_width: float,
+    ):
         for visible in visible_ranges:
             axis = visible[0]
             if visible[1] is None:
@@ -228,17 +247,20 @@ class LabelSetRenderee(Renderee):
             ):
                 continue
             show = labels_to_show(min_value, max_value, step)
-            for label in show:
-                if label not in self._label_renderees.keys():
-                    self._label_renderees[label] = LabelRenderee(
-                        self._ctx,
-                        self._program,
-                        self._label_atlas,
-                        self.camera,
-                        label,
-                    )
-                renderee = self._label_renderees[label]
-                renderee.shift_up = self.shift_up
-                renderee.char_width = char_width
-                renderee.axis = axis
-                renderee.render()
+            self._render_labels_for_axis(char_width, axis, show)
+
+    def _render_labels_for_axis(self, char_width: float, axis: int, labels: list[str]):
+        for label in labels:
+            if label not in self._label_renderees.keys():
+                self._label_renderees[label] = LabelRenderee(
+                    self._ctx,
+                    self._program,
+                    self._label_atlas,
+                    self.camera,
+                    label,
+                )
+            renderee = self._label_renderees[label]
+            renderee.shift_up = self.shift_up
+            renderee.char_width = char_width
+            renderee.axis = axis
+            renderee.render()
