@@ -11,6 +11,8 @@ LABEL_CHARS = "0123456789-."
 FONT_SIZE = 100  # defines the resolution of the font
 FONT_FILE = "DejaVuSansMono.ttf"
 RELATIVE_PATH_TO_FONT = "../resources/"
+BBOX_WIDTH_INDEX = 2
+BBOX_HEIGHT_INDEX = 3
 
 
 def _load_font() -> ImageFont.FreeTypeFont:
@@ -22,8 +24,8 @@ def _load_font() -> ImageFont.FreeTypeFont:
 
 def _get_font_size(font: ImageFont.FreeTypeFont) -> tuple[int, int]:
     cell_bbox = font.getbbox("0")
-    cell_height = cell_bbox[3]  # Height of a character cell
-    cell_width = cell_bbox[2]  # Width of a character cell
+    cell_height = cell_bbox[BBOX_HEIGHT_INDEX]  # Height of a character cell
+    cell_width = cell_bbox[BBOX_WIDTH_INDEX]  # Width of a character cell
     return (int(cell_width), int(cell_height))
 
 

@@ -29,3 +29,6 @@ coverage.xml
 
 # documetation build
 site/
+
+# temp files
+tmp/

@@ -8,7 +8,10 @@
             "name": "Python Debugger: Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "meshsee"
+            "module": "meshsee",
+            "args": [
+                "--log-level=DEBUG"
+            ]
         },
         {
             "name": "Python Debugger: Pytest",
