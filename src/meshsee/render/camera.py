@@ -233,8 +233,8 @@ class Camera:
 
     def axis_visible_span(self, axis: int) -> Span:
         """
-        Compute the visible range of the axis in world space.
-        The result is a tuple (min, max) where min and max are the
+        Compute the visible span of the axis in world space.
+        The result is a Spanwhere min and max are the
         minimum and maximum coordinates of the axis that are visible in the frustum.
         """
         planes = self._frustum_planes()

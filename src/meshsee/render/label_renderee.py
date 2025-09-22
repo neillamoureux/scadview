@@ -164,18 +164,12 @@ class LabelRenderee(Renderee):
             return m_base_scale_at_label
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            return (
-                rotation * m_base_scale_at_label
-            )  # pyright: ignore[reportUnknownVariableType] can't resolve
+            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
         if self.axis == 2:
             rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
                 pi, dtype="f4"
-            ) * Matrix44.from_y_rotation(
-                pi / 2.0, dtype="f4"
-            )
-            return (
-                rotation * m_base_scale_at_label
-            )  # pyright: ignore[reportUnknownVariableType] can't resolve
+            ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
+            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
 
