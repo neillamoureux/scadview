@@ -4,6 +4,7 @@ from pyrr import matrix33, matrix44
 
 from meshsee.observable import Observable
 from meshsee.render.shader_program import ShaderVar
+from meshsee.render.span import Span
 
 
 def intersection(
@@ -230,14 +231,15 @@ class Camera:
 
         return planes
 
-    def axis_visible_range(self, axis: int) -> tuple[float, float] | None:
+    def axis_visible_span(self, axis: int) -> Span:
         """
-        Compute the visible range of the axis in world space.
-        The result is a tuple (min, max) where min and max are the
+        Compute the visible span of the axis in world space.
+        The result is a Spanwhere min and max are the
         minimum and maximum coordinates of the axis that are visible in the frustum.
         """
         planes = self._frustum_planes()
-        range = (-np.inf, np.inf)
+        range = Span()
+
         # planes are in the form (a, b, c, d) where (a, b, c) is the normal vector
         # of the plane and d is such that (a, b, c) dot (x, y, z) + d = 0
         # For the x axis, (a, b, c) dot (x, 0, 0 ) = -d
@@ -253,10 +255,10 @@ class Camera:
             else:
                 intersects_at = -plane[3] / plane[axis]
             if plane[axis] > 0:
-                plane_range = (intersects_at, np.inf)
+                plane_range = Span(intersects_at, np.inf)
             else:
-                plane_range = (-np.inf, intersects_at)
-            range = intersection(range, plane_range)
+                plane_range = Span(-np.inf, intersects_at)
+            range = range.intersect(plane_range)
         return range
 
     # move the camera along the direction vector
