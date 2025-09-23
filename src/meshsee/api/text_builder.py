@@ -107,9 +107,7 @@ def text(
         text, size, font, halign, valign, spacing, direction, language, script
     )
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
-    return trimesh.util.concatenate(
-        meshes
-    )  # pyright: ignore[reportUnknownVariableType] - trimesh function
+    return trimesh.util.concatenate(meshes)  # pyright: ignore[reportUnknownVariableType] - trimesh function
 
 
 def _loops_from_text(
@@ -225,13 +223,9 @@ def _assemble_polys(
         if loops_cont[i]["exterior"]:
             for j in loops_cont[i]["contains"]:
                 # remove contained loops that are also contained in interior loops from the holes list
-                for (
-                    k
-                ) in loops_cont[  # pyright: ignore[reportUnknownVariableType] - is Any
+                for k in loops_cont[  # pyright: ignore[reportUnknownVariableType] - is Any
                     j
-                ][
-                    "contains"
-                ]:
+                ]["contains"]:
                     if k in loops_cont[i]["holes"]:
                         loops_cont[i]["holes"].remove(k)
             polys.append(
