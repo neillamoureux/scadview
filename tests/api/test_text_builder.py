@@ -6,6 +6,20 @@ from shapely.geometry import Polygon
 from meshsee.api import text_builder
 
 
+def test_text_polys_returns_polygons():
+    polys = text_builder.text_polys("Test", size=12)
+    assert isinstance(polys, list)
+    assert all(isinstance(p, Polygon) for p in polys)
+    assert len(polys) > 0
+
+
+def test_text_polys_spaces_only():
+    polys = text_builder.text_polys("  ")
+    assert isinstance(polys, list)
+    assert isinstance(polys[0], Polygon)
+    assert len(polys) == 1
+
+
 def test_text_returns_trimesh_object():
     mesh = text_builder.text("Test", size=12)
     # Should be a trimesh.Trimesh object
