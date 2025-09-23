@@ -20,6 +20,58 @@ logger = logging.getLogger(__name__)
 SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
 
 
+def text_polys(
+    text: str,
+    size: float = 10.0,
+    font: str = DEFAULT_FONT,
+    halign: str = "left",
+    valign: str = "baseline",
+    spacing: float = 0,
+    direction: str = "ltr",
+    language: str = "",
+    script: str = "",
+) -> list[Polygon]:
+    """
+    Create a list of Polygons from the given text using the specified font and size.
+
+    Args:
+        text: The text to convert to a polygons.
+        size: The size of the text in mesh units.
+        font: The font family name to use for the text.
+        halign: Horizontal alignment of the text ('left', 'center', 'right').
+        valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
+        spacing: Spacing between characters in mesh units (not used in this implementtion).
+        direction: Text direction (only 'ltr' and 'rtl' are is supported in this implementation).
+        language: Language of the text (not used in this implementation).
+        script: Script of the text (not used in this implementation).
+
+    Returns:
+        A list of Polygons represnting the text.  There may be multiple polygons per character.
+    """
+    if text.strip() == "":
+        # If the text is empty or contains only spaces, return an empty mesh
+        return [Polygon()]
+    if direction == "ltr":
+        ordered_text = text
+    elif direction == "rtl":
+        ordered_text = text[::-1]
+    else:
+        raise ValueError("direction must be ltr or rtl")
+    if font == DEFAULT_FONT:
+        font_path = DEFAULT_FONT_PATH
+    else:
+        font_path = list_system_fonts().get(font, None)
+    if not font_path:
+        logger.warning(
+            f"Font '{font}' not found in system fonts. Using default font: {DEFAULT_FONT_PATH}"
+        )
+        # Use the default font if the specified font is not found
+        font_path = DEFAULT_FONT_PATH
+    loops = _loops_from_text(ordered_text, font_path, size, halign, valign)
+    # polys = polygons_with_holes(loops, _is_loop_orientation_reversed(loops))
+    return _make_polys(loops)
+
+
 def text(
     text: str,
     size: float = 10.0,
@@ -51,25 +103,9 @@ def text(
     if text.strip() == "":
         # If the text is empty or contains only spaces, return an empty mesh
         return trimesh.Trimesh(vertices=np.empty((0, 3)), faces=np.empty((0, 3)))
-    if direction == "ltr":
-        ordered_text = text
-    elif direction == "rtl":
-        ordered_text = text[::-1]
-    else:
-        raise ValueError("direction must be ltr or rtl")
-    if font == DEFAULT_FONT:
-        font_path = DEFAULT_FONT_PATH
-    else:
-        font_path = list_system_fonts().get(font, None)
-    if not font_path:
-        logger.warning(
-            f"Font '{font}' not found in system fonts. Using default font: {DEFAULT_FONT_PATH}"
-        )
-        # Use the default font if the specified font is not found
-        font_path = DEFAULT_FONT_PATH
-    loops = _loops_from_text(ordered_text, font_path, size, halign, valign)
-    # polys = polygons_with_holes(loops, _is_loop_orientation_reversed(loops))
-    polys = _make_polys(loops)
+    polys = text_polys(
+        text, size, font, halign, valign, spacing, direction, language, script
+    )
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
     return trimesh.util.concatenate(meshes)  # pyright: ignore[reportUnknownVariableType] - trimesh function
 
