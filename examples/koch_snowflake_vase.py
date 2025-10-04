@@ -1,5 +1,8 @@
+import logging
+
 import numpy as np
 import shapely.geometry as sg
+import trimesh.repair
 
 from meshsee import linear_extrude
 
@@ -13,10 +16,12 @@ BUMP_LENGTH_FRACTION_MULTIPLIER = 1.0
 ORDER = 4
 R = 50
 HEIGHT = 150
-TWIST = 60
+TWIST = 0
+# TWIST = 60
 TRIANGLE_VERTEX_COUNT = 3
 SLICES = 20
-SCALE = (1.1, 1.5)  # scalar or (sx, sy)
+# SCALE = (1.1, 1.5)  # scalar or (sx, sy)
+SCALE = (1.0, 1.0)  # scalar or (sx, sy)
 
 
 def create_mesh():
@@ -27,7 +32,7 @@ def create_mesh():
     for i in range(ORDER):
         vertices_2d = _increase_order(vertices_2d)
 
-    return linear_extrude(
+    koch = linear_extrude(
         sg.Polygon(vertices_2d),
         height=HEIGHT,
         center=False,
@@ -36,6 +41,10 @@ def create_mesh():
         slices=SLICES,
         scale=SCALE,
     )
+    logging.info(f"koch is watertight: {koch.is_watertight}")
+    logging.info(f"koch is volume: {koch.is_volume}")
+    logging.info(f"koch is_winding_consistent: {koch.is_winding_consistent}")
+    return koch
 
 
 def _increase_order(vertices_2d):

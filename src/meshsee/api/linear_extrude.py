@@ -1,3 +1,6 @@
+import logging
+from dataclasses import dataclass
+
 import numpy as np
 import shapely.geometry as sg
 import shapely.ops as so
@@ -11,6 +14,13 @@ ProfileType = (
     | list[tuple[float, float]]
     | list[tuple[float, float, float]]
 )
+
+
+@dataclass
+class RingIndex:
+    verts_idx: NDArray[np.intp]
+    is_hole: bool
+
 
 DEFAULT_SLICES = 20  # reasonable OpenSCAD-like fallback for slices
 
@@ -42,13 +52,19 @@ def linear_extrude(
     final_scale = _determine_final_scale(scale)
     poly_2d = _as_polygon_2d(profile)
     faces2d, verts2d = _triangulate_poly(poly_2d)
+    for i, f in enumerate(faces2d):
+        logging.debug(f"face signed area {i}: {f} -> {_signed_area2d(verts2d[f])}")
     boundaries_verts_idx = _index_boundaries_verts(poly_2d, verts2d)
+    boundaries = [verts2d[bvi] for bvi in boundaries_verts_idx]
     layer_heights = _calc_layer_heights(height, center, slices)
     centroid = poly_2d.centroid
     layers_stack = _build_layers(
         twist, slices, final_scale, verts2d, layer_heights, centroid
     )
-    faces = _make_faces(slices, faces2d, boundaries_verts_idx, len(verts2d))
+    # faces = _make_faces(slices, faces2d, boundaries_verts_idx, len(verts2d))
+    faces = _make_faces(
+        slices, faces2d, boundaries_verts_idx, len(boundaries_verts_idx)
+    )
     mesh = trimesh.Trimesh(
         vertices=layers_stack, faces=np.asarray(faces, dtype=np.int64), process=True
     )
@@ -121,7 +137,8 @@ def _orient_like_openscad(poly: sg.Polygon) -> sg.Polygon:
         if _signed_area2d(h[:-1]) > 0:  # CCW -> flip
             h = h[::-1]
         holes.append(h)
-    return sg.Polygon(ext, [h[:-1] for h in holes])  # type: ignore[reportInvalidArgumentType] - can't resolve
+    # return sg.Polygon(ext, [h[:-1] for h in holes])  # type: ignore[reportInvalidArgumentType] - can't resolve
+    return sg.Polygon(ext, holes)  # type: ignore[reportInvalidArgumentType] - can't resolve
 
 
 def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
@@ -143,12 +160,22 @@ def _index_boundaries_verts(
 ) -> list[NDArray[np.intp]]:
     boundaries = [np.asarray(poly_2d.exterior.coords[:-1])]
     boundaries += [np.asarray(r.coords[:-1]) for r in poly_2d.interiors]
+    # boundaries = [np.asarray(poly_2d.exterior.coords)]
+    # boundaries += [np.asarray(r.coords) for r in poly_2d.interiors]
 
     # map ring vertices -> triangulation indices
     kdt = KDTree(verts2d)
     boundaries_verts_idx = [  # pyright: ignore[reportUnknownVariableType] - scipy fn
         kdt.query(r, k=1)[1] for r in boundaries
     ]
+    logging.debug("signed areas of boundaries:")
+    for i, bvi in enumerate(boundaries_verts_idx):
+        area = _signed_area2d(verts2d[bvi])  # ignore repeated last point
+        logging.debug(f"  boundary {i} area: {area}, is_hole: {area < 0}")
+        if len(bvi) != len(np.unique(bvi)):
+            logging.warning(
+                f"  boundary {i} has duplicate vertices in triangulation indices"
+            )
     # ensure indices are intp
     return [
         np.asarray(bvi, dtype=np.intp)
