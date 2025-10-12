@@ -45,6 +45,7 @@ def test_basic_extrude_rectangle_center_default_false():
     h = 10.0
     m = linear_extrude(prof, height=h)  # center should default to False
     assert m.is_watertight
+    assert m.is_volume
     zmin, zmax = _bounds_z(m)
     assert np.isclose(zmin, 0.0, atol=1e-6)
     assert np.isclose(zmax, h, atol=1e-6)
