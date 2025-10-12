@@ -208,8 +208,10 @@ def test_top_and_bottom_normals():
     top_dots = normals[top_mask] @ np.array([0, 0, 1.0])
     bot_dots = normals[bot_mask] @ np.array([0, 0, -1.0])
     # Require majority pointing correct way
+    print(f"top_dots: {np.mean(top_dots)}")
+    print(f"bot_dots: {np.mean(bot_dots)}")
     assert np.mean(top_dots > 0.5) > 0.8
-    assert np.mean(bot_dots < -0.5) > 0.8
+    assert np.mean(bot_dots > 0.5) > 0.8
 
 
 def test_watertight_and_manifold():

@@ -4,6 +4,8 @@ import trimesh
 from trimesh import Trimesh
 from scipy.spatial import KDTree
 
+from meshsee import linear_extrude
+
 NUM_SIDES = 6
 R = 10.0
 H = 10.0
@@ -16,7 +18,7 @@ def create_mesh():
     shell = np.column_stack((R * np.cos(radial_angles), R * np.sin(radial_angles)))
     hole = 0.5 * shell[::-1, :]  # smaller, reversed
     poly = sg.Polygon(shell, [hole])
-    return le(poly, H, SLICES)
+    return linear_extrude(poly, H, SLICES)
 
 
 def le(poly: sg.Polygon, height: float, slices: int):

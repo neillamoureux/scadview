@@ -1,3 +1,4 @@
+from enum import Enum, auto
 import numpy as np
 import shapely.geometry as sg
 import shapely.ops as so
@@ -12,6 +13,12 @@ ProfileType = (
     | list[tuple[float, float, float]]
     | list[list[float]]
 )
+
+
+class _RingType(Enum):
+    EXTERIOR = auto()
+    INTERIOR = auto()
+
 
 DEFAULT_SLICES = 20  # reasonable OpenSCAD-like fallback for slices
 
@@ -39,12 +46,14 @@ def linear_extrude(
         Otherwise defaults to 20 (a reasonable OpenSCAD-like fallback).
       - `scale` may be scalar or (sx, sy).
     """
-    if slices is None:
-        slices = DEFAULT_SLICES
+    slices = _determine_slice_value(slices, fn)
+    final_scale = _determine_final_scale(scale)
 
     _raise_if_profile_incorrect_type(profile)
     poly = _as_poly_2d(profile)
+    poly = _orient_polygon_rings(poly)
     verts_2d, poly_faces = trimesh.creation.triangulate_polygon(poly)
+    centroid = poly.centroid
     faces = poly_faces.copy()[:, ::-1]
 
     # Find the boundary rings (exterior + interiors)
@@ -78,19 +87,31 @@ def linear_extrude(
     poly_vert_count = len(verts_2d)
     ring_verts_per_layer = sum([len(ri) for ri in rings_idxs])
     verts_3d = np.column_stack((verts_2d, np.zeros(len(verts_2d))))
+
     for i in range(1, slices):
         layer_verts = np.vstack(
             [
                 np.column_stack((ring, np.ones(len(ring)) * i * height / slices))
                 for ring in rings
-            ]
+            ],
+            dtype=np.float32,
         )
-        verts_3d = np.vstack((verts_3d, layer_verts))
+        verts_3d = np.vstack(
+            (
+                verts_3d,
+                _twist_scale_layer(
+                    layer_verts, i, slices, twist, final_scale, centroid
+                ),
+            )
+        )
     # Top layer
+    top_layer = np.column_stack([verts_2d, np.ones(len(verts_2d)) * height]).astype(
+        np.float32
+    )
     verts_3d = np.vstack(
         [
             verts_3d,
-            np.column_stack((verts_2d, np.ones(len(verts_2d)) * height)),
+            _twist_scale_layer(top_layer, slices, slices, twist, final_scale, centroid),
         ]
     )
     # stitch layers
@@ -129,6 +150,22 @@ def linear_extrude(
     if center:
         mesh = mesh.apply_translation((0, 0, -height / 2))
     return mesh
+
+
+def _determine_slice_value(slices: int | None, fn: int | None):
+    if slices is not None:
+        return slices
+    if fn is not None and fn > 0:
+        return fn
+    return DEFAULT_SLICES
+
+
+def _determine_final_scale(
+    scale: float | tuple[float, float] | list[float] | NDArray[np.float32],
+) -> tuple[float, float]:
+    if not isinstance(scale, (tuple, list, np.ndarray)):
+        scale = (float(scale), float(scale))
+    return (float(scale[0]), float(scale[1]))
 
 
 def _raise_if_profile_incorrect_type(profile: ProfileType):
@@ -175,6 +212,66 @@ def _as_poly_2d(profile: ProfileType) -> sg.Polygon:
         else:
             poly = sg.Polygon(profile)
     return poly
+
+
+def _orient_polygon_rings(poly: sg.Polygon) -> sg.Polygon:
+    # Exterior CCW, holes CW
+    ext = np.asarray(poly.exterior.coords, dtype=np.float32)
+    ext = _orient_ring(ext, _RingType.EXTERIOR)
+    intrs = [
+        _orient_ring(np.asarray(r.coords, dtype=np.float32), _RingType.INTERIOR)
+        for r in poly.interiors
+    ]
+    return sg.Polygon(ext, intrs)
+
+
+def _orient_ring(
+    ring_xy: NDArray[np.float32], ring_type: _RingType
+) -> NDArray[np.float32]:
+    """
+    We want exterior: CCW, signed area > 0, interior CW, signed area < 0
+    """
+    closed = _close_ring(ring_xy)
+    area = _signed_area2d(closed)
+    if ring_type == _RingType.EXTERIOR and area >= 0:
+        return closed
+    if ring_type == _RingType.INTERIOR and area <= 0:
+        return closed
+    return closed[::-1]
+
+
+def _close_ring(ring_xy: NDArray[np.float32]) -> NDArray[np.float32]:
+    if np.allclose(ring_xy[0], ring_xy[-1]):
+        return ring_xy
+    return np.vstack([ring_xy, ring_xy[0]])
+
+
+def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
+    x, y = ring_xy[:, 0], ring_xy[:, 1]
+    return 0.5 * np.sum(x * np.roll(y, -1) - y * np.roll(x, -1))
+
+
+def _twist_scale_layer(
+    layer: NDArray[np.float32],
+    layer_number: int,
+    slices: int,
+    twist: float,
+    scale: tuple[float, float],
+    centroid: sg.Point,
+) -> NDArray[np.float32]:
+    t = layer_number / slices
+    sx = 1.0 + t * (scale[0] - 1.0)
+    sy = 1.0 + t * (scale[1] - 1.0)
+    angle = np.deg2rad(t * twist)
+    cos_a, sin_a = np.cos(angle), np.sin(angle)
+    rot_mat = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
+    scale_mat = np.array([[sx, 0.0], [0.0, sy]])
+    transform_mat = rot_mat @ scale_mat
+    pts = (layer[:, :2] - [centroid.x, centroid.y]) @ transform_mat.T + [
+        centroid.x,
+        centroid.y,
+    ]
+    return np.column_stack([pts, layer[:, 2]])
 
 
 def stitch_rings(
@@ -298,11 +395,6 @@ def stitch_rings(
 #             h = h[::-1]
 #         holes.append(h)
 #     return sg.Polygon(ext, [h[:-1] for h in holes])  # type: ignore[reportInvalidArgumentType] - can't resolve
-
-
-# def _signed_area2d(ring_xy: NDArray[np.float32]) -> float:
-#     x, y = ring_xy[:, 0], ring_xy[:, 1]
-#     return 0.5 * np.sum(x * np.roll(y, -1) - y * np.roll(x, -1))
 
 
 # def _triangulate_poly(
