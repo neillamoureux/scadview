@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import shapely.geometry as sg
 import trimesh
 
@@ -6,10 +7,23 @@ import trimesh
 from meshsee.api.linear_extrude import linear_extrude
 
 
-def _rect_xy(w=2.0, h=1.0):
+def _rect_xy_list(w=2.0, h=1.0):
     x = w / 2
     y = h / 2
-    return np.array([[-x, -y], [x, -y], [x, y], [-x, y], [-x, -y]], dtype=float)
+    return [[-x, -y], [x, -y], [x, y], [-x, y], [-x, -y]]
+
+
+def _rect_xyz_list(w=2.0, h=1.0, z=3.0):
+    return [[r[0], r[1], z] for r in _rect_xy_list(w, h)]
+
+
+def _rect_xy(w=2.0, h=1.0):
+    return np.array(_rect_xy_list(), dtype=float)
+
+
+def _rect_xyz(w=2.0, h=1.0, z=3.0):
+    _rect = _rect_xy(w, h)
+    return np.column_stack([_rect, z * np.ones(_rect.shape[0])])
 
 
 def _square_3d(size=1.0, tilt_deg=20.0, axis="x"):
@@ -40,8 +54,19 @@ def _bounds_z(mesh: trimesh.Trimesh):
     return float(zmin), float(zmax)
 
 
-def test_basic_extrude_rectangle_center_default_false():
-    prof = _rect_xy(2.0, 1.0)
+@pytest.mark.parametrize(
+    "prof",
+    [
+        (_rect_xy(2.0, 1.0)),
+        ((_rect_xyz())),
+        (_rect_xy_list()),
+        (_rect_xyz_list()),
+        (sg.Polygon(_rect_xy(2.0, 1.0))),
+    ],
+)
+def test_basic_extrude_rectangle(prof):
+    # prof = _rect_xy(2.0, 1.0)
+    # poly = sg.Polygon(prof)
     h = 10.0
     m = linear_extrude(prof, height=h)  # center should default to False
     assert m.is_watertight
@@ -55,10 +80,30 @@ def test_basic_extrude_rectangle_center_default_false():
     assert np.isclose(m.volume, area * h, rtol=1e-3)
 
 
+@pytest.mark.parametrize(
+    "prof",
+    [
+        range(5),
+        [],
+        [[1, 2, 3, 4], [1, 2, 3, 5]],
+        [[1, 2, 3], [1, 2, 3, 5]],
+        np.array([[1, 2, 3, 4], [1, 2, 3, 5]]),
+        np.array([[], []]),
+    ],
+)
+def test_invalid_profile(prof):
+    if isinstance(prof, np.ndarray):
+        print(f"size: {prof.size}, profile: {prof}")
+    with pytest.raises(TypeError, match="profile must be"):
+        linear_extrude(prof, height=1.0)
+
+
 def test_center_true():
     prof = _rect_xy(2.0, 1.0)
     h = 8.0
     m = linear_extrude(prof, height=h, center=True)
+    assert m.is_watertight
+    assert m.is_volume
     zmin, zmax = _bounds_z(m)
     assert np.isclose(zmin, -h / 2, atol=1e-6)
     assert np.isclose(zmax, h / 2, atol=1e-6)
@@ -77,6 +122,7 @@ def test_projection_from_3d_loop():
         atol=1e-6,
     )
     assert m.is_watertight
+    assert m.is_volume
     # Bounds should start at z=0 when center=False
     zmin, zmax = _bounds_z(m)
     assert np.isclose(zmin, 0.0, atol=1e-6)
@@ -84,12 +130,13 @@ def test_projection_from_3d_loop():
 
 
 def test_hole_preserved_and_volume():
-    outer = sg.Polygon(_rect_xy(4.0, 4.0))
-    inner = sg.Polygon(_rect_xy(2.0, 2.0))
+    outer = sg.Polygon(_rect_xy_list(4.0, 4.0))
+    inner = sg.Polygon(_rect_xy_list(2.0, 2.0))
     poly_with_hole = sg.Polygon(outer.exterior.coords, [inner.exterior.coords])
     h = 3.0
     m = linear_extrude(poly_with_hole, height=h)
     assert m.is_watertight
+    assert m.is_volume
     # volume should be (outer_area - inner_area) * height
     want = (outer.area - inner.area) * h
     assert np.isclose(m.volume, want, rtol=2e-3)
@@ -119,6 +166,8 @@ def test_twist_and_scale_affect_geometry():
     sx, sy = 0.5, 1.5
     S = 60
     m = linear_extrude(prof, height=h, twist=180, scale=(sx, sy), slices=S)
+    assert m.is_watertight
+    assert m.is_volume
 
     # Compare bottom vs top XY extents relative to centroid
     verts = m.vertices
@@ -143,6 +192,9 @@ def test_top_and_bottom_normals():
     prof = _rect_xy(2.0, 1.0)
     h = 4.0
     m = linear_extrude(prof, height=h, slices=12)
+    assert m.is_watertight
+    assert m.is_volume
+
     m.rezero()
     zmin, zmax = _bounds_z(m)
 
@@ -164,5 +216,6 @@ def test_watertight_and_manifold():
     prof = _rect_xy(3.0, 1.0)
     m = linear_extrude(prof, height=2.0, twist=90, slices=40, scale=0.8)
     assert m.is_watertight
+    assert m.is_volume
     # Zero boundary edges implies manifold closed surface
     assert m.euler_number == 2  # sphere-like topology for a solid prism

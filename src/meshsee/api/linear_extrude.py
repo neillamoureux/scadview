@@ -10,6 +10,7 @@ ProfileType = (
     | NDArray[np.float32]  # (N, 2) or (N, 3)
     | list[tuple[float, float]]
     | list[tuple[float, float, float]]
+    | list[list[float]]
 )
 
 DEFAULT_SLICES = 20  # reasonable OpenSCAD-like fallback for slices
@@ -38,7 +39,156 @@ def linear_extrude(
         Otherwise defaults to 20 (a reasonable OpenSCAD-like fallback).
       - `scale` may be scalar or (sx, sy).
     """
-    return None
+    if slices is None:
+        slices = DEFAULT_SLICES
+
+    _raise_if_profile_incorrect_type(profile)
+    poly = _as_poly_2d(profile)
+    verts_2d, poly_faces = trimesh.creation.triangulate_polygon(poly)
+    faces = poly_faces.copy()[:, ::-1]
+
+    # Find the boundary rings (exterior + interiors)
+    # list of array(shape(mi, 2)) where mi is number of vertices in ring i
+    # The length of the array is the number of rings (1 + number of holes)
+    rings = [np.asarray(poly.exterior.coords[:-1])]
+    rings += [np.asarray(r.coords[:-1]) for r in poly.interiors]
+    # TODO: make sure shell ring is CCW and holes are CW
+
+    # map ring vertices -> triangulation indices
+    kdt = KDTree(verts_2d)
+    # list of array(shape(mi,), intp) where mi is number of vertices in ring i
+    rings_idxs = [  # pyright: ignore[reportUnknownVariableType] - scipy fn
+        kdt.query(r, k=1)[1] for r in rings
+    ]  # list of len(bndries) of array(shape(m,), intp)
+    # ensure indices are intp
+    rings_idxs = [
+        np.asarray(ri, dtype=np.intp)
+        for ri in rings_idxs  # pyright: ignore[reportUnknownVariableType] - scipy
+    ]  # list of len(bndries) of array(shape(m,), intp)
+    # Build the layers:
+    # 1. base layer, including triangulated faces and boundary vertices (already done)
+    # 2. extruded boundary vertices only, one per slice except the top layer
+    # 3. The offset of the slice vertices in the vertex array is:
+    #    len(verts_2d) + sum([bndry_idx.shape[0] for bndry_idx in bndries_idxes]) * slice_index
+    # 5. The top layer vertices are the same as the base layer vertices, but at z=2*height
+    # 6. The top layer offset is:
+    #    len(verts_2d) + sum([bndry_idx.shape[0] for bndry_idx in bndries_idxes]) * slices
+    # 7. For each layer, stitch the rings to the next layer
+
+    poly_vert_count = len(verts_2d)
+    ring_verts_per_layer = sum([len(ri) for ri in rings_idxs])
+    verts_3d = np.column_stack((verts_2d, np.zeros(len(verts_2d))))
+    for i in range(1, slices):
+        layer_verts = np.vstack(
+            [
+                np.column_stack((ring, np.ones(len(ring)) * i * height / slices))
+                for ring in rings
+            ]
+        )
+        verts_3d = np.vstack((verts_3d, layer_verts))
+    # Top layer
+    verts_3d = np.vstack(
+        [
+            verts_3d,
+            np.column_stack((verts_2d, np.ones(len(verts_2d)) * height)),
+        ]
+    )
+    # stitch layers
+    verts_index_offset_upper = 0
+    for i in range(0, slices):
+        verts_index_offset_lower = verts_index_offset_upper
+        verts_index_offset_upper = poly_vert_count + i * ring_verts_per_layer
+        ring_offset = 0
+        for bi in rings_idxs:
+            if i == 0:
+                lower_idx = bi
+            else:
+                lower_idx = np.arange(
+                    ring_offset,
+                    ring_offset + len(bi),
+                    dtype=np.int32,
+                )
+            if i == slices - 1:
+                upper_idx = bi
+            else:
+                upper_idx = np.arange(
+                    ring_offset,
+                    ring_offset + len(bi),
+                    dtype=np.int32,
+                )
+            new_faces = stitch_rings(
+                lower_idx + verts_index_offset_lower,
+                upper_idx + verts_index_offset_upper,
+            )
+            faces = np.vstack((faces, new_faces))
+            ring_offset += len(bi)
+    top_faces = poly_faces + poly_vert_count + (slices - 1) * ring_verts_per_layer
+    faces = np.vstack((faces, top_faces))
+
+    mesh = trimesh.Trimesh(vertices=verts_3d, faces=faces)
+    if center:
+        mesh = mesh.apply_translation((0, 0, -height / 2))
+    return mesh
+
+
+def _raise_if_profile_incorrect_type(profile: ProfileType):
+    if not (
+        isinstance(profile, sg.Polygon)
+        or (
+            isinstance(profile, np.ndarray)
+            and profile.ndim == 2
+            and profile.shape[1] in (2, 3)
+            and profile.size > 0
+        )
+        or (
+            isinstance(profile, list)
+            and len(profile) > 0
+            and (
+                (
+                    all(
+                        [
+                            isinstance(vert, (tuple, list))  # type: ignore[reportUnecessaryIsInstance] - want to report to user if incorrect type
+                            and len(vert) in (2, 3)
+                            for vert in profile
+                        ]
+                    )
+                )
+            )
+        )
+    ):
+        raise TypeError(
+            "profile must be a non-empty shapely.Polygon, Nx2/Nx3 ndarray, or list of 2/3-float tuples/lists"
+        )
+
+
+def _as_poly_2d(profile: ProfileType) -> sg.Polygon:
+    if isinstance(profile, sg.Polygon):
+        poly = profile
+    elif isinstance(profile, np.ndarray):
+        if profile.shape[1] == 3:
+            poly = sg.Polygon(profile[:, :2])
+        else:
+            poly = sg.Polygon(profile)
+    else:
+        if len(profile[0]) == 3:
+            poly = sg.Polygon([p[:2] for p in profile])
+        else:
+            poly = sg.Polygon(profile)
+    return poly
+
+
+def stitch_rings(
+    ring_a_idx: NDArray[np.intp], ring_b_idx: NDArray[np.intp]
+) -> NDArray[np.intp]:
+    assert ring_a_idx.shape[0] == ring_b_idx.shape[0]
+    num_verts = ring_a_idx.shape[0]
+    faces: list[int] = []
+    for i in range(num_verts):
+        next_i = (i + 1) % num_verts
+        faces.append([ring_a_idx[i], ring_a_idx[next_i], ring_b_idx[next_i]])
+        faces.append([ring_a_idx[i], ring_b_idx[next_i], ring_b_idx[i]])
+    final_faces = np.array(faces, dtype=np.intp)
+    return final_faces
 
 
 # #  OpenSCAD-like extrude
