@@ -58,7 +58,7 @@ def _bounds_z(mesh: trimesh.Trimesh):
     "prof",
     [
         (_rect_xy(2.0, 1.0)),
-        ((_rect_xyz())),
+        (_rect_xyz()),
         (_rect_xy_list()),
         (_rect_xyz_list()),
         (sg.Polygon(_rect_xy(2.0, 1.0))),

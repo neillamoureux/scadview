@@ -2,7 +2,6 @@ from enum import Enum, auto
 
 import numpy as np
 import shapely.geometry as sg
-import shapely.ops as so
 import trimesh
 from numpy.typing import NDArray
 from scipy.spatial import KDTree
@@ -99,14 +98,12 @@ def _is_list_2dim_2d_or_3d_points(profile: ProfileType) -> bool:
         isinstance(profile, list)
         and len(profile) > 0
         and (
-            (
-                all(
-                    [
-                        isinstance(vert, (tuple, list))  # type: ignore[reportUnecessaryIsInstance] - want to report to user if incorrect type
-                        and len(vert) in (2, 3)
-                        for vert in profile
-                    ]
-                )
+            all(
+                [
+                    isinstance(vert, (tuple, list))  # type: ignore[reportUnecessaryIsInstance] - want to report to user if incorrect type
+                    and len(vert) in (2, 3)
+                    for vert in profile
+                ]
             )
         )
     )
@@ -198,7 +195,6 @@ def _build_layers(
     final_scale: tuple[float, float],
     centroid: sg.Point,
 ) -> NDArray[np.float32]:
-
     # botttom layer
     verts_3d = np.column_stack((verts_2d, np.zeros(len(verts_2d)))).astype(np.float32)
 
