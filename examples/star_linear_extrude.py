@@ -10,11 +10,8 @@ R1, R2 = 1.0, 2.0
 INNER_SCALE = 0.5
 HEIGHT = 10.0
 SLICES = 120
-# EXTRUDE_SCALE = 2.5
-# TWIST_ANGLE = 270
-SLICES = 5
-EXTRUDE_SCALE = 1.0
-TWIST_ANGLE = 0
+EXTRUDE_SCALE = 2.5
+TWIST_ANGLE = 270
 
 
 def create_mesh():
@@ -36,7 +33,7 @@ def create_mesh():
     inner_star = [(INNER_SCALE * x, INNER_SCALE * y) for x, y in star]
     poly = sg.Polygon(star, [inner_star])
 
-    result = linear_extrude(
+    return linear_extrude(
         poly,
         height=HEIGHT,  # OpenSCAD: required
         center=True,  # OpenSCAD default
@@ -46,10 +43,6 @@ def create_mesh():
         scale=EXTRUDE_SCALE,  # scalar or (sx, sy)
         # fn=10,  # optional OpenSCAD-like override for slices
     )
-    logging.info(f"result is volume: {result.is_volume}")
-    logging.info(f"result is watertight: {result.is_watertight}")
-    logging.info(f"result is winding consistent: {result.is_winding_consistent}")
-    return result
 
 
 if __name__ == "__main__":

@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 import shapely.geometry as sg
 
@@ -29,7 +27,7 @@ def create_mesh():
     for i in range(ORDER):
         vertices_2d = _increase_order(vertices_2d)
 
-    koch = linear_extrude(
+    return linear_extrude(
         sg.Polygon(vertices_2d),
         height=HEIGHT,
         center=False,
@@ -38,10 +36,6 @@ def create_mesh():
         slices=SLICES,
         scale=SCALE,
     )
-    logging.info(f"koch is watertight: {koch.is_watertight}")
-    logging.info(f"koch is volume: {koch.is_volume}")
-    logging.info(f"koch is_winding_consistent: {koch.is_winding_consistent}")
-    return koch
 
 
 def _increase_order(vertices_2d):
