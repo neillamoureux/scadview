@@ -20,6 +20,7 @@ class GlWidgetAdapter:
         self._gl_initialized = False
         self._orbiting = False
         self.show_grid = False
+        self.show_edges = False
         self.show_gnomon = True
         self._camera_type = "perspective"
 
@@ -33,6 +34,17 @@ class GlWidgetAdapter:
 
     def toggle_grid(self):
         self.show_grid = not self.show_grid
+
+    @property
+    def show_edges(self) -> bool:
+        return self._show_edges
+
+    @show_edges.setter
+    def show_edges(self, show_edges: bool):
+        self._show_edges = show_edges
+
+    def toggle_edges(self):
+        self.show_edges = not self.show_edges
 
     @property
     def show_gnomon(self) -> bool:
@@ -58,7 +70,7 @@ class GlWidgetAdapter:
     def render(self, width: int, height: int):  # override
         if not self._gl_initialized:
             self._init_gl(width, height)
-        self._renderer.render(self.show_grid, self.show_gnomon)
+        self._renderer.render(self.show_grid, self.show_edges, self.show_gnomon)
 
     def _init_gl(self, width: int, height: int):
         # You cannot create the context before initializeGL is called

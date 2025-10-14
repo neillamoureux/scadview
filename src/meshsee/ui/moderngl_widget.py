@@ -120,6 +120,14 @@ class ModernglWidget(QOpenGLWidget):
         self.update()
 
     @property
+    def show_edges(self):
+        return self._gl_widget_adapter.show_edges
+
+    def toggle_edges(self):
+        self._gl_widget_adapter.toggle_edges()
+        self.update()
+
+    @property
     def show_gnomon(self):
         return self._gl_widget_adapter.show_gnomon
 

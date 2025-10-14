@@ -92,6 +92,11 @@ class MainWindow(QMainWindow):
         self._toggle_grid_action.setCheckable(True)
         self._toggle_grid_action.setChecked(self._gl_widget.show_grid)
 
+        self._toggle_edges_action = QAction("Edges", self)
+        self._toggle_edges_action.triggered.connect(self._gl_widget.toggle_edges)
+        self._toggle_edges_action.setCheckable(True)
+        self._toggle_edges_action.setChecked(self._gl_widget.show_edges)
+
         self._toggle_gnomon_action = QAction("Gnomon", self)
         self._toggle_gnomon_action.triggered.connect(self._gl_widget.toggle_gnomon)
         self._toggle_gnomon_action.setCheckable(True)
@@ -128,6 +133,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._view_from_z_action)
         view_menu.addAction(self._toggle_camera_action)
         view_menu.addAction(self._toggle_grid_action)
+        view_menu.addAction(self._toggle_edges_action)
 
         help_menu = menu_bar.addMenu("Help")
         help_menu.addAction(self._show_font_action)
@@ -187,6 +193,9 @@ class MainWindow(QMainWindow):
         )
         self._toggle_grid_btn = self._add_button(
             view_button_layout, self._toggle_grid_action
+        )
+        self._toggle_edges_btn = self._add_button(
+            view_button_layout, self._toggle_edges_action
         )
         self._toggle_gnomon_btn = self._add_button(
             view_button_layout, self._toggle_gnomon_action

@@ -153,6 +153,7 @@ class Renderer:
     def _init_shaders(self):
         self._m_model = np.array(Matrix44.identity(), dtype="f4")
         self.show_grid = True
+        self.show_edges = True
         self._update_program_value(ShaderVar.MODEL_MATRIX, self._m_model)
         self._update_program_value(ShaderVar.MESH_COLOR, MESH_COLOR)
 
@@ -192,6 +193,15 @@ class Renderer:
         self._show_grid = value
         self._update_program_value(ShaderVar.SHOW_GRID, value)
 
+    @property
+    def show_edges(self) -> bool:
+        return self._show_edges
+
+    @show_edges.setter
+    def show_edges(self, value: bool):
+        self._show_edges = value
+        self._update_program_value(ShaderVar.SHOW_EDGES, value)
+
     def _update_program_value(self, t: ShaderVar, value: Any):
         self.on_program_value_change.notify(t, value)
 
@@ -201,6 +211,7 @@ class Renderer:
             ShaderVar.VIEW_MATRIX: "m_camera",
             ShaderVar.PROJECTION_MATRIX: "m_proj",
             ShaderVar.SHOW_GRID: "show_grid",
+            ShaderVar.SHOW_EDGES: "show_edges",
         }
         return self._create_shader_program(
             "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
@@ -212,6 +223,7 @@ class Renderer:
             ShaderVar.VIEW_MATRIX: "m_camera",
             ShaderVar.PROJECTION_MATRIX: "m_proj",
             ShaderVar.SHOW_GRID: "show_grid",
+            ShaderVar.SHOW_EDGES: "show_edges",
         }
         return self._create_shader_program(
             "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
@@ -314,17 +326,24 @@ class Renderer:
         """
         self._camera.move_to_screen(ndx, ndy, distance)
 
-    def render(self, show_grid: bool, show_gnomon: bool):  # override
+    def render(self, show_grid: bool, show_edges: bool, show_gnomon: bool):  # override
         self._ctx.clear(*self._background_color, depth=1.0)
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-        self.show_grid = True
+
         self._ctx.enable(moderngl.DEPTH_TEST)
+        self.show_grid = True
+        self.show_edges = False
         self._axes_renderee.render()
+
         self.show_grid = show_grid
+        self.show_edges = show_edges
         self._main_renderee.render()
+
         self._label_set_renderee.render()
+
         if show_gnomon:
             self._gnomon_renderee.render()
+        # self._ctx.enable(moderngl.DEPTH_TEST)
 
 
 class RendererFactory:
