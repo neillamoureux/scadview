@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 import shapely.geometry as sg
-import trimesh.repair
 
 from meshsee import linear_extrude
 
@@ -16,12 +15,10 @@ BUMP_LENGTH_FRACTION_MULTIPLIER = 1.0
 ORDER = 4
 R = 50
 HEIGHT = 150
-TWIST = 0
-# TWIST = 60
+TWIST = 60
 TRIANGLE_VERTEX_COUNT = 3
 SLICES = 20
-# SCALE = (1.1, 1.5)  # scalar or (sx, sy)
-SCALE = (1.0, 1.0)  # scalar or (sx, sy)
+SCALE = (1.1, 1.5)  # scalar or (sx, sy)
 
 
 def create_mesh():
