@@ -2,6 +2,7 @@ import logging
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QCheckBox,
     QFileDialog,
     QHBoxLayout,
     QLayout,
@@ -191,13 +192,13 @@ class MainWindow(QMainWindow):
         self._toggle_camera_btn = self._add_button(
             view_button_layout, self._toggle_camera_action
         )
-        self._toggle_grid_btn = self._add_button(
+        self._toggle_grid_btn = self._add_checkbox(
             view_button_layout, self._toggle_grid_action
         )
-        self._toggle_edges_btn = self._add_button(
+        self._toggle_edges_btn = self._add_checkbox(
             view_button_layout, self._toggle_edges_action
         )
-        self._toggle_gnomon_btn = self._add_button(
+        self._toggle_gnomon_btn = self._add_checkbox(
             view_button_layout, self._toggle_gnomon_action
         )
 
@@ -211,6 +212,17 @@ class MainWindow(QMainWindow):
         button.setDefaultAction(action)
         layout.addWidget(button)
         return button
+
+    def _add_checkbox(self, layout: QLayout, action: QAction) -> QCheckBox:
+        """
+        Helper method to add a button with an action to a layout.
+        """
+        cb = QCheckBox(action.text())
+        cb.setChecked(action.isChecked())
+        action.toggled.connect(cb.setChecked)
+        cb.toggled.connect(action.trigger)
+        layout.addWidget(cb)
+        return cb
 
     def load_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
