@@ -28,6 +28,14 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.toggle_camera()
         self.update()
 
+    def use_perspective_camera(self):
+        self._gl_widget_adapter.use_perspective_camera()
+        self.update()
+
+    def use_orthogonal_camera(self):
+        self._gl_widget_adapter.use_orthogonal_camera()
+        self.update()
+
     def paintGL(self):  # override
         self._gl_widget_adapter.render(self.width(), self.height())
 

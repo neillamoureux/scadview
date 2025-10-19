@@ -2,11 +2,13 @@ import logging
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QFileDialog,
     QHBoxLayout,
     QLayout,
     QMainWindow,
+    QRadioButton,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -81,9 +83,17 @@ class MainWindow(QMainWindow):
         self._view_from_z_action = QAction("View from Z+", self)
         self._view_from_z_action.triggered.connect(self._gl_widget.view_from_z)
 
+        def update_camera_action(checked: bool):
+            if checked:
+                logging.debug("Switching to perspective camera")
+                self._gl_widget.use_perspective_camera()
+            else:
+                logging.debug("Switching to orthogonal camera")
+                self._gl_widget.use_orthogonal_camera()
+
         self._toggle_camera_action = QAction("Perspective Camera", self)
         self._toggle_camera_action.setCheckable(True)
-        self._toggle_camera_action.triggered.connect(self._gl_widget.toggle_camera)
+        self._toggle_camera_action.toggled.connect(update_camera_action)
         self._toggle_camera_action.setChecked(
             self._gl_widget.camera_type == "perspective"
         )
@@ -189,8 +199,12 @@ class MainWindow(QMainWindow):
         self._view_from_z_btn = self._add_button(
             view_button_layout, self._view_from_z_action
         )
-        self._toggle_camera_btn = self._add_button(
-            view_button_layout, self._toggle_camera_action
+        self._perspective_camera_radio, self._orthogonal_camera_radio = (
+            self._add_radio_buttons(
+                view_button_layout,
+                self._toggle_camera_action,
+                ["Perspective", "Orthogonal"],
+            )
         )
         self._toggle_grid_btn = self._add_checkbox(
             view_button_layout, self._toggle_grid_action
@@ -223,6 +237,39 @@ class MainWindow(QMainWindow):
         cb.toggled.connect(action.trigger)
         layout.addWidget(cb)
         return cb
+
+    def _add_radio_buttons(
+        self, layout: QLayout, action: QAction, texts: list[str]
+    ) -> tuple[QRadioButton, QRadioButton]:
+        """
+        Helper method to add a button with an action to a layout.
+        """
+        rb_0 = QRadioButton(texts[0])
+        rb_1 = QRadioButton(texts[1])
+
+        rb_0.setChecked(action.isChecked())
+
+        def update_radio(checked: bool):
+            logging.debug(f"Radio button updated: {checked}")
+            if checked:
+                rb_0.setChecked(checked)
+            else:
+                rb_1.setChecked(not checked)
+
+        def track_rb_0(checked: bool):
+            logging.debug(f"Radio button 0 toggled: {checked}")
+
+        def track_action(checked: bool):
+            logging.debug(f"Action toggled: {checked}")
+
+        action.toggled.connect(track_action)
+        action.toggled.connect(update_radio)
+        rb_0.toggled.connect(track_rb_0)
+        rb_0.toggled.connect(action.setChecked)
+
+        layout.addWidget(rb_0)
+        layout.addWidget(rb_1)
+        return rb_0, rb_1
 
     def load_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
