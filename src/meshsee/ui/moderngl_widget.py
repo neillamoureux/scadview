@@ -120,6 +120,19 @@ class ModernglWidget(QOpenGLWidget):
         self.update()
 
     @property
+    def show_axes(self):
+        return self._gl_widget_adapter.show_axes
+
+    @show_axes.setter
+    def show_axes(self, value: bool):
+        self._gl_widget_adapter.show_axes = value
+        self.update()
+
+    def toggle_axes(self):
+        self._gl_widget_adapter.toggle_axes()
+        self.update()
+
+    @property
     def show_grid(self):
         return self._gl_widget_adapter.show_grid
 

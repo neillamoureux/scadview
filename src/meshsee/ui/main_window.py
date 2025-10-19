@@ -97,6 +97,11 @@ class MainWindow(QMainWindow):
             self._gl_widget.camera_type == "perspective"
         )
 
+        self._toggle_axes_action = QAction("Axes", self)
+        self._toggle_axes_action.setCheckable(True)
+        self._toggle_axes_action.setChecked(self._gl_widget.show_axes)
+        self._toggle_axes_action.toggled.connect(self._gl_widget.toggle_axes)
+
         self._toggle_grid_action = QAction("Grid", self)
         self._toggle_grid_action.setCheckable(True)
         self._toggle_grid_action.setChecked(self._gl_widget.show_grid)
@@ -108,9 +113,9 @@ class MainWindow(QMainWindow):
         self._toggle_edges_action.toggled.connect(self._gl_widget.toggle_edges)
 
         self._toggle_gnomon_action = QAction("Gnomon", self)
-        self._toggle_gnomon_action.triggered.connect(self._gl_widget.toggle_gnomon)
         self._toggle_gnomon_action.setCheckable(True)
         self._toggle_gnomon_action.setChecked(self._gl_widget.show_gnomon)
+        self._toggle_gnomon_action.toggled.connect(self._gl_widget.toggle_gnomon)
 
     def _create_help_actions(self) -> None:
         self._show_font_action = QAction("Fonts", self)
@@ -142,8 +147,10 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._view_from_y_action)
         view_menu.addAction(self._view_from_z_action)
         view_menu.addAction(self._toggle_camera_action)
+        view_menu.addAction(self._toggle_axes_action)
         view_menu.addAction(self._toggle_grid_action)
         view_menu.addAction(self._toggle_edges_action)
+        view_menu.addAction(self._toggle_gnomon_action)
 
         help_menu = menu_bar.addMenu("Help")
         help_menu.addAction(self._show_font_action)
@@ -204,6 +211,9 @@ class MainWindow(QMainWindow):
                 self._toggle_camera_action,
                 ["Perspective", "Orthogonal"],
             )
+        )
+        self._toggle_axes_cb = self._add_checkbox(
+            view_button_layout, self._toggle_axes_action
         )
         self._toggle_grid_cb = self._add_checkbox(
             view_button_layout, self._toggle_grid_action

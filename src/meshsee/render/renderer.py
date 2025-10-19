@@ -326,20 +326,23 @@ class Renderer:
         """
         self._camera.move_to_screen(ndx, ndy, distance)
 
-    def render(self, show_grid: bool, show_edges: bool, show_gnomon: bool):  # override
+    def render(
+        self, show_grid: bool, show_edges: bool, show_gnomon: bool, show_axes: bool
+    ):  # override
         self._ctx.clear(*self._background_color, depth=1.0)
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
 
         self._ctx.enable(moderngl.DEPTH_TEST)
-        self.show_grid = True
-        self.show_edges = False
-        self._axes_renderee.render()
 
         self.show_grid = show_grid
         self.show_edges = show_edges
         self._main_renderee.render()
 
-        self._label_set_renderee.render()
+        if show_axes:
+            self.show_grid = True
+            self.show_edges = False
+            self._axes_renderee.render()
+            self._label_set_renderee.render()
 
         if show_gnomon:
             self._gnomon_renderee.render()
