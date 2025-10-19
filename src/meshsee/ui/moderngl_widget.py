@@ -28,6 +28,14 @@ class ModernglWidget(QOpenGLWidget):
         self._gl_widget_adapter.toggle_camera()
         self.update()
 
+    def use_perspective_camera(self):
+        self._gl_widget_adapter.use_perspective_camera()
+        self.update()
+
+    def use_orthogonal_camera(self):
+        self._gl_widget_adapter.use_orthogonal_camera()
+        self.update()
+
     def paintGL(self):  # override
         self._gl_widget_adapter.render(self.width(), self.height())
 
@@ -115,8 +123,26 @@ class ModernglWidget(QOpenGLWidget):
     def show_grid(self):
         return self._gl_widget_adapter.show_grid
 
+    @show_grid.setter
+    def show_grid(self, value: bool):
+        self._gl_widget_adapter.show_grid = value
+        self.update()
+
     def toggle_grid(self):
         self._gl_widget_adapter.toggle_grid()
+        self.update()
+
+    @property
+    def show_edges(self):
+        return self._gl_widget_adapter.show_edges
+
+    @show_edges.setter
+    def show_edges(self, value: bool):
+        self._gl_widget_adapter.show_edges = value
+        self.update()
+
+    def toggle_edges(self):
+        self._gl_widget_adapter.toggle_edges()
         self.update()
 
     @property

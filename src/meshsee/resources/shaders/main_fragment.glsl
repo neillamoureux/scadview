@@ -2,12 +2,14 @@
 out vec4 fragColor;
 // uniform vec4 color;
 uniform bool show_grid;
+uniform bool show_edges;
 
 in vec3 pos;
 in vec3 w_pos;
 in vec3 w_normal; // expected to be normalized
 in vec4 color;
 in vec3 normal; // expected to be normalized
+in vec3 edge_detect; // if one component is close to 0, then close to edge
 
 vec4 gridColor;
 
@@ -51,6 +53,12 @@ void main() {
         fragColor = color;
     }
 
+    if (show_edges) {
+        float edge_nearness = min(min(edge_detect.x, edge_detect.y), edge_detect.z);
+        edge_nearness = pow(edge_nearness, 0.1);
+        vec4 edge_color = vec4(edge_nearness, edge_nearness, edge_nearness, 1.0);
+        fragColor = mix(fragColor, edge_color, 0.5);
+    }
     float l = dot(light_dir, normal) + 0.8;
     fragColor = fragColor * (0.25 + abs(l) * 0.75);
 }

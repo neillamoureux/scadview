@@ -27,6 +27,7 @@ def create_vao_from_mesh(
         mesh.triangles,
         mesh.triangles_cross,
         create_colors_array_from_mesh(mesh),
+        create_edge_detect_array(mesh.triangles.shape[0]),
     )
 
 
@@ -65,19 +66,27 @@ def create_colors_array(
     return np.tile(color, triangle_count * 3).astype(np.uint8).reshape(-1, 3, 4)
 
 
+def create_edge_detect_array(triangle_count: int) -> NDArray[np.uint8]:
+    return np.tile(
+        np.array([255, 0, 0, 0, 255, 0, 0, 0, 255], dtype=np.uint8), triangle_count
+    )
+
+
 def create_vao_from_arrays(
     ctx: moderngl.Context,
     program: moderngl.Program,
     triangles: NDArray[np.float32],
     triangles_cross: NDArray[np.float32],
     colors_arr: NDArray[np.uint8],
+    edge_detect_arr: NDArray[np.uint8],
 ) -> moderngl.VertexArray:
     vertices = ctx.buffer(data=triangles.astype("f4").tobytes())
     normals = ctx.buffer(
         data=np.array([[v] * 3 for v in triangles_cross]).astype("f4").tobytes()
     )
     colors = ctx.buffer(data=colors_arr.tobytes())
-    return create_vao(ctx, program, vertices, normals, colors)
+    edge_detect = ctx.buffer(data=edge_detect_arr.tobytes())
+    return create_vao(ctx, program, vertices, normals, colors, edge_detect)
 
 
 def create_vao(
@@ -86,6 +95,7 @@ def create_vao(
     vertices: moderngl.Buffer,
     normals: moderngl.Buffer,
     colors: moderngl.Buffer,
+    edge_detect: moderngl.Buffer,
 ) -> moderngl.VertexArray:
     try:
         return ctx.vertex_array(
@@ -94,6 +104,7 @@ def create_vao(
                 (vertices, "3f4", "in_position"),
                 (normals, "3f4", "in_normal"),
                 (colors, "4f1", "in_color"),
+                (edge_detect, "3f1", "in_edge_detect"),
             ],
             mode=moderngl.TRIANGLES,
         )
@@ -233,12 +244,14 @@ class AlphaRenderee(Renderee):
         sorted_triangles = self._triangles[sorted_indices]
         sorted_triangles_cross = self._triangles_cross[sorted_indices]
         sorted_colors = self._colors_arr[sorted_indices]
+        edge_detect_arr = create_edge_detect_array(self._triangles.shape[0])
         self._vao = create_vao_from_arrays(
             self._ctx,
             self._program,
             sorted_triangles,
             sorted_triangles_cross,
             sorted_colors,
+            edge_detect_arr,
         )
         self._resort_verts = False
 

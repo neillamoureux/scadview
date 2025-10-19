@@ -15,6 +15,8 @@ def test_window_size():
         "m_model": Mock(),
         "color": Mock(),
         "show_grid": Mock(),
+        "show_edges": Mock(),
+        "show_gnomon": Mock(),
     }
     context.program = Mock(return_value=shader_vars)
     camera = Camera()
