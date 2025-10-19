@@ -99,14 +99,14 @@ class MainWindow(QMainWindow):
         )
 
         self._toggle_grid_action = QAction("Grid", self)
-        self._toggle_grid_action.triggered.connect(self._gl_widget.toggle_grid)
         self._toggle_grid_action.setCheckable(True)
         self._toggle_grid_action.setChecked(self._gl_widget.show_grid)
+        self._toggle_grid_action.toggled.connect(self._gl_widget.toggle_grid)
 
         self._toggle_edges_action = QAction("Edges", self)
-        self._toggle_edges_action.triggered.connect(self._gl_widget.toggle_edges)
         self._toggle_edges_action.setCheckable(True)
         self._toggle_edges_action.setChecked(self._gl_widget.show_edges)
+        self._toggle_edges_action.toggled.connect(self._gl_widget.toggle_edges)
 
         self._toggle_gnomon_action = QAction("Gnomon", self)
         self._toggle_gnomon_action.triggered.connect(self._gl_widget.toggle_gnomon)
@@ -234,7 +234,7 @@ class MainWindow(QMainWindow):
         cb = QCheckBox(action.text())
         cb.setChecked(action.isChecked())
         action.toggled.connect(cb.setChecked)
-        cb.toggled.connect(action.trigger)
+        cb.toggled.connect(action.setChecked)
         layout.addWidget(cb)
         return cb
 
