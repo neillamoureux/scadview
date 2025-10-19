@@ -2,7 +2,6 @@ import logging
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
-    QButtonGroup,
     QCheckBox,
     QFileDialog,
     QHBoxLayout,
@@ -206,13 +205,13 @@ class MainWindow(QMainWindow):
                 ["Perspective", "Orthogonal"],
             )
         )
-        self._toggle_grid_btn = self._add_checkbox(
+        self._toggle_grid_cb = self._add_checkbox(
             view_button_layout, self._toggle_grid_action
         )
-        self._toggle_edges_btn = self._add_checkbox(
+        self._toggle_edges_cb = self._add_checkbox(
             view_button_layout, self._toggle_edges_action
         )
-        self._toggle_gnomon_btn = self._add_checkbox(
+        self._toggle_gnomon_cb = self._add_checkbox(
             view_button_layout, self._toggle_gnomon_action
         )
 

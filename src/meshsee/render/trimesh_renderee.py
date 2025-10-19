@@ -39,14 +39,11 @@ def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
     metadata: dict[str, dict[str, list[float]]]
     metadata = mesh.metadata  # pyright: ignore[reportUnknownVariableType]
     if (
-        isinstance(
-            metadata, dict
-        )  # pyright: ignore[reportUnnecessaryIsInstance] - needed since ignoring type in line above
+        isinstance(metadata, dict)  # pyright: ignore[reportUnnecessaryIsInstance] - needed since ignoring type in line above
         and "meshsee" in metadata
     ):
         if (
-            metadata["meshsee"]
-            is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
+            metadata["meshsee"] is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
             and "color" in metadata["meshsee"]
         ):
             color = metadata["meshsee"]["color"]

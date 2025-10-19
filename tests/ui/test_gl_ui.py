@@ -31,7 +31,7 @@ def test_ui_instance_singleton(main_ui):
 
 
 # def test_main(mocker):
-#     application = mocker.patch("meshsee.app.QApplication")
+#     app = mocker.patch("meshsee.app.QApplication")
 #     window = mocker.patch("meshsee.app.MainWindow")
 #     app.main()
 #     assert application.called

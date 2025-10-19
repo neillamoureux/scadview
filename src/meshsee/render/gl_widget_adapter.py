@@ -76,6 +76,10 @@ class GlWidgetAdapter:
         # You cannot create the context before initializeGL is called
         self._renderer = self._renderer_factory.make((width, height))
         self._gl_initialized = True
+        if self._camera_type == "orthogonal":
+            self.use_orthogonal_camera()
+        else:
+            self.use_perspective_camera()
         self.resize(width, height)
 
     def resize(self, width: int, height: int):  # override
@@ -156,9 +160,11 @@ class GlWidgetAdapter:
         self._renderer.frame(direction, up)
 
     def use_orthogonal_camera(self):
-        self._renderer.camera = CameraOrthogonal()
+        if self._gl_initialized:
+            self._renderer.camera = CameraOrthogonal()
         self._camera_type = "orthogonal"
 
     def use_perspective_camera(self):
-        self._renderer.camera = CameraPerspective()
+        if self._gl_initialized:
+            self._renderer.camera = CameraPerspective()
         self._camera_type = "perspective"

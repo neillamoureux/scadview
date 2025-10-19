@@ -88,9 +88,9 @@ def test_initial_button_states(main_window):
     assert main_window._view_from_x_btn.isEnabled()
     assert main_window._view_from_y_btn.isEnabled()
     assert main_window._view_from_z_btn.isEnabled()
-    assert main_window._toggle_camera_btn.isEnabled()
-    assert main_window._toggle_grid_btn.isEnabled()
-    assert main_window._toggle_gnomon_btn.isEnabled()
+    assert main_window._toggle_grid_cb.isEnabled()
+    assert main_window._toggle_gnomon_cb.isEnabled()
+    assert main_window._toggle_edges_cb.isEnabled()
 
 
 def test_initial_action_states(main_window):
