@@ -256,15 +256,7 @@ class MainWindow(QMainWindow):
             else:
                 rb_1.setChecked(not checked)
 
-        def track_rb_0(checked: bool):
-            logging.debug(f"Radio button 0 toggled: {checked}")
-
-        def track_action(checked: bool):
-            logging.debug(f"Action toggled: {checked}")
-
-        action.toggled.connect(track_action)
         action.toggled.connect(update_radio)
-        rb_0.toggled.connect(track_rb_0)
         rb_0.toggled.connect(action.setChecked)
 
         layout.addWidget(rb_0)
