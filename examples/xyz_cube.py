@@ -1,9 +1,9 @@
 import numpy as np
 from pyrr.matrix44 import create_from_axis_rotation
 from trimesh import Trimesh
-from trimesh.creation import box, cone
+from trimesh.creation import box
 
-from meshsee import Color, set_mesh_color, text, linear_extrude
+from meshsee import text
 
 SIZE = 50
 TEXT_FRACTION = 0.8
@@ -13,7 +13,6 @@ TEXT_SHRINK_FACTOR = 0.15
 
 def create_mesh():
     box_mesh = box(extents=(SIZE, SIZE, SIZE))
-    set_mesh_color(box_mesh, Color.GRAY, alpha=0.5)
 
     x_mesh = text("X", halign="center", size=SIZE)
     y_mesh = text("Y", halign="center", size=SIZE)
@@ -35,9 +34,7 @@ def create_mesh():
         create_from_axis_rotation((1, 0, 0), np.pi / 2)
     ).apply_transform(
         create_from_axis_rotation((0, 0, 1), np.pi / 2)
-    ).apply_translation(
-        (SIZE / 2, 0, 0)
-    )
+    ).apply_translation((SIZE / 2, 0, 0))
     xy_center_mesh(y_mesh)
     y_mesh.apply_transform(
         create_from_axis_rotation((1, 0, 0), np.pi / 2)
