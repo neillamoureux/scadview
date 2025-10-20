@@ -48,12 +48,10 @@ def create_mesh():
     x_bot_mesh = x_mesh.copy().apply_translation((-SIZE, 0, 0))
     y_bot_mesh = y_mesh.copy().apply_translation((0, -SIZE, 0))
     z_bot_mesh = z_mesh.copy().apply_translation((0, 0, -SIZE))
-    # cne = cone(radius=SIZE / 2, height=SIZE, sections=32)
     return (
         box_mesh.union(x_mesh)
         .union(y_mesh)
         .union(z_mesh)
-        # .union(cne)
         .difference(x_bot_mesh)
         .difference(y_bot_mesh)
         .difference(z_bot_mesh)
