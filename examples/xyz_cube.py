@@ -34,7 +34,9 @@ def create_mesh():
         create_from_axis_rotation((1, 0, 0), np.pi / 2)
     ).apply_transform(
         create_from_axis_rotation((0, 0, 1), np.pi / 2)
-    ).apply_translation((SIZE / 2, 0, 0))
+    ).apply_translation(
+        (SIZE / 2, 0, 0)
+    )
     xy_center_mesh(y_mesh)
     y_mesh.apply_transform(
         create_from_axis_rotation((1, 0, 0), np.pi / 2)
@@ -72,9 +74,6 @@ def shrink_towards_top(mesh: Trimesh, factor: float) -> Trimesh:
     for i, v in enumerate(vertices):
         # Calculate how far along the Z axis this vertex is (0 at base, 1 at top)
         t = factor * (v[2] - mesh.bounds[0][2]) / TEXT_HEIGHT
-        # t = np.clip(t, 0, 1 - factor)
-        # t = t / (1 - factor)
-        # Linearly interpolate xy towards centroid as t increases
         new_xy = (1 - t) * v[:2] + t * centroid[:2]
         vertices[i][:2] = new_xy
     mesh.vertices = vertices
