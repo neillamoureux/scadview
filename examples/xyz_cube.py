@@ -34,9 +34,7 @@ def create_mesh():
         create_from_axis_rotation((1, 0, 0), np.pi / 2)
     ).apply_transform(
         create_from_axis_rotation((0, 0, 1), np.pi / 2)
-    ).apply_translation(
-        (SIZE / 2, 0, 0)
-    )
+    ).apply_translation((SIZE / 2, 0, 0))
     xy_center_mesh(y_mesh)
     y_mesh.apply_transform(
         create_from_axis_rotation((1, 0, 0), np.pi / 2)
