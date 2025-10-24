@@ -12,17 +12,14 @@ from wx.glcanvas import (
     WX_GL_DEPTH_SIZE,
     WX_GL_STENCIL_SIZE,
 )
-import moderngl
-import numpy as np
 
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 
 def create_graphics_widget(
-    parent, gl_widget_adapter: GlWidgetAdapter
+    parent: wx.Window, gl_widget_adapter: GlWidgetAdapter
 ) -> ModernglWidget:
     gl_widget = ModernglWidget(parent, gl_widget_adapter)
-    # gl_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
     return gl_widget
 
 
@@ -59,6 +56,9 @@ class ModernglWidget(GLCanvas):
 
         self.Bind(wx.EVT_PAINT, self.on_paint)
         self.Bind(wx.EVT_SIZE, self.on_size)
+        self.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_press_left)
+        self.Bind(wx.EVT_LEFT_UP, self.on_mouse_release_left)
+        self.Bind(wx.EVT_MOTION, self.on_mouse_move)
 
     def on_size(self, _evt: wx.SizeEvent):
         # Just schedule a repaint; set viewport during paint when context is current.
@@ -74,3 +74,18 @@ class ModernglWidget(GLCanvas):
         size = self.GetClientSize()
         self._gl_widget_adapter.render(size.width, size.height)
         self.SwapBuffers()
+
+    def on_mouse_press_left(self, event: wx.MouseEvent):
+        pos = event.GetPosition()
+        self._gl_widget_adapter.start_orbit(int(pos.x), int(pos.y))
+
+    def on_mouse_release_left(self, event: wx.MouseEvent):
+        self._gl_widget_adapter.end_orbit()
+
+    def on_mouse_move(self, event: wx.MouseEvent):
+        """
+        Rotate the camera based on mouse movement.
+        """
+        pos = event.GetPosition()
+        self._gl_widget_adapter.do_orbit(int(pos.x), int(pos.y))
+        self.Refresh(False)
