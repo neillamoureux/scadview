@@ -15,6 +15,7 @@ class MainFrame(wx.Frame):
         super().__init__(
             None, title="wx + ModernGL (fixed mac SwapBuffers)", size=(900, 600)
         )
+        self._controller = controller
         panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(panel, gl_widget_adapter)
         # self.gl = ModernglWidget(panel)
@@ -22,7 +23,7 @@ class MainFrame(wx.Frame):
         # Native controls
         chk = wx.CheckBox(panel, label="Enable option")
         btn = wx.Button(panel, label="Do thing")
-        file_btn = wx.Button(panel, label="Open file…")
+        load_btn = wx.Button(panel, label="Load .py...")
 
         btn.Bind(
             wx.EVT_BUTTON,
@@ -30,12 +31,12 @@ class MainFrame(wx.Frame):
                 f"Checkbox is {'checked' if chk.IsChecked() else 'unchecked'}", "Info"
             ),
         )
-        file_btn.Bind(wx.EVT_BUTTON, self.on_open)
+        load_btn.Bind(wx.EVT_BUTTON, self.on_load)
 
         side = wx.BoxSizer(wx.VERTICAL)
         side.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
         side.Add(btn, 0, wx.ALL | wx.EXPAND, 6)
-        side.Add(file_btn, 0, wx.ALL | wx.EXPAND, 6)
+        side.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
         side.AddStretchSpacer()
 
         root = wx.BoxSizer(wx.HORIZONTAL)
@@ -43,12 +44,14 @@ class MainFrame(wx.Frame):
         root.Add(side, 0, wx.EXPAND | wx.ALL, 6)
         panel.SetSizer(root)
 
-    def on_open(self, _):
+    def on_load(self, _):
         with wx.FileDialog(
             self,
             "Choose a file",
-            wildcard="All files (*.*)|*.*",
+            wildcard="Pythons files (*.py)|*.py",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
-                wx.MessageBox(f"Selected: {dlg.GetPath()}", "File chosen")
+                for mesh in self._controller.load_mesh(dlg.GetPath()):
+                    self._gl_widget.load_mesh(mesh, "test")
+                # wx.MessageBox(f"Selected: {dlg.GetPath()}", "File chosen")

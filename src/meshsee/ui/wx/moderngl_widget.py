@@ -1,16 +1,17 @@
 from __future__ import annotations
-import wx
 
+import wx
+from trimesh import Trimesh
 from wx.glcanvas import (
-    GLCanvas,
-    GLContext,
     WX_GL_CORE_PROFILE,
+    WX_GL_DEPTH_SIZE,
+    WX_GL_DOUBLEBUFFER,
     WX_GL_MAJOR_VERSION,
     WX_GL_MINOR_VERSION,
-    WX_GL_DOUBLEBUFFER,
     WX_GL_RGBA,
-    WX_GL_DEPTH_SIZE,
     WX_GL_STENCIL_SIZE,
+    GLCanvas,
+    GLContext,
 )
 
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
@@ -88,4 +89,8 @@ class ModernglWidget(GLCanvas):
         """
         pos = event.GetPosition()
         self._gl_widget_adapter.do_orbit(int(pos.x), int(pos.y))
+        self.Refresh(False)
+
+    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
+        self._gl_widget_adapter.load_mesh(mesh, name)
         self.Refresh(False)
