@@ -62,6 +62,8 @@ class ModernglWidget(GLCanvas):
 
     def on_size(self, _evt: wx.SizeEvent):
         # Just schedule a repaint; set viewport during paint when context is current.
+        size = self.GetClientSize()
+        self._gl_widget_adapter.resize(size.width, size.height)
         self.Refresh(False)
 
     def on_paint(self, _evt: wx.PaintEvent):
