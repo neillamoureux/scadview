@@ -1,42 +1,52 @@
+from __future__ import annotations
 import wx
 
-from wx.glcanvas import GLCanvas, GLContext
+from wx.glcanvas import (
+    GLCanvas,
+    GLContext,
+    WX_GL_CORE_PROFILE,
+    WX_GL_MAJOR_VERSION,
+    WX_GL_MINOR_VERSION,
+    WX_GL_DOUBLEBUFFER,
+    WX_GL_RGBA,
+    WX_GL_DEPTH_SIZE,
+    WX_GL_STENCIL_SIZE,
+)
 import moderngl
 import numpy as np
 
-VERT_SRC = """
-#version 330
-in vec2 in_pos;
-void main() { gl_Position = vec4(in_pos, 0.0, 1.0); }
-"""
-
-FRAG_SRC = """
-#version 330
-out vec4 f_color;
-void main() { f_color = vec4(0.2, 0.8, 0.4, 1.0); }
-"""
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 
-class ModernGlWidget(GLCanvas):
-    def __init__(self, parent):
+def create_graphics_widget(
+    parent, gl_widget_adapter: GlWidgetAdapter
+) -> ModernglWidget:
+    gl_widget = ModernglWidget(parent, gl_widget_adapter)
+    # gl_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+    return gl_widget
+
+
+class ModernglWidget(GLCanvas):
+    def __init__(self, parent: wx.Window, gl_widget_adapter: GlWidgetAdapter):
         attribs = [
-            wx.glcanvas.WX_GL_CORE_PROFILE,
+            WX_GL_CORE_PROFILE,
             1,
-            wx.glcanvas.WX_GL_MAJOR_VERSION,
+            WX_GL_MAJOR_VERSION,
             3,
-            wx.glcanvas.WX_GL_MINOR_VERSION,
+            WX_GL_MINOR_VERSION,
             3,
-            wx.glcanvas.WX_GL_DOUBLEBUFFER,
+            WX_GL_DOUBLEBUFFER,
             1,
-            wx.glcanvas.WX_GL_RGBA,
+            WX_GL_RGBA,
             1,
-            wx.glcanvas.WX_GL_DEPTH_SIZE,
+            WX_GL_DEPTH_SIZE,
             24,
-            wx.glcanvas.WX_GL_STENCIL_SIZE,
+            WX_GL_STENCIL_SIZE,
             8,
             0,
         ]
         super().__init__(parent, attribList=attribs)
+        self._gl_widget_adapter = gl_widget_adapter
 
         # prevent background erase flicker on some platforms
         self.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
@@ -50,51 +60,15 @@ class ModernGlWidget(GLCanvas):
         self.Bind(wx.EVT_PAINT, self.on_paint)
         self.Bind(wx.EVT_SIZE, self.on_size)
 
-    def init_mgl(self):
-        """Create ModernGL resources; assumes wx context is current."""
-        if self.ctx_mgl:
-            return
-        self.ctx_mgl = moderngl.create_context()  # binds to current OS context
-        self.prog = self.ctx_mgl.program(
-            vertex_shader=VERT_SRC, fragment_shader=FRAG_SRC
-        )
-        tri = np.array(
-            [
-                -0.6,
-                -0.5,
-                0.6,
-                -0.5,
-                0.0,
-                0.6,
-            ],
-            dtype="f4",
-        )
-        self.vbo = self.ctx_mgl.buffer(tri.tobytes())
-        self.vao = self.ctx_mgl.simple_vertex_array(self.prog, self.vbo, "in_pos")
-
-    def on_size(self, _evt):
+    def on_size(self, _evt: wx.SizeEvent):
         # Just schedule a repaint; set viewport during paint when context is current.
         self.Refresh(False)
 
-    def on_paint(self, _evt):
+    def on_paint(self, _evt: wx.PaintEvent):
         # Required so wx knows we handled the paint.
         dc = wx.PaintDC(self)
         del dc
-
-        # Make the native GL context current **every paint** (important on macOS).
         self.SetCurrent(self.ctx_wx)
-
-        # Lazy-create ModernGL linked to the current native context.
-        if not self.ctx_mgl:
-            self.init_mgl()
-
-        # Resize viewport to current drawable size.
-        w, h = self.GetSize()
-        self.ctx_mgl.viewport = (0, 0, max(1, w), max(1, h))
-
-        # Draw
-        self.ctx_mgl.clear(0.08, 0.08, 0.1, 1.0)
-        self.vao.render()
-
-        # Swap requires a current context on macOS.
+        size = self.GetClientSize()
+        self._gl_widget_adapter.render(size.width, size.height)
         self.SwapBuffers()

@@ -1,15 +1,23 @@
 import wx
 
-from meshsee.ui.wx.moderngl_widget import ModernGlWidget
+# from meshsee.ui.wx.moderngl_widget import ModernglWidget
+from meshsee.controller import Controller
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
+from meshsee.ui.wx.moderngl_widget import create_graphics_widget
 
 
 class MainFrame(wx.Frame):
-    def __init__(self):
+    def __init__(
+        self,
+        controller: Controller,
+        gl_widget_adapter: GlWidgetAdapter,
+    ):
         super().__init__(
             None, title="wx + ModernGL (fixed mac SwapBuffers)", size=(900, 600)
         )
         panel = wx.Panel(self)
-        self.gl = ModernGlWidget(panel)
+        self._gl_widget = create_graphics_widget(panel, gl_widget_adapter)
+        # self.gl = ModernglWidget(panel)
 
         # Native controls
         chk = wx.CheckBox(panel, label="Enable option")
@@ -31,7 +39,7 @@ class MainFrame(wx.Frame):
         side.AddStretchSpacer()
 
         root = wx.BoxSizer(wx.HORIZONTAL)
-        root.Add(self.gl, 1, wx.EXPAND | wx.ALL, 6)
+        root.Add(self._gl_widget, 1, wx.EXPAND | wx.ALL, 6)
         root.Add(side, 0, wx.EXPAND | wx.ALL, 6)
         panel.SetSizer(root)
 
