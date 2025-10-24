@@ -22,20 +22,20 @@ class MainFrame(wx.Frame):
 
         # Native controls
         chk = wx.CheckBox(panel, label="Enable option")
-        btn = wx.Button(panel, label="Do thing")
+        frame_action_id = wx.NewIdRef()
+        frame_action_label = "Frame Mesh\tCtrl-F"
+        frame_btn = wx.Button(panel, label=frame_action_label, id=frame_action_id)
         load_btn = wx.Button(panel, label="Load .py...")
 
-        btn.Bind(
+        frame_btn.Bind(
             wx.EVT_BUTTON,
-            lambda _: wx.MessageBox(
-                f"Checkbox is {'checked' if chk.IsChecked() else 'unchecked'}", "Info"
-            ),
+            lambda _: self._gl_widget.frame(),
         )
         load_btn.Bind(wx.EVT_BUTTON, self.on_load)
 
         side = wx.BoxSizer(wx.VERTICAL)
         side.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
-        side.Add(btn, 0, wx.ALL | wx.EXPAND, 6)
+        side.Add(frame_btn, 0, wx.ALL | wx.EXPAND, 6)
         side.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
         side.AddStretchSpacer()
 

@@ -94,3 +94,7 @@ class ModernglWidget(GLCanvas):
     def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._gl_widget_adapter.load_mesh(mesh, name)
         self.Refresh(False)
+
+    def frame(self):
+        self._gl_widget_adapter.frame()
+        self.Refresh(False)
