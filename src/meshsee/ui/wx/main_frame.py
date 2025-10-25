@@ -54,4 +54,4 @@ class MainFrame(wx.Frame):
             if dlg.ShowModal() == wx.ID_OK:
                 for mesh in self._controller.load_mesh(dlg.GetPath()):
                     self._gl_widget.load_mesh(mesh, "test")
-                # wx.MessageBox(f"Selected: {dlg.GetPath()}", "File chosen")
+                    self._gl_widget.frame()

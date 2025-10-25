@@ -78,9 +78,11 @@ class ModernglWidget(GLCanvas):
 
     def on_mouse_press_left(self, event: wx.MouseEvent):
         pos = event.GetPosition()
+        self.CaptureMouse()
         self._gl_widget_adapter.start_orbit(int(pos.x), int(pos.y))
 
     def on_mouse_release_left(self, event: wx.MouseEvent):
+        self.ReleaseMouse()
         self._gl_widget_adapter.end_orbit()
 
     def on_mouse_move(self, event: wx.MouseEvent):
