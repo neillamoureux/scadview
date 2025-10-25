@@ -69,11 +69,16 @@ class ModernglWidget(GLCanvas):
 
     def on_paint(self, _evt: wx.PaintEvent):
         # Required so wx knows we handled the paint.
+        try:
+            self.SetSwapInterval(1)  # 0 = disable vsync, 1 = enable
+        except Exception:
+            pass
         dc = wx.PaintDC(self)
         del dc
         self.SetCurrent(self.ctx_wx)
         size = self.GetClientSize()
-        self._gl_widget_adapter.render(size.width, size.height)
+        scale = self.GetContentScaleFactor()
+        self._gl_widget_adapter.render(scale * size.width, scale * size.height)
         self.SwapBuffers()
 
     def on_mouse_press_left(self, event: wx.MouseEvent):
