@@ -19,14 +19,54 @@ class Action:
         return btn
 
     def menu_item(self, menu: wx.Menu) -> wx.MenuItem:
-        label = (
+        label = self._menu_item_label()
+        item = menu.Append(self._id, label)
+        menu.Bind(wx.EVT_MENU, self._callback, item)
+        return item
+
+    def _menu_item_label(self):
+        return (
             f"{self._label}\tCtrl+{self._accelerator}"
             if self._accelerator
             else self._label
         )
-        item = menu.Append(self._id, label)
-        menu.Bind(wx.EVT_MENU, self._callback, item)
+
+
+class CheckableAction(Action):
+    def __init__(
+        self,
+        label: str,
+        callback,
+        initial_state: bool = False,
+        accelerator: str | None = None,
+    ):
+        super().__init__(label, callback, accelerator)
+        self._state = initial_state
+        self._menu_items: list[wx.MenuItem] = []
+        self._checkboxes: list[wx.CheckBox] = []
+
+    def menu_item(self, menu):
+        label = self._menu_item_label()
+        item = menu.AppendCheckItem(self._id, label)
+        item.Check(self._state)
+        menu.Bind(wx.EVT_MENU, self._update_state, item)
+        self._menu_items.append(item)
         return item
+
+    def checkbox(self, parent: wx.Window) -> wx.CheckBox:
+        chk = wx.CheckBox(parent, label=self._label, id=self._id)
+        chk.Bind(wx.EVT_CHECKBOX, self._update_state)
+        chk.SetValue(self._state)
+        self._checkboxes.append(chk)
+        return chk
+
+    def _update_state(self, event):
+        self._callback(event)
+        self._state = not self._state
+        for item in self._menu_items:
+            item.Check(self._state)
+        for chk in self._checkboxes:
+            chk.SetValue(self._state)
 
 
 class MainFrame(wx.Frame):
@@ -40,7 +80,6 @@ class MainFrame(wx.Frame):
         panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(panel, gl_widget_adapter)
 
-        chk = wx.CheckBox(panel, label="Enable option")
         self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
         frame_btn = self._frame_action.button(panel)
 
@@ -48,10 +87,15 @@ class MainFrame(wx.Frame):
         load_btn = self._load_action.button(panel)
         load_btn.Bind(wx.EVT_BUTTON, self.on_load)
 
+        self._toggle_grid_action = CheckableAction(
+            "Grid", self.on_toggle_grid, self._gl_widget.show_grid, "G"
+        )
+        toggle_grid_chk = self._toggle_grid_action.checkbox(panel)
+
         side = wx.BoxSizer(wx.VERTICAL)
-        side.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
         side.Add(frame_btn, 0, wx.ALL | wx.EXPAND, 6)
         side.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
+        side.Add(toggle_grid_chk, 0, wx.ALL | wx.EXPAND, 6)
         side.AddStretchSpacer()
 
         root = wx.BoxSizer(wx.HORIZONTAL)
@@ -77,8 +121,12 @@ class MainFrame(wx.Frame):
         self._load_action.menu_item(file_menu)
         view_menu = wx.Menu()
         self._frame_action.menu_item(view_menu)
+        self._toggle_grid_action.menu_item(view_menu)
 
         menuBar = wx.MenuBar()
         menuBar.Append(file_menu, "&File")
         menuBar.Append(view_menu, "&View")
         self.SetMenuBar(menuBar)
+
+    def on_toggle_grid(self, _):
+        self._gl_widget.toggle_grid()

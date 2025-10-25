@@ -61,6 +61,19 @@ class ModernglWidget(GLCanvas):
         self.Bind(wx.EVT_LEFT_UP, self.on_mouse_release_left)
         self.Bind(wx.EVT_MOTION, self.on_mouse_move)
 
+    @property
+    def show_grid(self):
+        return self._gl_widget_adapter.show_grid
+
+    @show_grid.setter
+    def show_grid(self, value: bool):
+        self._gl_widget_adapter.show_grid = value
+        self.Refresh()
+
+    def toggle_grid(self):
+        self._gl_widget_adapter.toggle_grid()
+        self.Refresh()
+
     def on_size(self, _evt: wx.SizeEvent):
         # Just schedule a repaint; set viewport during paint when context is current.
         size = self.GetClientSize()
