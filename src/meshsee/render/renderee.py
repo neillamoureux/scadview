@@ -84,3 +84,9 @@ class GnomonRenderee(Renderee):
         if self._vao is None:
             self._vao = self._create_vao()
         self._vao.render(mode=moderngl.LINES)
+        self._ctx.viewport = (
+            0,
+            0,
+            int(self._window_size[0]),
+            int(self._window_size[1]),
+        )
