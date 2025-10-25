@@ -12,4 +12,5 @@ class GlUi:
 
     def run(self):
         self.frame.Show()
+        self.frame.Raise()
         self.app.MainLoop()
