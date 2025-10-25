@@ -34,6 +34,7 @@ class ShaderProgram:
         register: dict[ShaderVar, str],
     ):
         self._ctx = ctx
+        self._current_values: dict[ShaderVar, Any] = {}
         self.register = register
         vertex_shader_source = files(meshsee.resources.shaders).joinpath(
             vertex_shader_loc
@@ -54,6 +55,7 @@ class ShaderProgram:
                 logger.exception(f"Error creating shader program: {e}")
 
     def update_program_var(self, var: ShaderVar, value: Any):
+        self._current_values[var] = value
         if var not in self.register:
             return
         var_name = self.register[var]
@@ -64,6 +66,10 @@ class ShaderProgram:
             uniform.value = value
         else:
             uniform.write(value)
+
+    def update_all_program_vars(self):
+        for var, value in self._current_values.items():
+            self.update_program_var(var, value)
 
     def subscribe_to_updates(self, updates: Observable):
         updates.subscribe(self.update_program_var)

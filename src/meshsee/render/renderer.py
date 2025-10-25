@@ -329,6 +329,11 @@ class Renderer:
     def render(
         self, show_grid: bool, show_edges: bool, show_gnomon: bool, show_axes: bool
     ):  # override
+        self._main_prog.update_all_program_vars()
+        self._axis_prog.update_all_program_vars()
+        self._num_prog.update_all_program_vars()
+        self._gnomon_prog.update_all_program_vars()
+
         self._ctx.clear(*self._background_color, depth=1.0)
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
 
@@ -346,7 +351,6 @@ class Renderer:
 
         if show_gnomon:
             self._gnomon_renderee.render()
-        # self._ctx.enable(moderngl.DEPTH_TEST)
 
 
 class RendererFactory:
