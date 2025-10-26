@@ -1,7 +1,10 @@
+import queue
+from multiprocessing import Process
+
 import wx
 
-# from meshsee.ui.wx.moderngl_widget import ModernglWidget
 from meshsee.controller import Controller
+from meshsee.mesh_loader_process import MpMeshQueue, load
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.moderngl_widget import create_graphics_widget
 
@@ -112,9 +115,26 @@ class MainFrame(wx.Frame):
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
-                for mesh in self._controller.load_mesh(dlg.GetPath()):
-                    self._gl_widget.load_mesh(mesh, "test")
-                    self._gl_widget.frame()
+                q = MpMeshQueue()
+                p = Process(target=load, args=(dlg.GetPath(), q))
+                p.start()
+                load_completed = False
+                first_mesh = True
+                while not load_completed:
+                    try:
+                        mesh = q.get_nowait()
+                        self._gl_widget.load_mesh(mesh, "loaded mesh")
+                        if first_mesh:
+                            first_mesh = False
+                            self._gl_widget.frame()
+                    except queue.Empty:
+                        if not p.is_alive():
+                            load_completed = True
+                p.join()
+
+                # for mesh in self._controller.load_mesh(dlg.GetPath()):
+                #     self._gl_widget.load_mesh(mesh, "test")
+                #     self._gl_widget.frame()
 
     def make_menu_bar(self):
         file_menu = wx.Menu()
