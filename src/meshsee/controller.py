@@ -1,12 +1,12 @@
 import logging
 import os
-from time import time
-from typing import Generator
 
 from trimesh import Trimesh
 from trimesh.exchange import export
 
-from meshsee.module_loader import ModuleLoader
+from multiprocessing import Process
+import queue
+from meshsee.mesh_loader_process import MpMeshQueue, load
 
 logger = logging.getLogger(__name__)
 
@@ -19,26 +19,24 @@ def export_formats() -> list[str]:
 
 
 class Controller:
-    CREATE_MESH_FUNCTION_NAME = "create_mesh"
 
     def __init__(self):
-        self._module_loader = ModuleLoader(self.CREATE_MESH_FUNCTION_NAME)
-        self._current_mesh: Trimesh | None = None
+        self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._last_module_path = None
         self._last_export_path = None
+        self._loader_queue: MpMeshQueue = MpMeshQueue()
+        self._loader_process: Process | None = None
 
     @property
-    def current_mesh(self) -> Trimesh | None:
+    def current_mesh(self) -> list[Trimesh] | Trimesh | None:
         return self._current_mesh
 
     @current_mesh.setter
     def current_mesh(self, mesh: Trimesh | None):
         self._current_mesh = mesh
 
-    def load_mesh(
-        self, module_path: str | None = None
-    ) -> Generator[Trimesh, None, None]:
-        self.current_mesh = None
+    def load_mesh(self, module_path: str | None = None):
+        self._current_mesh = None
         if module_path is None:
             module_path = self._last_module_path
         if module_path is None:
@@ -49,24 +47,30 @@ class Controller:
             )
             self._last_module_path = module_path
         logger.info(f"Starting load of {module_path}")
-        t0 = time()
-        for i, mesh in enumerate(self._module_loader.run_function(module_path)):
-            self.current_mesh = mesh
-            logger.info(f"Loading mesh #{i + 1}")
-            yield mesh
-        t1 = time()
-        logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
+
+        self._loader_process = Process(
+            target=load, args=(module_path, self._loader_queue)
+        )
+
+        self._loader_process.start()
+
+    def check_load_queue(self) -> tuple[list[Trimesh] | Trimesh | None, bool]:
+        try:
+            mesh = self._loader_queue.get_nowait()
+            self._current_mesh = mesh
+        except queue.Empty:
+            mesh = None
+        return (mesh, not self._loader_process.is_alive())
 
     def export(self, file_path: str):
-        if not self.current_mesh:
+        if not self._current_mesh:
             logger.info("No mesh to export")
             return
-        if isinstance(self.current_mesh, list):
-            export_mesh = (  # pyright: ignore[reportUnknownVariableType]
-                self.current_mesh[-1]
-            )
+        if isinstance(self._current_mesh, list):
+            export_mesh = self._current_mesh[-1]
+
         else:
-            export_mesh = self.current_mesh
+            export_mesh = self._current_mesh
         self._last_export_path = file_path
         export_mesh.export(file_path)
 

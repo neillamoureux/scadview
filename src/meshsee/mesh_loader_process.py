@@ -1,12 +1,19 @@
+import logging
 import queue
 from multiprocessing import Queue
-from typing import Any
+from typing import Any, Generator
+from time import time
 
 from manifold3d import Manifold
 from trimesh import Trimesh
 
 from meshsee.api.utils import manifold_to_trimesh
-from meshsee.controller import Controller
+from meshsee.module_loader import ModuleLoader
+
+logger = logging.getLogger(__name__)
+
+
+CREATE_MESH_FUNCTION_NAME = "create_mesh"
 
 
 class MpMeshQueue:
@@ -49,7 +56,7 @@ class MpMeshQueue:
 
 
 def load(file_path: str, mesh_queue: MpMeshQueue):
-    for mesh in Controller().load_mesh(file_path):
+    for mesh in run_mesh_module(file_path):
         if isinstance(mesh, Manifold):
             mesh2 = manifold_to_trimesh(mesh)
         else:
@@ -65,4 +72,12 @@ def load(file_path: str, mesh_queue: MpMeshQueue):
                 except queue.Empty:
                     pass
 
-    # mesh_queue.put_none()  # Sentinel to indicate end of loading
+
+def run_mesh_module(module_path: str | None = None) -> Generator[Trimesh, None, None]:
+    module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
+    t0 = time()
+    for i, mesh in enumerate(module_loader.run_function(module_path)):
+        logger.info(f"Loading mesh #{i + 1}")
+        yield mesh
+    t1 = time()
+    logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")

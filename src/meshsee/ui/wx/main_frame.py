@@ -1,12 +1,11 @@
-import queue
-from multiprocessing import Process
-
 import wx
 
 from meshsee.controller import Controller
-from meshsee.mesh_loader_process import MpMeshQueue, load
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.moderngl_widget import create_graphics_widget
+
+LOAD_CHECK_INTERVAL_MS = 10
+INITIAL_FRAME_SIZE = (900, 600)
 
 
 class Action:
@@ -78,7 +77,7 @@ class MainFrame(wx.Frame):
         controller: Controller,
         gl_widget_adapter: GlWidgetAdapter,
     ):
-        super().__init__(None, title="Meshsee", size=(900, 600))
+        super().__init__(None, title="Meshsee", size=wx.Size(*INITIAL_FRAME_SIZE))
         self._controller = controller
         panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(panel, gl_widget_adapter)
@@ -107,6 +106,11 @@ class MainFrame(wx.Frame):
         panel.SetSizer(root)
         self.make_menu_bar()
 
+        self._loader_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_load_timer, self._loader_timer)
+        self._loader_first_mesh = True
+        self._loader_load_completed = False
+
     def on_load(self, _):
         with wx.FileDialog(
             self,
@@ -115,26 +119,20 @@ class MainFrame(wx.Frame):
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
-                q = MpMeshQueue()
-                p = Process(target=load, args=(dlg.GetPath(), q))
-                p.start()
-                load_completed = False
-                first_mesh = True
-                while not load_completed:
-                    try:
-                        mesh = q.get_nowait()
-                        self._gl_widget.load_mesh(mesh, "loaded mesh")
-                        if first_mesh:
-                            first_mesh = False
-                            self._gl_widget.frame()
-                    except queue.Empty:
-                        if not p.is_alive():
-                            load_completed = True
-                p.join()
+                self._controller.load_mesh(dlg.GetPath())
+                self._load_completed = False
+                self._loader_first_mesh = True
+                self._loader_timer.Start(30)
 
-                # for mesh in self._controller.load_mesh(dlg.GetPath()):
-                #     self._gl_widget.load_mesh(mesh, "test")
-                #     self._gl_widget.frame()
+    def on_load_timer(self, _):
+        mesh, self._load_completed = self._controller.check_load_queue()
+        if self._load_completed:
+            self._loader_timer.Stop()
+        if mesh is not None:
+            self._gl_widget.load_mesh(mesh, "loaded mesh")
+            if self._loader_first_mesh:
+                self._loader_first_mesh = False
+                self._gl_widget.frame()
 
     def make_menu_bar(self):
         file_menu = wx.Menu()

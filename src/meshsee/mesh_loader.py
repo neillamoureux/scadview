@@ -92,7 +92,7 @@ class MeshLoader:
             return
         try:
             logger.debug(f"About to load {self._file_path}")
-            for mesh in self._controller.load_mesh(self._file_path):
+            for mesh in self._controller.run_mesh_module(self._file_path):
                 logger.debug(
                     f"In load iteration.  _stop_requested is {self._stop_requested}"
                 )
