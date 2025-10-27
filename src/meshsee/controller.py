@@ -24,7 +24,9 @@ class Controller:
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._last_module_path = None
         self._last_export_path = None
-        self._loader_queue: MpMeshQueue = MpMeshQueue()
+        self._loader_queue: MpMeshQueue = MpMeshQueue(
+            maxsize=1, type_=Trimesh | list[Trimesh]
+        )
         self._loader_process: Process | None = None
 
     @property

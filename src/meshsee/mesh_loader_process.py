@@ -1,7 +1,7 @@
 import logging
 import queue
 from multiprocessing import Queue
-from typing import Any, Generator
+from typing import Any, Generator, Generic, TypeVar, Type
 from time import time
 
 from manifold3d import Manifold
@@ -15,44 +15,39 @@ logger = logging.getLogger(__name__)
 
 CREATE_MESH_FUNCTION_NAME = "create_mesh"
 
+T = TypeVar("T")
 
-class MpMeshQueue:
+
+class MpQueue(Generic[T]):
     """
-    Wrapper around queue to ensure only Trimesh is in the queue
+    Wrapper around queue to ensure only T is in the queue
     """
 
-    def __init__(self):
-        self._queue = Queue(maxsize=1)
+    def __init__(self, maxsize: int, type_: Type[T]):
+        self._queue = Queue(maxsize=maxsize)
+        self._type = type_
 
-    def get_nowait(self) -> Trimesh | list[Trimesh]:
-        mesh = self._queue.get_nowait()  # type: ignore[reportUnknowVariableType] - can't resolve
-        mesh = self._check_mesh_type(mesh)
-        return mesh
+    def get_nowait(self) -> T:
+        item = self._queue.get_nowait()  # type: ignore[reportUnknowVariableType] - can't resolve
+        item = self._check_type(item)
+        return item
 
-    def put_nowait(self, mesh: Trimesh):
-        return self._queue.put_nowait(mesh)
+    def put_nowait(self, item: T):
+        return self._queue.put_nowait(item)
 
     def put_none(self, timeout: float | None = None):
         return self._queue.put(None, timeout=timeout)
 
-    def empty(self) -> bool:
-        return self._queue.empty()
-
-    def get(self) -> Trimesh:
+    def get(self) -> T:
         return self._queue.get()  # type: ignore[reportUnknowVariableType] - can't resolve
 
-    def _check_mesh_type(self, mesh: Any) -> Trimesh | list[Trimesh]:
-        if isinstance(mesh, Trimesh):
-            return mesh
-        if isinstance(mesh, list):
-            if len(mesh) > 0:  # type: ignore[reportUnknownArgumentType] - can't resolve
-                if all([isinstance(mesh_item, Trimesh) for mesh_item in mesh]):  # type: ignore[reportUnknownVariableType] - can't resolve
-                    return mesh  # type: ignore[reportUnknownVariableType] - can't resolve
-            else:
-                raise ValueError("The mesh is an empty list")
-        raise ValueError(
-            f"The mesh is not a Trimesh or a list of Trimesh, it is a {type(mesh)}"  # type: ignore[reportUnknownArgumentType] - can't resolve
-        )
+    def _check_type(self, item: Any) -> T:
+        if isinstance(item, self._type):
+            return item
+        raise ValueError(f"The item is not of type {self._type}, it is a {type(item)}")
+
+
+MpMeshQueue = MpQueue[Trimesh | list[Trimesh]]
 
 
 def load(file_path: str, mesh_queue: MpMeshQueue):
