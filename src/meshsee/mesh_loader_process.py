@@ -3,7 +3,7 @@ import queue
 from threading import Thread
 from multiprocessing import Queue
 from time import time, sleep
-from typing import Any, Generator, Generic, Type, TypeVar
+from typing import Any, Generator, Generic, Type, TypeVar, Callable, Protocol
 
 from manifold3d import Manifold
 from trimesh import Trimesh
@@ -29,21 +29,21 @@ class MpQueue(Generic[T]):
         self._type = type_
 
     def get_nowait(self) -> T:
-        item = self._queue.get_nowait()  # type: ignore[reportUnknowVariableType] - can't resolve
-        item = self._check_type(item)
-        return item
+        return self.get(False)
 
     def put_nowait(self, item: T):
-        return self._queue.put_nowait(item)
+        return self._queue.put(item, False)
 
     def put(self, item: T, block: bool = True, timeout: float | None = None):
+        item = self._check_type(item)
         return self._queue.put(item, block=block, timeout=timeout)
 
-    def put_none(self, timeout: float | None = None):
-        return self._queue.put(None, timeout=timeout)
+    # def put_none(self, timeout: float | None = None):
+    #     return self._queue.put(None, timeout=timeout)
 
-    def get(self) -> T:
-        return self._queue.get()  # type: ignore[reportUnknowVariableType] - can't resolve
+    def get(self, block: bool = True, timeout: float | None = None) -> T:
+        item = self._queue.get(block=block, timeout=timeout)  # type: ignore[reportUnknowVariableType] - can't resolve
+        return self._check_type(item)
 
     def _check_type(self, item: Any) -> T:
         if isinstance(item, self._type):
@@ -72,17 +72,7 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
-
-
-class Mesh:
-    def __init__(self, value: MeshType):
-        self._value = value
-
-    def __getattribute__(self, name: str):
-        return getattr(self, name)
-
-
-MpMeshQueue = MpQueue[Mesh]
+MpMeshQueue = MpQueue[MeshType]
 MpCommandQueue = MpQueue[Command]
 
 
