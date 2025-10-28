@@ -26,7 +26,6 @@ def export_formats() -> list[str]:
 
 
 class Controller:
-
     def __init__(self):
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._last_module_path = None
