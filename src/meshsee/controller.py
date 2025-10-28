@@ -1,7 +1,6 @@
 import logging
 import os
 import queue
-from multiprocessing import Process
 
 from trimesh import Trimesh
 from trimesh.exchange import export
@@ -9,11 +8,11 @@ from trimesh.exchange import export
 from meshsee.mesh_loader_process import (
     Command,
     LoadMeshCommand,
+    MeshLoaderProcess,
+    MeshType,
     MpCommandQueue,
     MpMeshQueue,
-    MeshType,
     ShutDownCommand,
-    run_loader,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,8 +33,8 @@ class Controller:
         self._last_export_path = None
         self._loader_queue: MpMeshQueue = MpMeshQueue(maxsize=1, type_=MeshType)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
-        self._loader_process = Process(
-            target=run_loader, args=(self._command_queue, self._loader_queue)
+        self._loader_process = MeshLoaderProcess(
+            self._command_queue, self._loader_queue
         )
         self._loader_process.start()
 
@@ -94,5 +93,3 @@ class Controller:
     def __del__(self):
         self._command_queue.put(ShutDownCommand())
         self._loader_process.terminate()
-        # self._loader_process.join()
-        # self._loader_process.close()
