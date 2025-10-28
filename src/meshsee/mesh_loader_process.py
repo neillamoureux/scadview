@@ -1,8 +1,9 @@
 import logging
 import queue
+from threading import Thread
 from multiprocessing import Queue
-from typing import Any, Generator, Generic, TypeVar, Type
-from time import time
+from time import time, sleep
+from typing import Any, Generator, Generic, Type, TypeVar
 
 from manifold3d import Manifold
 from trimesh import Trimesh
@@ -35,6 +36,9 @@ class MpQueue(Generic[T]):
     def put_nowait(self, item: T):
         return self._queue.put_nowait(item)
 
+    def put(self, item: T, block: bool = True, timeout: float | None = None):
+        return self._queue.put(item, block=block, timeout=timeout)
+
     def put_none(self, timeout: float | None = None):
         return self._queue.put(None, timeout=timeout)
 
@@ -46,26 +50,114 @@ class MpQueue(Generic[T]):
             return item
         raise ValueError(f"The item is not of type {self._type}, it is a {type(item)}")
 
+    def close(self):
+        self._queue.close()
 
-MpMeshQueue = MpQueue[Trimesh | list[Trimesh]]
+
+class Command:
+    pass
 
 
-def load(file_path: str, mesh_queue: MpMeshQueue):
-    for mesh in run_mesh_module(file_path):
-        if isinstance(mesh, Manifold):
-            mesh2 = manifold_to_trimesh(mesh)
-        else:
-            mesh2 = mesh
-        mesh_put = False
-        while not mesh_put:  # tends to be race conditions between full and empty
-            try:
-                mesh_queue.put_nowait(mesh2)
-                mesh_put = True
-            except queue.Full:
+class LoadMeshCommand(Command):
+    def __init__(self, module_path: str):
+        self.module_path = module_path
+
+
+class CancelLoadCommand(Command):
+    pass
+
+
+class ShutDownCommand(Command):
+    pass
+
+
+MeshType = Trimesh | list[Trimesh]
+
+
+class Mesh:
+    def __init__(self, value: MeshType):
+        self._value = value
+
+    def __getattribute__(self, name: str):
+        return getattr(self, name)
+
+
+MpMeshQueue = MpQueue[Mesh]
+MpCommandQueue = MpQueue[Command]
+
+
+class LoadWorker(Thread):
+    def __init__(self, module_path: str, mesh_queue: MpMeshQueue):
+        super().__init__()
+        self.module_path = module_path
+        self.mesh_queue = mesh_queue
+        self.cancelled = False
+
+    def run(self):
+        self.load()
+
+    def load(self):
+        for mesh in run_mesh_module(self.module_path):
+            if self.cancelled:
+                logger.info("LoadWorker cancelled, stopping load")
+                return
+            if isinstance(mesh, Manifold):
+                mesh2 = manifold_to_trimesh(mesh)
+            else:
+                mesh2 = mesh
+            mesh_put = False
+            while not mesh_put:  # tends to be race conditions between full and empty
+                if self.cancelled:
+                    logger.info("LoadWorker cancelled, stopping load")
+                    return
                 try:
-                    _ = mesh_queue.get_nowait()
-                except queue.Empty:
-                    pass
+                    self.mesh_queue.put_nowait(mesh2)
+                    mesh_put = True
+                except queue.Full:
+                    try:
+                        _ = self.mesh_queue.get_nowait()
+                    except queue.Empty:
+                        pass
+
+    def cancel(self):
+        self.cancelled = True
+
+
+def run_loader(command_queue: MpCommandQueue, mesh_queue: MpMeshQueue):
+    worker = None
+    while True:
+        sleep(0.1)
+        try:
+            command = command_queue.get_nowait()
+        except queue.Empty:
+            continue
+        if isinstance(command, LoadMeshCommand):
+            if worker is not None and worker.is_alive():
+                logger.info("Previous load still in progress, cancelling it")
+                worker.cancel()
+                worker.join()
+            logger.info(f"Loading mesh from {command.module_path}")
+            worker = LoadWorker(command.module_path, mesh_queue)
+            worker.start()
+        elif isinstance(command, CancelLoadCommand):
+            logger.info("Load cancelled")
+            if worker is not None and worker.is_alive():
+                logger.info("Previous load still in progress, cancelling it")
+                worker.cancel()
+                worker.join()
+                worker = None
+            continue
+        elif isinstance(command, ShutDownCommand):
+            logger.info("Shutting down loader process")
+            if worker is not None and worker.is_alive():
+                logger.info("Previous load still in progress, cancelling it")
+                worker.cancel()
+                worker.join()
+                command_queue.close()
+                mesh_queue.close()
+            return
+        else:
+            logger.warning(f"Unknown command received: {command}")
 
 
 def run_mesh_module(module_path: str | None = None) -> Generator[Trimesh, None, None]:

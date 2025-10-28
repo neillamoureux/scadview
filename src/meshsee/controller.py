@@ -1,12 +1,20 @@
 import logging
 import os
+import queue
+from multiprocessing import Process
 
 from trimesh import Trimesh
 from trimesh.exchange import export
 
-from multiprocessing import Process
-import queue
-from meshsee.mesh_loader_process import MpMeshQueue, load
+from meshsee.mesh_loader_process import (
+    Command,
+    LoadMeshCommand,
+    MpCommandQueue,
+    MpMeshQueue,
+    MeshType,
+    ShutDownCommand,
+    run_loader,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +32,12 @@ class Controller:
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._last_module_path = None
         self._last_export_path = None
-        self._loader_queue: MpMeshQueue = MpMeshQueue(
-            maxsize=1, type_=Trimesh | list[Trimesh]
+        self._loader_queue: MpMeshQueue = MpMeshQueue(maxsize=1, type_=MeshType)
+        self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
+        self._loader_process = Process(
+            target=run_loader, args=(self._command_queue, self._loader_queue)
         )
-        self._loader_process: Process | None = None
+        self._loader_process.start()
 
     @property
     def current_mesh(self) -> list[Trimesh] | Trimesh | None:
@@ -49,12 +59,7 @@ class Controller:
             )
             self._last_module_path = module_path
         logger.info(f"Starting load of {module_path}")
-
-        self._loader_process = Process(
-            target=load, args=(module_path, self._loader_queue)
-        )
-
-        self._loader_process.start()
+        self._command_queue.put(LoadMeshCommand(module_path))
 
     def check_load_queue(self) -> tuple[list[Trimesh] | Trimesh | None, bool]:
         try:
@@ -85,3 +90,9 @@ class Controller:
                 os.path.splitext(os.path.basename(self._last_module_path))[0],
             )
         raise ValueError("No module loaded")
+
+    def __del__(self):
+        self._command_queue.put(ShutDownCommand())
+        self._loader_process.terminate()
+        # self._loader_process.join()
+        # self._loader_process.close()

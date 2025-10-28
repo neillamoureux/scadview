@@ -79,6 +79,7 @@ class MainFrame(wx.Frame):
     ):
         super().__init__(None, title="Meshsee", size=wx.Size(*INITIAL_FRAME_SIZE))
         self._controller = controller
+        self.Bind(wx.EVT_CLOSE, self.on_close)
         panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(panel, gl_widget_adapter)
 
@@ -122,7 +123,7 @@ class MainFrame(wx.Frame):
                 self._controller.load_mesh(dlg.GetPath())
                 self._load_completed = False
                 self._loader_first_mesh = True
-                self._loader_timer.Start(30)
+                self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
     def on_load_timer(self, _):
         mesh, self._load_completed = self._controller.check_load_queue()
@@ -148,3 +149,8 @@ class MainFrame(wx.Frame):
 
     def on_toggle_grid(self, _):
         self._gl_widget.toggle_grid()
+
+    def on_close(self, _):
+        self._loader_timer.Stop()
+        del self._controller
+        self.Destroy()
