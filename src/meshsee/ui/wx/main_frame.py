@@ -1,11 +1,13 @@
 import logging
 
 import wx
+from typing import Callable
+
 
 from meshsee.controller import Controller
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.moderngl_widget import create_graphics_widget
+from meshsee.ui.wx.moderngl_widget import create_graphics_widget, ModernglWidget
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +116,6 @@ class MainFrame(wx.Frame):
 
         self._loader_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_load_timer, self._loader_timer)
-        self._loader_first_mesh = True
         self._loader_load_completed = False
         self._loader_last_load_number = 0
         self._loader_last_sequence_number = 0
