@@ -1,8 +1,15 @@
+import logging
+
 import wx
+from typing import Callable
+
 
 from meshsee.controller import Controller
+from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.moderngl_widget import create_graphics_widget
+from meshsee.ui.wx.moderngl_widget import create_graphics_widget, ModernglWidget
+
+logger = logging.getLogger(__name__)
 
 LOAD_CHECK_INTERVAL_MS = 10
 INITIAL_FRAME_SIZE = (900, 600)
@@ -109,8 +116,9 @@ class MainFrame(wx.Frame):
 
         self._loader_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_load_timer, self._loader_timer)
-        self._loader_first_mesh = True
         self._loader_load_completed = False
+        self._loader_last_load_number = 0
+        self._loader_last_sequence_number = 0
 
     def on_load(self, _):
         with wx.FileDialog(
@@ -121,19 +129,31 @@ class MainFrame(wx.Frame):
         ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 self._controller.load_mesh(dlg.GetPath())
-                self._load_completed = False
-                self._loader_first_mesh = True
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
     def on_load_timer(self, _):
-        mesh, self._load_completed = self._controller.check_load_queue()
-        if self._load_completed:
+        load_result = self._controller.check_load_queue()
+        mesh = load_result.mesh
+        if load_result.complete:
             self._loader_timer.Stop()
-        if mesh is not None:
-            self._gl_widget.load_mesh(mesh, "loaded mesh")
-            if self._loader_first_mesh:
-                self._loader_first_mesh = False
+        if load_result.error:
+            logger.error(load_result.error)
+        if self._has_mesh_changed(load_result):
+            if mesh is not None:  # Keep the type checker happy
+                self._gl_widget.load_mesh(mesh, "loaded mesh")
+            if self._is_first_in_load(load_result):
                 self._gl_widget.frame()
+            self._loader_last_load_number = load_result.load_number
+            self._loader_last_sequence_number = load_result.sequence_number
+
+    def _has_mesh_changed(self, load_result: LoadResult) -> bool:
+        return load_result.mesh is not None and (
+            self._loader_last_load_number != load_result.load_number
+            or self._loader_last_sequence_number != load_result.sequence_number
+        )
+
+    def _is_first_in_load(self, load_result: LoadResult) -> bool:
+        return self._loader_last_load_number != load_result.load_number
 
     def make_menu_bar(self):
         file_menu = wx.Menu()
