@@ -9,9 +9,9 @@ from meshsee.mesh_loader_process import (
     Command,
     LoadMeshCommand,
     MeshLoaderProcess,
-    MeshType,
+    LoadResult,
     MpCommandQueue,
-    MpMeshQueue,
+    MpLoadQueue,
     ShutDownCommand,
 )
 
@@ -30,20 +30,10 @@ class Controller:
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._last_module_path = None
         self._last_export_path = None
-        self._loader_queue: MpMeshQueue = MpMeshQueue(maxsize=1, type_=MeshType)
+        self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
-        self._loader_process = MeshLoaderProcess(
-            self._command_queue, self._loader_queue
-        )
+        self._loader_process = MeshLoaderProcess(self._command_queue, self._load_queue)
         self._loader_process.start()
-
-    @property
-    def current_mesh(self) -> list[Trimesh] | Trimesh | None:
-        return self._current_mesh
-
-    @current_mesh.setter
-    def current_mesh(self, mesh: Trimesh | None):
-        self._current_mesh = mesh
 
     def load_mesh(self, module_path: str | None = None):
         self._current_mesh = None
@@ -59,13 +49,14 @@ class Controller:
         logger.info(f"Starting load of {module_path}")
         self._command_queue.put(LoadMeshCommand(module_path))
 
-    def check_load_queue(self) -> tuple[list[Trimesh] | Trimesh | None, bool]:
+    def check_load_queue(self) -> LoadResult:
         try:
-            mesh = self._loader_queue.get_nowait()
-            self._current_mesh = mesh
+            load_result = self._load_queue.get_nowait()
+            if load_result.mesh is not None:
+                self._current_mesh = load_result.mesh
         except queue.Empty:
-            mesh = None
-        return (mesh, not self._loader_process.is_alive())
+            load_result = LoadResult(0, 0, None, None, False)
+        return load_result
 
     def export(self, file_path: str):
         if not self._current_mesh:

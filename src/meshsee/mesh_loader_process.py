@@ -10,6 +10,7 @@ from trimesh import Trimesh
 
 from meshsee.api.utils import manifold_to_trimesh
 from meshsee.module_loader import ModuleLoader
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -69,42 +70,83 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
-MpMeshQueue = MpQueue[MeshType]
+
+
+@dataclass
+class LoadResult:
+    load_number: int
+    sequence_number: int
+    mesh: MeshType | None
+    error: Exception | None
+    complete: bool = False
+
+
+MpLoadQueue = MpQueue[LoadResult]
 MpCommandQueue = MpQueue[Command]
 
 
 class LoadWorker(Thread):
-    def __init__(self, module_path: str, mesh_queue: MpMeshQueue):
+    load_number = 0
+
+    def __init__(self, module_path: str, load_queue: MpLoadQueue):
         super().__init__()
         self.module_path = module_path
-        self.mesh_queue = mesh_queue
+        self.load_queue = load_queue
         self.cancelled = False
 
     def run(self):
+        LoadWorker.load_number += 1
         self.load()
 
     def load(self):
-        for mesh in run_mesh_module(self.module_path):
-            if self.cancelled:
-                logger.info("LoadWorker cancelled, stopping load")
-                return
-            if isinstance(mesh, Manifold):
-                mesh2 = manifold_to_trimesh(mesh)
-            else:
-                mesh2 = mesh
-            mesh_put = False
-            while not mesh_put:  # tends to be race conditions between full and empty
+        sequence_number = 0
+        last_mesh = None
+        try:
+            for mesh in self.run_mesh_module():
+                sequence_number += 1
                 if self.cancelled:
                     logger.info("LoadWorker cancelled, stopping load")
                     return
+                if isinstance(mesh, Manifold):
+                    mesh2 = manifold_to_trimesh(mesh)
+                else:
+                    mesh2 = mesh
+                last_mesh = mesh2
+                self.put_in_queue(
+                    LoadResult(self.load_number, sequence_number, mesh2, None)
+                )
+        except Exception as e:
+            self.put_in_queue(
+                LoadResult(self.load_number, sequence_number, last_mesh, e, True)
+            )
+            return
+        self.put_in_queue(
+            LoadResult(self.load_number, sequence_number, last_mesh, None, True)
+        )
+
+    def put_in_queue(self, result: LoadResult):
+        result_put = False
+        while not result_put:  # tends to be race conditions between full and empty
+            if self.cancelled:
+                logger.info("LoadWorker cancelled, stopping load")
+                return
+            try:
+                self.load_queue.put_nowait(result)
+                result_put = True
+            except queue.Full:
                 try:
-                    self.mesh_queue.put_nowait(mesh2)
-                    mesh_put = True
-                except queue.Full:
-                    try:
-                        _ = self.mesh_queue.get_nowait()
-                    except queue.Empty:
-                        pass
+                    _ = self.load_queue.get_nowait()
+                except queue.Empty:
+                    pass
+
+    def run_mesh_module(self) -> Generator[MeshType, None, None]:
+        module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
+        t0 = time()
+        for i, mesh in enumerate(module_loader.run_function(self.module_path)):
+            logger.info(f"Loading mesh #{i + 1}")
+            yield mesh
+        t1 = time()
+        logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
 
     def cancel(self):
         self.cancelled = True
@@ -113,10 +155,10 @@ class LoadWorker(Thread):
 class MeshLoaderProcess(Process):
     COMMAND_QUEUE_CHECK_INTERVAL = 0.1
 
-    def __init__(self, command_queue: MpCommandQueue, mesh_queue: MpMeshQueue):
+    def __init__(self, command_queue: MpCommandQueue, load_queue: MpLoadQueue):
         super().__init__()
         self._command_queue = command_queue
-        self._mesh_queue = mesh_queue
+        self._load_queue = load_queue
         self._worker: LoadWorker | None = None
 
     def run(self):
@@ -129,7 +171,7 @@ class MeshLoaderProcess(Process):
             if isinstance(command, LoadMeshCommand):
                 self.cancel()
                 logger.info(f"Loading mesh from {command.module_path}")
-                self._worker = LoadWorker(command.module_path, self._mesh_queue)
+                self._worker = LoadWorker(command.module_path, self._load_queue)
                 self._worker.start()
             elif isinstance(command, CancelLoadCommand):
                 logger.info("Load cancelled")
@@ -148,15 +190,5 @@ class MeshLoaderProcess(Process):
             self._worker.cancel()
         if close_queues:
             self._command_queue.close()
-            self._mesh_queue.close()
+            self._load_queue.close()
         self._worker = None
-
-
-def run_mesh_module(module_path: str | None = None) -> Generator[Trimesh, None, None]:
-    module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
-    t0 = time()
-    for i, mesh in enumerate(module_loader.run_function(module_path)):
-        logger.info(f"Loading mesh #{i + 1}")
-        yield mesh
-    t1 = time()
-    logger.info(f"Load {module_path} took {(t1 - t0) * 1000:.1f}ms")
