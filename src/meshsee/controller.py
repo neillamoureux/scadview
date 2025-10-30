@@ -8,8 +8,8 @@ from trimesh.exchange import export
 from meshsee.mesh_loader_process import (
     Command,
     LoadMeshCommand,
-    MeshLoaderProcess,
     LoadResult,
+    MeshLoaderProcess,
     MpCommandQueue,
     MpLoadQueue,
     ShutDownCommand,
