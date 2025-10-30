@@ -6,7 +6,7 @@ from meshsee.controller import Controller
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction
-from meshsee.ui.wx.moderngl_widget import create_graphics_widget
+from meshsee.ui.wx.gl_widget import create_graphics_widget
 
 logger = logging.getLogger(__name__)
 

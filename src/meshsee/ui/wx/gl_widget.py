@@ -19,12 +19,12 @@ from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 def create_graphics_widget(
     parent: wx.Window, gl_widget_adapter: GlWidgetAdapter
-) -> ModernglWidget:
-    gl_widget = ModernglWidget(parent, gl_widget_adapter)
+) -> GlWidget:
+    gl_widget = GlWidget(parent, gl_widget_adapter)
     return gl_widget
 
 
-class ModernglWidget(GLCanvas):
+class GlWidget(GLCanvas):
     def __init__(self, parent: wx.Window, gl_widget_adapter: GlWidgetAdapter):
         attribs = [
             WX_GL_CORE_PROFILE,
