@@ -103,30 +103,48 @@ class ChoiceAction:
         self._initial_value = initial_value
         self._id: int = wx.NewIdRef()
         self._radio_buttons: list[wx.RadioButton] = []
+        self._menu_items: list[wx.MenuItem] = []
 
     def _on_value_change(self, value: str):
         for rb, v in zip(self._radio_buttons, self._values):
             rb.SetValue(v == value)
+        for item, v in zip(self._menu_items, self._values):
+            item.Check(v == value)
+
+    def menu_items(self, menu: wx.Menu) -> list[wx.MenuItem]:
+        for label, value in zip(self._labels, self._values):
+            item = menu.AppendRadioItem(id=wx.ID_ANY, item=label)
+            item.Check(self._initial_value == value)
+            menu.Bind(wx.EVT_MENU, self._update_value_from_menu, item)
+            self._menu_items.append(item)
+        return self._menu_items
 
     def radio_buttons(self, parent: wx.Window) -> list[wx.RadioButton]:
         self._radio_buttons: list[wx.RadioButton] = []
         first = True
         for label, value in zip(self._labels, self._values):
             if first:
-                rb = wx.RadioButton(parent, id=self._id, label=label, style=wx.RB_GROUP)
+                rb = wx.RadioButton(parent, label=label, style=wx.RB_GROUP)
             else:
-                rb = wx.RadioButton(parent, id=self._id, label=label)
+                rb = wx.RadioButton(parent, label=label)
             rb.SetValue(value == self._initial_value)
             rb.Bind(
                 wx.EVT_RADIOBUTTON,
-                self._update_value,
+                self._update_value_from_radio_button,
             )
             self._radio_buttons.append(rb)
         return self._radio_buttons
 
-    def _update_value(self, e: wx.CommandEvent):
+    def _update_value_from_radio_button(self, e: wx.CommandEvent):
         for label, value in zip(self._labels, self._values):
             if label == e.GetEventObject().GetLabel():
+                self._callback(e, value)
+
+    def _update_value_from_menu(self, e: wx.CommandEvent):
+        event_item_id = e.GetId()
+        for item, value in zip(self._menu_items, self._values):
+            item_id = item.GetId()
+            if e.IsChecked() and event_item_id == item_id:
                 self._callback(e, value)
 
 
@@ -234,6 +252,8 @@ class MainFrame(wx.Frame):
             self._toggle_grid_action,
         ]:
             action.menu_item(view_menu)
+
+        self._toggle_camera_action.menu_items(view_menu)
         return view_menu
 
     def on_load(self, _: wx.Event):
