@@ -46,14 +46,7 @@ class ModernglWidget(GLCanvas):
         super().__init__(parent, attribList=attribs)
         self._gl_widget_adapter = gl_widget_adapter
 
-        # prevent background erase flicker on some platforms
-        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
-
         self.ctx_wx = GLContext(self)  # native GL context
-        self.ctx_mgl = None  # ModernGL context (lazy)
-        self.prog = None
-        self.vbo = None
-        self.vao = None
 
         self.Bind(wx.EVT_PAINT, self.on_paint)
         self.Bind(wx.EVT_SIZE, self.on_size)
@@ -82,8 +75,12 @@ class ModernglWidget(GLCanvas):
 
     def on_size(self, _evt: wx.SizeEvent):
         # Just schedule a repaint; set viewport during paint when context is current.
-        size = self.GetClientSize()
-        self._gl_widget_adapter.resize(size.width, size.height)
+        size: wx.Size = (  # pyright: ignore[reportUnknownVariableType]
+            self.GetClientSize()
+        )
+        self._gl_widget_adapter.resize(
+            size.width, size.height  # pyright: ignore[reportUnknownArgumentType]
+        )
         self.Refresh(False)
 
     def on_paint(self, _evt: wx.PaintEvent):
@@ -95,9 +92,14 @@ class ModernglWidget(GLCanvas):
         dc = wx.PaintDC(self)
         del dc
         self.SetCurrent(self.ctx_wx)
-        size = self.GetClientSize()
-        scale = self.GetContentScaleFactor()
-        self._gl_widget_adapter.render(scale * size.width, scale * size.height)
+        size = self.GetClientSize()  # pyright: ignore[reportUnknownVariableType]
+        scale = (  # pyright: ignore[reportUnknownVariableType]
+            self.GetContentScaleFactor()
+        )
+        self._gl_widget_adapter.render(
+            scale * size.width,  # pyright: ignore[reportUnknownArgumentType]
+            scale * size.height,  # pyright: ignore[reportUnknownArgumentType]
+        )
         self.SwapBuffers()
 
     def on_mouse_press_left(self, event: wx.MouseEvent):

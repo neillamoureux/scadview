@@ -165,9 +165,11 @@ class MainFrame(wx.Frame):
             "Load a python file",
             wildcard="Python files (*.py)|*.py",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-        ) as dlg:
+        ) as dlg:  # pyright: ignore[reportUnknownVariableType]
             if dlg.ShowModal() == wx.ID_OK:
-                self._controller.load_mesh(dlg.GetPath())
+                self._controller.load_mesh(
+                    dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
+                )
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
     def on_load_timer(self, _: wx.Event):
