@@ -63,6 +63,9 @@ class ModernglWidget(GLCanvas):
 
         self.on_camera_change = self._gl_widget_adapter.on_camera_change
         self.on_grid_change = self._gl_widget_adapter.on_grid_change
+        self.on_axes_change = self._gl_widget_adapter.on_axes_change
+        self.on_edges_change = self._gl_widget_adapter.on_edges_change
+        self.on_gnomon_change = self._gl_widget_adapter.on_gnomon_change
 
     @property
     def show_grid(self):
@@ -151,13 +154,25 @@ class ModernglWidget(GLCanvas):
         self._gl_widget_adapter.toggle_camera()
         self.Refresh(False)
 
+    @property
+    def show_axes(self) -> bool:
+        return self._gl_widget_adapter.show_axes
+
     def toggle_axes(self):
         self._gl_widget_adapter.toggle_axes()
         self.Refresh(False)
 
+    @property
+    def show_edges(self) -> bool:
+        return self._gl_widget_adapter.show_edges
+
     def toggle_edges(self):
         self._gl_widget_adapter.toggle_edges()
         self.Refresh(False)
+
+    @property
+    def show_gnomon(self) -> bool:
+        return self._gl_widget_adapter.show_gnomon
 
     def toggle_gnomon(self):
         self._gl_widget_adapter.toggle_gnomon()

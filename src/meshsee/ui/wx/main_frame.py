@@ -197,7 +197,7 @@ class MainFrame(wx.Frame):
         self._view_from_x_action = Action("X", lambda _: self._gl_widget.view_from_x())
         self._view_from_y_action = Action("Y", lambda _: self._gl_widget.view_from_y())
         self._view_from_z_action = Action("Z", lambda _: self._gl_widget.view_from_z())
-        self._toggle_camera_action = ChoiceAction(
+        self._select_camera_action = ChoiceAction(
             ["Perspective", "Orthogonal"],
             ["perspective", "orthogonal"],
             lambda _, value: self._set_camera_type(value),
@@ -210,6 +210,27 @@ class MainFrame(wx.Frame):
             self._gl_widget.show_grid,
             self._gl_widget.on_grid_change,
             "G",
+        )
+        self._toggle_axes_action = CheckableAction(
+            "Axes",
+            self.on_toggle_axes,
+            self._gl_widget.show_axes,
+            self._gl_widget.on_axes_change,
+            "A",
+        )
+        self._toggle_edges_action = CheckableAction(
+            "Edges",
+            self.on_toggle_edges,
+            self._gl_widget.show_edges,
+            self._gl_widget.on_edges_change,
+            "A",
+        )
+        self._toggle_gnonom_action = CheckableAction(
+            "Gnomon",
+            self.on_toggle_gnomon,
+            self._gl_widget.show_gnomon,
+            self._gl_widget.on_gnomon_change,
+            "A",
         )
 
     def _set_camera_type(self, cam_type: str):
@@ -233,8 +254,16 @@ class MainFrame(wx.Frame):
         chk = self._toggle_grid_action.checkbox(self._button_panel)
         self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
 
-        for rb in self._toggle_camera_action.radio_buttons(self._button_panel):
+        for rb in self._select_camera_action.radio_buttons(self._button_panel):
             self._panel_sizer.Add(rb, 0, wx.ALL | wx.EXPAND, 6)
+
+        for action in [
+            self._toggle_axes_action,
+            self._toggle_edges_action,
+            self._toggle_gnonom_action,
+        ]:
+            chk = action.checkbox(self._button_panel)
+            self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
 
     def _create_file_menu(self) -> wx.Menu:
         file_menu = wx.Menu()
@@ -253,7 +282,15 @@ class MainFrame(wx.Frame):
         ]:
             action.menu_item(view_menu)
 
-        self._toggle_camera_action.menu_items(view_menu)
+        self._select_camera_action.menu_items(view_menu)
+
+        for action in [
+            self._toggle_axes_action,
+            self._toggle_edges_action,
+            self._toggle_gnonom_action,
+        ]:
+            action.menu_item(view_menu)
+
         return view_menu
 
     def on_load(self, _: wx.Event):
@@ -293,6 +330,15 @@ class MainFrame(wx.Frame):
 
     def on_toggle_grid(self, _: wx.Event):
         self._gl_widget.toggle_grid()
+
+    def on_toggle_axes(self, _: wx.Event):
+        self._gl_widget.toggle_axes()
+
+    def on_toggle_edges(self, _: wx.Event):
+        self._gl_widget.toggle_edges()
+
+    def on_toggle_gnomon(self, _: wx.Event):
+        self._gl_widget.toggle_gnomon()
 
     def on_close(self, _: wx.Event):
         self._loader_timer.Stop()
