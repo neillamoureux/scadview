@@ -1,13 +1,14 @@
 import logging
 
 import wx
-from typing import Callable
+from typing import Any, Callable, TypeVar, Generic
 
 
 from meshsee.controller import Controller
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.moderngl_widget import create_graphics_widget, ModernglWidget
+from meshsee.ui.wx.moderngl_widget import create_graphics_widget
+from meshsee.observable import Observable
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +17,16 @@ INITIAL_FRAME_SIZE = (900, 600)
 
 
 class Action:
-    def __init__(self, label: str, callback, accelerator: str | None = None):
+    def __init__(
+        self,
+        label: str,
+        callback: Callable[[wx.Event], None],
+        accelerator: str | None = None,
+    ):
         self._label = label
         self._callback = callback
         self._accelerator = accelerator
-        self._id = wx.NewIdRef()
+        self._id: int = wx.NewIdRef()
 
     def button(self, parent: wx.Window) -> wx.Button:
         btn = wx.Button(parent, label=self._label, id=self._id)
@@ -45,19 +51,21 @@ class CheckableAction(Action):
     def __init__(
         self,
         label: str,
-        callback,
-        initial_state: bool = False,
+        callback: Callable[[wx.Event], None],
+        initial_state: bool,
+        on_state_change: Observable,
         accelerator: str | None = None,
     ):
         super().__init__(label, callback, accelerator)
-        self._state = initial_state
+        on_state_change.subscribe(self._on_state_change)
+        self._initial_state = initial_state
         self._menu_items: list[wx.MenuItem] = []
         self._checkboxes: list[wx.CheckBox] = []
 
-    def menu_item(self, menu):
+    def menu_item(self, menu: wx.Menu):
         label = self._menu_item_label()
         item = menu.AppendCheckItem(self._id, label)
-        item.Check(self._state)
+        item.Check(self._initial_state)
         menu.Bind(wx.EVT_MENU, self._update_state, item)
         self._menu_items.append(item)
         return item
@@ -65,17 +73,61 @@ class CheckableAction(Action):
     def checkbox(self, parent: wx.Window) -> wx.CheckBox:
         chk = wx.CheckBox(parent, label=self._label, id=self._id)
         chk.Bind(wx.EVT_CHECKBOX, self._update_state)
-        chk.SetValue(self._state)
+        chk.SetValue(self._initial_state)
         self._checkboxes.append(chk)
         return chk
 
-    def _update_state(self, event):
+    def _update_state(self, event: wx.Event):
         self._callback(event)
-        self._state = not self._state
+
+    def _on_state_change(self, state: bool):
         for item in self._menu_items:
-            item.Check(self._state)
+            item.Check(state)
         for chk in self._checkboxes:
-            chk.SetValue(self._state)
+            chk.SetValue(state)
+
+
+class ChoiceAction:
+    def __init__(
+        self,
+        labels: list[str],
+        values: list[str],
+        callback: Callable[[wx.CommandEvent, str], None],
+        initial_value: str,
+        on_value_change: Observable,
+    ):
+        on_value_change.subscribe(self._on_value_change)
+        self._labels = labels
+        self._values = values
+        self._callback = callback
+        self._initial_value = initial_value
+        self._id: int = wx.NewIdRef()
+        self._radio_buttons: list[wx.RadioButton] = []
+
+    def _on_value_change(self, value: str):
+        for rb, v in zip(self._radio_buttons, self._values):
+            rb.SetValue(v == value)
+
+    def radio_buttons(self, parent: wx.Window) -> list[wx.RadioButton]:
+        self._radio_buttons: list[wx.RadioButton] = []
+        first = True
+        for label, value in zip(self._labels, self._values):
+            if first:
+                rb = wx.RadioButton(parent, id=self._id, label=label, style=wx.RB_GROUP)
+            else:
+                rb = wx.RadioButton(parent, id=self._id, label=label)
+            rb.SetValue(value == self._initial_value)
+            rb.Bind(
+                wx.EVT_RADIOBUTTON,
+                self._update_value,
+            )
+            self._radio_buttons.append(rb)
+        return self._radio_buttons
+
+    def _update_value(self, e: wx.CommandEvent):
+        for label, value in zip(self._labels, self._values):
+            if label == e.GetEventObject().GetLabel():
+                self._callback(e, value)
 
 
 class MainFrame(wx.Frame):
@@ -87,32 +139,28 @@ class MainFrame(wx.Frame):
         super().__init__(None, title="Meshsee", size=wx.Size(*INITIAL_FRAME_SIZE))
         self._controller = controller
         self.Bind(wx.EVT_CLOSE, self.on_close)
-        panel = wx.Panel(self)
-        self._gl_widget = create_graphics_widget(panel, gl_widget_adapter)
+        self._button_panel = wx.Panel(self)
+        self._gl_widget = create_graphics_widget(self._button_panel, gl_widget_adapter)
 
-        self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
-        frame_btn = self._frame_action.button(panel)
+        self._create_file_actions()
+        self._create_view_actions()
 
-        self._load_action = Action("Load .py...", self.on_load, "L")
-        load_btn = self._load_action.button(panel)
-        load_btn.Bind(wx.EVT_BUTTON, self.on_load)
+        self._panel_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self._toggle_grid_action = CheckableAction(
-            "Grid", self.on_toggle_grid, self._gl_widget.show_grid, "G"
-        )
-        toggle_grid_chk = self._toggle_grid_action.checkbox(panel)
+        self._add_file_buttons()
+        self._add_view_buttons()
 
-        side = wx.BoxSizer(wx.VERTICAL)
-        side.Add(frame_btn, 0, wx.ALL | wx.EXPAND, 6)
-        side.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
-        side.Add(toggle_grid_chk, 0, wx.ALL | wx.EXPAND, 6)
-        side.AddStretchSpacer()
+        self._panel_sizer.AddStretchSpacer()
 
         root = wx.BoxSizer(wx.HORIZONTAL)
         root.Add(self._gl_widget, 1, wx.EXPAND | wx.ALL, 6)
-        root.Add(side, 0, wx.EXPAND | wx.ALL, 6)
-        panel.SetSizer(root)
-        self.make_menu_bar()
+        root.Add(self._panel_sizer, 0, wx.EXPAND | wx.ALL, 6)
+        self._button_panel.SetSizer(root)
+
+        menu_bar = wx.MenuBar()
+        menu_bar.Append(self._create_file_menu(), "File")
+        menu_bar.Append(self._create_view_menu(), "View")
+        self.SetMenuBar(menu_bar)
 
         self._loader_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_load_timer, self._loader_timer)
@@ -120,7 +168,75 @@ class MainFrame(wx.Frame):
         self._loader_last_load_number = 0
         self._loader_last_sequence_number = 0
 
-    def on_load(self, _):
+    def _create_file_actions(self):
+        self._load_action = Action("Load .py...", self.on_load, "L")
+
+    def _create_view_actions(self):
+        self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
+        self._view_from_xyz_action = Action(
+            "XYZ", lambda _: self._gl_widget.view_from_xyz()
+        )
+        self._view_from_x_action = Action("X", lambda _: self._gl_widget.view_from_x())
+        self._view_from_y_action = Action("Y", lambda _: self._gl_widget.view_from_y())
+        self._view_from_z_action = Action("Z", lambda _: self._gl_widget.view_from_z())
+        self._toggle_camera_action = ChoiceAction(
+            ["Perspective", "Orthogonal"],
+            ["perspective", "orthogonal"],
+            lambda _, value: self._set_camera_type(value),
+            self._gl_widget.camera_type,
+            self._gl_widget.on_camera_change,
+        )
+        self._toggle_grid_action = CheckableAction(
+            "Grid",
+            self.on_toggle_grid,
+            self._gl_widget.show_grid,
+            self._gl_widget.on_grid_change,
+            "G",
+        )
+
+    def _set_camera_type(self, cam_type: str):
+        self._gl_widget.camera_type = cam_type
+
+    def _add_file_buttons(self):
+        load_btn = self._load_action.button(self._button_panel)
+        self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
+
+    def _add_view_buttons(self):
+        for action in [
+            self._frame_action,
+            self._view_from_xyz_action,
+            self._view_from_x_action,
+            self._view_from_y_action,
+            self._view_from_z_action,
+        ]:
+            btn = action.button(self._button_panel)
+            self._panel_sizer.Add(btn, 0, wx.ALL | wx.EXPAND, 6)
+
+        chk = self._toggle_grid_action.checkbox(self._button_panel)
+        self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
+
+        for rb in self._toggle_camera_action.radio_buttons(self._button_panel):
+            self._panel_sizer.Add(rb, 0, wx.ALL | wx.EXPAND, 6)
+
+    def _create_file_menu(self) -> wx.Menu:
+        file_menu = wx.Menu()
+        self._load_action.menu_item(file_menu)
+        return file_menu
+
+    def _create_view_menu(self) -> wx.Menu:
+        view_menu = wx.Menu()
+        for action in [
+            self._frame_action,
+            self._view_from_xyz_action,
+            self._view_from_x_action,
+            self._view_from_y_action,
+            self._view_from_z_action,
+            self._toggle_grid_action,
+        ]:
+            action.menu_item(view_menu)
+        return view_menu
+
+    def on_load(self, _: wx.Event):
         with wx.FileDialog(
             self,
             "Load a python file",
@@ -131,7 +247,7 @@ class MainFrame(wx.Frame):
                 self._controller.load_mesh(dlg.GetPath())
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
-    def on_load_timer(self, _):
+    def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
         mesh = load_result.mesh
         if load_result.complete:
@@ -155,22 +271,10 @@ class MainFrame(wx.Frame):
     def _is_first_in_load(self, load_result: LoadResult) -> bool:
         return self._loader_last_load_number != load_result.load_number
 
-    def make_menu_bar(self):
-        file_menu = wx.Menu()
-        self._load_action.menu_item(file_menu)
-        view_menu = wx.Menu()
-        self._frame_action.menu_item(view_menu)
-        self._toggle_grid_action.menu_item(view_menu)
-
-        menuBar = wx.MenuBar()
-        menuBar.Append(file_menu, "&File")
-        menuBar.Append(view_menu, "&View")
-        self.SetMenuBar(menuBar)
-
-    def on_toggle_grid(self, _):
+    def on_toggle_grid(self, _: wx.Event):
         self._gl_widget.toggle_grid()
 
-    def on_close(self, _):
+    def on_close(self, _: wx.Event):
         self._loader_timer.Stop()
         del self._controller
         self.Destroy()

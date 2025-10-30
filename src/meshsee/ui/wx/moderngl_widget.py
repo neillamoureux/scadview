@@ -61,6 +61,9 @@ class ModernglWidget(GLCanvas):
         self.Bind(wx.EVT_LEFT_UP, self.on_mouse_release_left)
         self.Bind(wx.EVT_MOTION, self.on_mouse_move)
 
+        self.on_camera_change = self._gl_widget_adapter.on_camera_change
+        self.on_grid_change = self._gl_widget_adapter.on_grid_change
+
     @property
     def show_grid(self):
         return self._gl_widget_adapter.show_grid
@@ -117,4 +120,45 @@ class ModernglWidget(GLCanvas):
 
     def frame(self):
         self._gl_widget_adapter.frame()
+        self.Refresh(False)
+
+    def view_from_xyz(self):
+        self._gl_widget_adapter.view_from_xyz()
+        self.Refresh(False)
+
+    def view_from_x(self):
+        self._gl_widget_adapter.view_from_x()
+        self.Refresh(False)
+
+    def view_from_y(self):
+        self._gl_widget_adapter.view_from_y()
+        self.Refresh(False)
+
+    def view_from_z(self):
+        self._gl_widget_adapter.view_from_z()
+        self.Refresh(False)
+
+    @property
+    def camera_type(self) -> str:
+        return self._gl_widget_adapter.camera_type
+
+    @camera_type.setter
+    def camera_type(self, value: str):
+        self._gl_widget_adapter.camera_type = value
+        self.Refresh()
+
+    def toggle_camera(self):
+        self._gl_widget_adapter.toggle_camera()
+        self.Refresh(False)
+
+    def toggle_axes(self):
+        self._gl_widget_adapter.toggle_axes()
+        self.Refresh(False)
+
+    def toggle_edges(self):
+        self._gl_widget_adapter.toggle_edges()
+        self.Refresh(False)
+
+    def toggle_gnomon(self):
+        self._gl_widget_adapter.toggle_gnomon()
         self.Refresh(False)

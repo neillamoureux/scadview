@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
 
+from meshsee.observable import Observable
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
 
@@ -20,9 +21,11 @@ class GlWidgetAdapter:
         self._gl_initialized = False
         self._orbiting = False
         self.show_axes = True
+        self.on_grid_change = Observable()
         self.show_grid = False
         self.show_edges = False
         self.show_gnomon = True
+        self.on_camera_change = Observable()
         self._camera_type = "perspective"
 
     @property
@@ -43,6 +46,7 @@ class GlWidgetAdapter:
     @show_grid.setter
     def show_grid(self, show_grid: bool):
         self._show_grid = show_grid
+        self.on_grid_change.notify(show_grid)
 
     def toggle_grid(self):
         self.show_grid = not self.show_grid
@@ -72,6 +76,14 @@ class GlWidgetAdapter:
     @property
     def camera_type(self) -> str:
         return self._camera_type
+
+    @camera_type.setter
+    def camera_type(self, value: str):
+        if self.camera_type != value:
+            if value == "perspective":
+                self.use_perspective_camera()
+            elif value == "orthogonal":
+                self.use_orthogonal_camera()
 
     def toggle_camera(self):
         if self._camera_type == "orthogonal":
@@ -177,8 +189,10 @@ class GlWidgetAdapter:
         if self._gl_initialized:
             self._renderer.camera = CameraOrthogonal()
         self._camera_type = "orthogonal"
+        self.on_camera_change.notify(self._camera_type)
 
     def use_perspective_camera(self):
         if self._gl_initialized:
             self._renderer.camera = CameraPerspective()
         self._camera_type = "perspective"
+        self.on_camera_change.notify(self._camera_type)
