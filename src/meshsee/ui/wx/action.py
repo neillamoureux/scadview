@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable
 
 import wx
 
@@ -107,6 +107,48 @@ class CheckableAction(Action):
             item.Check(state)
         for chk in self._checkboxes:
             chk.SetValue(state)
+
+
+class EnableableAction(CheckableAction):
+    def __init__(
+        self,
+        label: str,
+        callback: Callable[[wx.Event], None],
+        initial_state: bool,
+        on_state_change: Observable,
+        enable_func: Callable[[Any], bool],
+        accelerator: str | None = None,
+    ):
+        """Constructor
+
+        Args:
+            label: Label to be displayed in controls created from this class
+            callback: The function to call to execute the action
+            initial_state: True to show as checked, False as not checked.
+            on_state_change: Sets up feedback from the application to update the state of the controel (checked or not).
+               An Observable must be created in the app that is triggered when the state changes,
+               and passed in as this arg.
+            enable_func: When notified by on_state_change when the new value, returns True or False to enable / disable
+            accelerator: The accelerator key to press to execute the action.
+                This is only set up if `menu_item` is called.
+        """
+        super().__init__(label, callback, initial_state, on_state_change, accelerator)
+        self._enable_func = enable_func
+        self._buttons: list[wx.Button] = []
+
+    def button(self, parent: wx.Window) -> wx.Button:
+        btn = super().button(parent)
+        self._buttons.append(btn)
+        return btn
+
+    def _on_state_change(self, state: Any):
+        enable = self._enable_func(state)
+        for item in self._menu_items:
+            item.Enable(enable)
+        for btn in self._buttons:
+            btn.Enable() if enable else btn.Disable()
+        for chk in self._checkboxes:
+            chk.Enable() if enable else chk.Disable()
 
 
 class ChoiceAction:

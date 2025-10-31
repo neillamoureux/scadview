@@ -6,7 +6,7 @@ from trimesh import Trimesh
 from meshsee.controller import Controller, export_formats
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction
+from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction, EnableableAction
 from meshsee.ui.wx.gl_widget import create_graphics_widget
 
 logger = logging.getLogger(__name__)
@@ -56,8 +56,22 @@ class MainFrame(wx.Frame):
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
-        self._reload_action = Action("Reload", self.on_reload, "R")
-        self._export_action = Action("Export...", self.export, "E")
+        self._reload_action = EnableableAction(
+            "Reload",
+            self.on_reload,
+            accelerator="R",
+            initial_state=False,
+            on_state_change=self._controller.on_module_path_set,
+            enable_func=self._on_module_path_set,
+        )
+        self._export_action = EnableableAction(
+            "Export...",
+            self.export,
+            accelerator="E",
+            initial_state=False,
+            on_state_change=self._controller.on_current_mesh_set,
+            enable_func=self._on_current_mesh_set,
+        )
 
     def _create_view_actions(self):
         self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
@@ -118,23 +132,16 @@ class MainFrame(wx.Frame):
         self._controller.on_current_mesh_set.subscribe(self._on_current_mesh_set)
         self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, 6)
 
-    def _on_module_path_set(self, path: str):
-        if path == "":
-            self._reload_btn.Disable()
-            self._reload_menu_item.Enable(False)
-        else:
-            self._reload_btn.Enable()
-            self._reload_menu_item.Enable(True)
+    def _on_module_path_set(self, path: str) -> bool:
+        return path != ""
 
-    def _on_current_mesh_set(self, mesh: list[Trimesh] | Trimesh | None):
-        enable = False
+    def _on_current_mesh_set(self, mesh: list[Trimesh] | Trimesh | None) -> bool:
         if mesh is not None:
             if isinstance(mesh, list) and len(mesh) > 0:
-                enable = True
+                return True
             elif isinstance(mesh, Trimesh):
-                enable = True
-        self._export_btn.Enable() if enable else self._export_btn.Disable()
-        self._export_menu_item.Enable(enable)
+                return True
+        return False
 
     def _add_view_buttons(self):
         for action in [
