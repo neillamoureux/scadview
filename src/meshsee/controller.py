@@ -14,6 +14,7 @@ from meshsee.mesh_loader_process import (
     MpLoadQueue,
     ShutDownCommand,
 )
+from meshsee.observable import Observable
 
 logger = logging.getLogger(__name__)
 
@@ -28,26 +29,37 @@ def export_formats() -> list[str]:
 class Controller:
     def __init__(self):
         self._current_mesh: list[Trimesh] | Trimesh | None = None
-        self._last_module_path = None
-        self._last_export_path = None
+        self.on_module_path_set = Observable()
+        self.module_path = ""
+        self._last_export_path = ""
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(self._command_queue, self._load_queue)
         self._loader_process.start()
 
-    def load_mesh(self, module_path: str | None = None):
+    @property
+    def module_path(self) -> str:
+        return self._module_path
+
+    @module_path.setter
+    def module_path(self, value: str):
+        self._module_path = value
+        self.on_module_path_set.notify(value)
+
+    def load_mesh(self, module_path: str):
         self._current_mesh = None
-        if module_path is None:
-            module_path = self._last_module_path
-        if module_path is None:
-            raise ValueError("No module path selected for load")
-        if module_path != self._last_module_path:
+        if module_path != self.module_path:
             self._last_export_path = (
-                None  # Reset last export path if loading a new module
+                ""  # Reset last export path if loading a new module
             )
-            self._last_module_path = module_path
+            self.module_path = module_path
         logger.info(f"Starting load of {module_path}")
         self._command_queue.put(LoadMeshCommand(module_path))
+
+    def reload_mesh(self):
+        if self.module_path == "":
+            raise ValueError("No previous load to reload")
+        self.load_mesh(self.module_path)
 
     def check_load_queue(self) -> LoadResult:
         try:
@@ -71,12 +83,12 @@ class Controller:
         export_mesh.export(file_path)
 
     def default_export_path(self) -> str:
-        if self._last_export_path is not None:
+        if self._last_export_path != "":
             return self._last_export_path
-        if self._last_module_path is not None:
+        if self.module_path != "":
             return os.path.join(
-                os.path.dirname(self._last_module_path),
-                os.path.splitext(os.path.basename(self._last_module_path))[0],
+                os.path.dirname(self.module_path),
+                os.path.splitext(os.path.basename(self.module_path))[0],
             )
         raise ValueError("No module loaded")
 

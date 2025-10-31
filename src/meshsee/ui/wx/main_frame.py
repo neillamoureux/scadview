@@ -22,6 +22,7 @@ class MainFrame(wx.Frame):
     ):
         super().__init__(None, title="Meshsee", size=wx.Size(*INITIAL_FRAME_SIZE))
         self._controller = controller
+
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self._button_panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(self._button_panel, gl_widget_adapter)
@@ -54,6 +55,7 @@ class MainFrame(wx.Frame):
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
+        self._reload_action = Action("Reload", self.on_reload, "R")
 
     def _create_view_actions(self):
         self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
@@ -105,6 +107,18 @@ class MainFrame(wx.Frame):
     def _add_file_buttons(self):
         load_btn = self._load_action.button(self._button_panel)
         self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._reload_btn = self._reload_action.button(self._button_panel)
+        self._reload_btn.Disable()
+        self._controller.on_module_path_set.subscribe(self._on_module_path_set)
+        self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, 6)
+
+    def _on_module_path_set(self, path: str):
+        if path == "":
+            self._reload_btn.Disable()
+            self._reload_menu_item.Enable(False)
+        else:
+            self._reload_btn.Enable()
+            self._reload_menu_item.Enable(True)
 
     def _add_view_buttons(self):
         for action in [
@@ -134,6 +148,9 @@ class MainFrame(wx.Frame):
     def _create_file_menu(self) -> wx.Menu:
         file_menu = wx.Menu()
         self._load_action.menu_item(file_menu)
+        self._reload_menu_item = self._reload_action.menu_item(file_menu)
+        self._reload_menu_item.Enable(False)
+
         return file_menu
 
     def _create_view_menu(self) -> wx.Menu:
@@ -171,6 +188,10 @@ class MainFrame(wx.Frame):
                     dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
                 )
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+
+    def on_reload(self, _: wx.Event):
+        self._controller.reload_mesh()
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
     def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
