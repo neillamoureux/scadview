@@ -109,7 +109,7 @@ class CheckableAction(Action):
             chk.SetValue(state)
 
 
-class EnableableAction(CheckableAction):
+class EnableableAction(Action):
     def __init__(
         self,
         label: str,
@@ -132,14 +132,23 @@ class EnableableAction(CheckableAction):
             accelerator: The accelerator key to press to execute the action.
                 This is only set up if `menu_item` is called.
         """
-        super().__init__(label, callback, initial_state, on_state_change, accelerator)
+        super().__init__(label, callback, accelerator)
+        self._initial_state = initial_state
+        on_state_change.subscribe(self._on_state_change)
         self._enable_func = enable_func
+        self._menu_items: list[wx.MenuItem] = []
         self._buttons: list[wx.Button] = []
 
     def button(self, parent: wx.Window) -> wx.Button:
         btn = super().button(parent)
+        btn.Enable() if self._initial_state else btn.Disable()
         self._buttons.append(btn)
         return btn
+
+    def menu_item(self, menu: wx.Menu) -> wx.MenuItem:
+        item = super().menu_item(menu)
+        item.Enable(self._initial_state)
+        return item
 
     def _on_state_change(self, state: Any):
         enable = self._enable_func(state)
@@ -147,8 +156,6 @@ class EnableableAction(CheckableAction):
             item.Enable(enable)
         for btn in self._buttons:
             btn.Enable() if enable else btn.Disable()
-        for chk in self._checkboxes:
-            chk.Enable() if enable else chk.Disable()
 
 
 class ChoiceAction:

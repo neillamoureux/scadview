@@ -124,12 +124,8 @@ class MainFrame(wx.Frame):
         load_btn = self._load_action.button(self._button_panel)
         self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
         self._reload_btn = self._reload_action.button(self._button_panel)
-        self._reload_btn.Disable()
-        self._controller.on_module_path_set.subscribe(self._on_module_path_set)
         self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, 6)
         self._export_btn = self._export_action.button(self._button_panel)
-        self._export_btn.Disable()
-        self._controller.on_current_mesh_set.subscribe(self._on_current_mesh_set)
         self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, 6)
 
     def _on_module_path_set(self, path: str) -> bool:
@@ -172,9 +168,7 @@ class MainFrame(wx.Frame):
         file_menu = wx.Menu()
         self._load_action.menu_item(file_menu)
         self._reload_menu_item = self._reload_action.menu_item(file_menu)
-        self._reload_menu_item.Enable(False)
         self._export_menu_item = self._export_action.menu_item(file_menu)
-        self._export_menu_item.Enable(False)
 
         return file_menu
 
