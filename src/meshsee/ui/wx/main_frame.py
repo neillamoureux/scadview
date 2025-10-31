@@ -1,8 +1,9 @@
 import logging
 
 import wx
+from trimesh import Trimesh
 
-from meshsee.controller import Controller
+from meshsee.controller import Controller, export_formats
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction
@@ -56,6 +57,7 @@ class MainFrame(wx.Frame):
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
         self._reload_action = Action("Reload", self.on_reload, "R")
+        self._export_action = Action("Export...", self.export, "E")
 
     def _create_view_actions(self):
         self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
@@ -111,6 +113,10 @@ class MainFrame(wx.Frame):
         self._reload_btn.Disable()
         self._controller.on_module_path_set.subscribe(self._on_module_path_set)
         self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._export_btn = self._export_action.button(self._button_panel)
+        self._export_btn.Disable()
+        self._controller.on_current_mesh_set.subscribe(self._on_current_mesh_set)
+        self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, 6)
 
     def _on_module_path_set(self, path: str):
         if path == "":
@@ -119,6 +125,16 @@ class MainFrame(wx.Frame):
         else:
             self._reload_btn.Enable()
             self._reload_menu_item.Enable(True)
+
+    def _on_current_mesh_set(self, mesh: list[Trimesh] | Trimesh | None):
+        enable = False
+        if mesh is not None:
+            if isinstance(mesh, list) and len(mesh) > 0:
+                enable = True
+            elif isinstance(mesh, Trimesh):
+                enable = True
+        self._export_btn.Enable() if enable else self._export_btn.Disable()
+        self._export_menu_item.Enable(enable)
 
     def _add_view_buttons(self):
         for action in [
@@ -150,6 +166,8 @@ class MainFrame(wx.Frame):
         self._load_action.menu_item(file_menu)
         self._reload_menu_item = self._reload_action.menu_item(file_menu)
         self._reload_menu_item.Enable(False)
+        self._export_menu_item = self._export_action.menu_item(file_menu)
+        self._export_menu_item.Enable(False)
 
         return file_menu
 
@@ -216,6 +234,25 @@ class MainFrame(wx.Frame):
 
     def _is_first_in_load(self, load_result: LoadResult) -> bool:
         return self._loader_last_load_number != load_result.load_number
+
+    def export(self, _: wx.Event):
+        default_export_path = self._controller.default_export_path()
+        fmts = export_formats()
+        wildcard = "|".join([f"{fmt.upper()} (*.{fmt})|*.{fmt}" for fmt in fmts])
+        with wx.FileDialog(
+            self,
+            "Export",
+            defaultFile=default_export_path,
+            wildcard=wildcard,
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dlg:  # pyright: ignore[reportUnknownVariableType]
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    self._controller.export(
+                        dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
+                    )
+                except Exception as e:
+                    logger.error(f"Failure on export: {e}")
 
     def on_toggle_grid(self, _: wx.Event):
         self._gl_widget.toggle_grid()

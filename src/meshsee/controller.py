@@ -28,6 +28,7 @@ def export_formats() -> list[str]:
 
 class Controller:
     def __init__(self):
+        self.on_current_mesh_set = Observable()
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self.on_module_path_set = Observable()
         self.module_path = ""
@@ -36,6 +37,15 @@ class Controller:
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(self._command_queue, self._load_queue)
         self._loader_process.start()
+
+    @property
+    def current_mesh(self) -> list[Trimesh] | Trimesh | None:
+        return self._current_mesh
+
+    @current_mesh.setter
+    def current_mesh(self, value: list[Trimesh] | Trimesh | None):
+        self._current_mesh = value
+        self.on_current_mesh_set.notify(value)
 
     @property
     def module_path(self) -> str:
@@ -47,7 +57,7 @@ class Controller:
         self.on_module_path_set.notify(value)
 
     def load_mesh(self, module_path: str):
-        self._current_mesh = None
+        self.current_mesh = None
         if module_path != self.module_path:
             self._last_export_path = (
                 ""  # Reset last export path if loading a new module
@@ -65,20 +75,19 @@ class Controller:
         try:
             load_result = self._load_queue.get_nowait()
             if load_result.mesh is not None:
-                self._current_mesh = load_result.mesh
+                self.current_mesh = load_result.mesh
         except queue.Empty:
             load_result = LoadResult(0, 0, None, None, False)
         return load_result
 
     def export(self, file_path: str):
-        if not self._current_mesh:
+        if not self.current_mesh:
             logger.info("No mesh to export")
             return
-        if isinstance(self._current_mesh, list):
-            export_mesh = self._current_mesh[-1]
-
+        if isinstance(self.current_mesh, list):
+            export_mesh = self.current_mesh[-1]
         else:
-            export_mesh = self._current_mesh
+            export_mesh = self.current_mesh
         self._last_export_path = file_path
         export_mesh.export(file_path)
 
