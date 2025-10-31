@@ -19,12 +19,12 @@ from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 def create_graphics_widget(
     parent: wx.Window, gl_widget_adapter: GlWidgetAdapter
-) -> ModernglWidget:
-    gl_widget = ModernglWidget(parent, gl_widget_adapter)
+) -> GlWidget:
+    gl_widget = GlWidget(parent, gl_widget_adapter)
     return gl_widget
 
 
-class ModernglWidget(GLCanvas):
+class GlWidget(GLCanvas):
     def __init__(self, parent: wx.Window, gl_widget_adapter: GlWidgetAdapter):
         attribs = [
             WX_GL_CORE_PROFILE,
@@ -46,20 +46,19 @@ class ModernglWidget(GLCanvas):
         super().__init__(parent, attribList=attribs)
         self._gl_widget_adapter = gl_widget_adapter
 
-        # prevent background erase flicker on some platforms
-        self.Bind(wx.EVT_ERASE_BACKGROUND, lambda e: None)
-
         self.ctx_wx = GLContext(self)  # native GL context
-        self.ctx_mgl = None  # ModernGL context (lazy)
-        self.prog = None
-        self.vbo = None
-        self.vao = None
 
         self.Bind(wx.EVT_PAINT, self.on_paint)
         self.Bind(wx.EVT_SIZE, self.on_size)
         self.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_press_left)
         self.Bind(wx.EVT_LEFT_UP, self.on_mouse_release_left)
         self.Bind(wx.EVT_MOTION, self.on_mouse_move)
+
+        self.on_camera_change = self._gl_widget_adapter.on_camera_change
+        self.on_grid_change = self._gl_widget_adapter.on_grid_change
+        self.on_axes_change = self._gl_widget_adapter.on_axes_change
+        self.on_edges_change = self._gl_widget_adapter.on_edges_change
+        self.on_gnomon_change = self._gl_widget_adapter.on_gnomon_change
 
     @property
     def show_grid(self):
@@ -76,8 +75,12 @@ class ModernglWidget(GLCanvas):
 
     def on_size(self, _evt: wx.SizeEvent):
         # Just schedule a repaint; set viewport during paint when context is current.
-        size = self.GetClientSize()
-        self._gl_widget_adapter.resize(size.width, size.height)
+        size: wx.Size = (  # pyright: ignore[reportUnknownVariableType]
+            self.GetClientSize()
+        )
+        self._gl_widget_adapter.resize(
+            size.width, size.height  # pyright: ignore[reportUnknownArgumentType]
+        )
         self.Refresh(False)
 
     def on_paint(self, _evt: wx.PaintEvent):
@@ -89,9 +92,14 @@ class ModernglWidget(GLCanvas):
         dc = wx.PaintDC(self)
         del dc
         self.SetCurrent(self.ctx_wx)
-        size = self.GetClientSize()
-        scale = self.GetContentScaleFactor()
-        self._gl_widget_adapter.render(scale * size.width, scale * size.height)
+        size = self.GetClientSize()  # pyright: ignore[reportUnknownVariableType]
+        scale = (  # pyright: ignore[reportUnknownVariableType]
+            self.GetContentScaleFactor()
+        )
+        self._gl_widget_adapter.render(
+            scale * size.width,  # pyright: ignore[reportUnknownArgumentType]
+            scale * size.height,  # pyright: ignore[reportUnknownArgumentType]
+        )
         self.SwapBuffers()
 
     def on_mouse_press_left(self, event: wx.MouseEvent):
@@ -117,4 +125,57 @@ class ModernglWidget(GLCanvas):
 
     def frame(self):
         self._gl_widget_adapter.frame()
+        self.Refresh(False)
+
+    def view_from_xyz(self):
+        self._gl_widget_adapter.view_from_xyz()
+        self.Refresh(False)
+
+    def view_from_x(self):
+        self._gl_widget_adapter.view_from_x()
+        self.Refresh(False)
+
+    def view_from_y(self):
+        self._gl_widget_adapter.view_from_y()
+        self.Refresh(False)
+
+    def view_from_z(self):
+        self._gl_widget_adapter.view_from_z()
+        self.Refresh(False)
+
+    @property
+    def camera_type(self) -> str:
+        return self._gl_widget_adapter.camera_type
+
+    @camera_type.setter
+    def camera_type(self, value: str):
+        self._gl_widget_adapter.camera_type = value
+        self.Refresh()
+
+    def toggle_camera(self):
+        self._gl_widget_adapter.toggle_camera()
+        self.Refresh(False)
+
+    @property
+    def show_axes(self) -> bool:
+        return self._gl_widget_adapter.show_axes
+
+    def toggle_axes(self):
+        self._gl_widget_adapter.toggle_axes()
+        self.Refresh(False)
+
+    @property
+    def show_edges(self) -> bool:
+        return self._gl_widget_adapter.show_edges
+
+    def toggle_edges(self):
+        self._gl_widget_adapter.toggle_edges()
+        self.Refresh(False)
+
+    @property
+    def show_gnomon(self) -> bool:
+        return self._gl_widget_adapter.show_gnomon
+
+    def toggle_gnomon(self):
+        self._gl_widget_adapter.toggle_gnomon()
         self.Refresh(False)

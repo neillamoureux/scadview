@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
 
+from meshsee.observable import Observable
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
 
@@ -19,10 +20,15 @@ class GlWidgetAdapter:
         self._renderer_factory = renderer_factory
         self._gl_initialized = False
         self._orbiting = False
+        self.on_axes_change = Observable()
         self.show_axes = True
+        self.on_grid_change = Observable()
         self.show_grid = False
+        self.on_edges_change = Observable()
         self.show_edges = False
+        self.on_gnomon_change = Observable()
         self.show_gnomon = True
+        self.on_camera_change = Observable()
         self._camera_type = "perspective"
 
     @property
@@ -32,6 +38,7 @@ class GlWidgetAdapter:
     @show_axes.setter
     def show_axes(self, show_axes: bool):
         self._show_axes = show_axes
+        self.on_axes_change.notify(show_axes)
 
     def toggle_axes(self):
         self.show_axes = not self.show_axes
@@ -43,6 +50,7 @@ class GlWidgetAdapter:
     @show_grid.setter
     def show_grid(self, show_grid: bool):
         self._show_grid = show_grid
+        self.on_grid_change.notify(show_grid)
 
     def toggle_grid(self):
         self.show_grid = not self.show_grid
@@ -54,6 +62,7 @@ class GlWidgetAdapter:
     @show_edges.setter
     def show_edges(self, show_edges: bool):
         self._show_edges = show_edges
+        self.on_edges_change.notify(show_edges)
 
     def toggle_edges(self):
         self.show_edges = not self.show_edges
@@ -65,6 +74,7 @@ class GlWidgetAdapter:
     @show_gnomon.setter
     def show_gnomon(self, show_gnomon: bool):
         self._show_gnomon = show_gnomon
+        self.on_gnomon_change.notify(show_gnomon)
 
     def toggle_gnomon(self):
         self.show_gnomon = not self.show_gnomon
@@ -72,6 +82,14 @@ class GlWidgetAdapter:
     @property
     def camera_type(self) -> str:
         return self._camera_type
+
+    @camera_type.setter
+    def camera_type(self, value: str):
+        if self.camera_type != value:
+            if value == "perspective":
+                self.use_perspective_camera()
+            elif value == "orthogonal":
+                self.use_orthogonal_camera()
 
     def toggle_camera(self):
         if self._camera_type == "orthogonal":
@@ -177,8 +195,10 @@ class GlWidgetAdapter:
         if self._gl_initialized:
             self._renderer.camera = CameraOrthogonal()
         self._camera_type = "orthogonal"
+        self.on_camera_change.notify(self._camera_type)
 
     def use_perspective_camera(self):
         if self._gl_initialized:
             self._renderer.camera = CameraPerspective()
         self._camera_type = "perspective"
+        self.on_camera_change.notify(self._camera_type)

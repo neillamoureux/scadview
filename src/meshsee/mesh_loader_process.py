@@ -1,5 +1,6 @@
 import logging
 import queue
+from dataclasses import dataclass
 from multiprocessing import Process, Queue
 from threading import Thread
 from time import sleep, time
@@ -10,7 +11,6 @@ from trimesh import Trimesh
 
 from meshsee.api.utils import manifold_to_trimesh
 from meshsee.module_loader import ModuleLoader
-from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
