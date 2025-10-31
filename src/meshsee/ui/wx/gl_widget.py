@@ -53,6 +53,7 @@ class GlWidget(GLCanvas):
         self.Bind(wx.EVT_LEFT_DOWN, self.on_mouse_press_left)
         self.Bind(wx.EVT_LEFT_UP, self.on_mouse_release_left)
         self.Bind(wx.EVT_MOTION, self.on_mouse_move)
+        self.Bind(wx.EVT_MOUSEWHEEL, self.on_mouse_wheel)
 
         self.on_camera_change = self._gl_widget_adapter.on_camera_change
         self.on_grid_change = self._gl_widget_adapter.on_grid_change
@@ -110,6 +111,15 @@ class GlWidget(GLCanvas):
     def on_mouse_release_left(self, event: wx.MouseEvent):
         self.ReleaseMouse()
         self._gl_widget_adapter.end_orbit()
+
+    def on_mouse_wheel(self, event: wx.MouseEvent):
+        if event.GetWheelAxis() == wx.MOUSE_WHEEL_VERTICAL:
+            distance = event.GetWheelRotation()
+            position = event.GetPosition()
+            self._gl_widget_adapter.move_to_screen(
+                int(position.x), int(position.y), distance
+            )
+        self.Refresh(False)
 
     def on_mouse_move(self, event: wx.MouseEvent):
         """
