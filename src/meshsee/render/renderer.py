@@ -264,8 +264,8 @@ class Renderer:
             "label_vertex.glsl", "label_fragment.glsl", program_vars, observable
         )
 
-    def indicate_load_state(self, state: LoadStatus):
-        if state == LoadStatus.START:
+    def indicate_load_status(self, status: LoadStatus):
+        if status == LoadStatus.START:
             self.background_color = self.LOADING_BACKGROUND_COLOR
             self._main_renderee = create_trimesh_renderee(
                 self._ctx,
@@ -275,15 +275,11 @@ class Renderer:
                 self._camera.view_matrix,
                 name="loading",
             )
-        elif state == LoadStatus.COMPLETE:
+        elif status == LoadStatus.COMPLETE:
             self.background_color = self.SUCCESS_BACKGROUND_COLOR
-        elif state == LoadStatus.DEBUG:
+        elif status == LoadStatus.DEBUG:
             self.background_color = self.DEBUG_BACKGROUND_COLOR
-            # if isinstance(self._main_renderee, TrimeshListRenderee):
-            #     self.background_color = self.DEBUG_BACKGROUND_COLOR
-            # else:
-            #     self.background_color = self.SUCCESS_BACKGROUND_COLOR
-        elif state == LoadStatus.ERROR:
+        elif status == LoadStatus.ERROR:
             self.background_color = self.ERROR_BACKGROUND_COLOR
         else:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR

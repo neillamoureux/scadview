@@ -217,7 +217,7 @@ class MainFrame(wx.Frame):
             self._loader_last_sequence_number = load_result.sequence_number
 
     def _indicate_load_status(self, status: LoadStatus):
-        self._gl_widget.indicate_load_state(status)
+        self._gl_widget.indicate_load_status(status)
 
     def _has_mesh_changed(self, load_result: LoadResult) -> bool:
         return load_result.mesh is not None and (

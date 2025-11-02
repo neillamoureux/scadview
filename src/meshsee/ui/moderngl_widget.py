@@ -107,7 +107,7 @@ class ModernglWidget(QOpenGLWidget):
 
     def indicate_load_state(self, state: str):
         # Changing the background color seems to require two renders
-        self._gl_widget_adapter.indicate_load_state(state)
+        self._gl_widget_adapter.indicate_load_status(state)
         self._render_twice = True
         self.update()
 

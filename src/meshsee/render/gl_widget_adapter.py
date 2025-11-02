@@ -179,8 +179,8 @@ class GlWidgetAdapter:
         up = np.array([0, 1, 0])
         self._renderer.frame(direction, up)
 
-    def indicate_load_state(self, state: LoadStatus):
-        self._renderer.indicate_load_state(state)
+    def indicate_load_status(self, status: LoadStatus):
+        self._renderer.indicate_load_status(status)
 
     def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._renderer.load_mesh(mesh, name)
