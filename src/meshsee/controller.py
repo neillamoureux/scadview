@@ -62,6 +62,8 @@ class Controller:
 
     @load_status.setter
     def load_status(self, value: LoadStatus):
+        if self._load_status == value:
+            return
         self._load_status = value
         self.on_load_status_change.notify(value)
 
@@ -86,15 +88,19 @@ class Controller:
             load_result = self._load_queue.get_nowait()
             if load_result.mesh is not None:
                 self.current_mesh = load_result.mesh
-            if load_result.complete:
-                self.load_status = LoadStatus.COMPLETE
-            if load_result.debug:
-                self.load_status = LoadStatus.DEBUG
-            if load_result.error is not None:
-                self.load_status = LoadStatus.ERROR
+            self.load_status = self._set_load_status(load_result)
         except queue.Empty:
             load_result = LoadResult(0, 0, None, None, False)
         return load_result
+
+    def _set_load_status(self, load_result: LoadResult) -> LoadStatus:
+        if load_result.error is not None:
+            return LoadStatus.ERROR
+        if load_result.debug:
+            return LoadStatus.DEBUG
+        if load_result.complete:
+            return LoadStatus.COMPLETE
+        return self.load_status
 
     def export(self, file_path: str):
         if not self.current_mesh:
