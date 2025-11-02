@@ -3,7 +3,7 @@ import logging
 import wx
 from trimesh import Trimesh
 
-from meshsee.controller import Controller, export_formats
+from meshsee.controller import Controller, LoadStatus, export_formats
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction, EnableableAction
@@ -62,11 +62,11 @@ class MainFrame(wx.Frame):
             on_value_change=self._controller.on_module_path_set,
             enable_func=self._on_module_path_set,
         )
-        self._export_action = EnableableAction[list[Trimesh] | Trimesh | None](
+        self._export_action = EnableableAction[LoadStatus](
             Action("Export...", self.export, accelerator="E"),
-            initial_value=None,
-            on_value_change=self._controller.on_current_mesh_set,
-            enable_func=self._on_current_mesh_set,
+            initial_value=LoadStatus.IDLE,
+            on_value_change=self._controller.on_load_status_change,
+            enable_func=self._can_be_exported,
         )
 
     def _create_view_actions(self):
@@ -122,6 +122,9 @@ class MainFrame(wx.Frame):
 
     def _on_module_path_set(self, path: str) -> bool:
         return path != ""
+
+    def _can_be_exported(self, status: LoadStatus) -> bool:
+        return status == LoadStatus.COMPLETE
 
     def _on_current_mesh_set(self, mesh: list[Trimesh] | Trimesh | None) -> bool:
         if mesh is not None:
