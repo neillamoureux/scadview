@@ -1,11 +1,12 @@
 import logging
 
 import wx
+from trimesh import Trimesh
 
-from meshsee.controller import Controller
+from meshsee.controller import Controller, LoadStatus, export_formats
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction
+from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction, EnableableAction
 from meshsee.ui.wx.gl_widget import create_graphics_widget
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class MainFrame(wx.Frame):
     ):
         super().__init__(None, title="Meshsee", size=wx.Size(*INITIAL_FRAME_SIZE))
         self._controller = controller
+
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self._button_panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(self._button_panel, gl_widget_adapter)
@@ -54,6 +56,18 @@ class MainFrame(wx.Frame):
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
+        self._reload_action = EnableableAction[str](
+            Action("Reload", self.on_reload, accelerator="R"),
+            initial_value="",
+            on_value_change=self._controller.on_module_path_set,
+            enable_func=self._on_module_path_set,
+        )
+        self._export_action = EnableableAction[LoadStatus](
+            Action("Export...", self.export, accelerator="E"),
+            initial_value=LoadStatus.IDLE,
+            on_value_change=self._controller.on_load_status_change,
+            enable_func=self._can_be_exported,
+        )
 
     def _create_view_actions(self):
         self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
@@ -70,33 +84,29 @@ class MainFrame(wx.Frame):
             self._gl_widget.camera_type,
             self._gl_widget.on_camera_change,
         )
-        self._toggle_grid_action = CheckableAction(
-            "Grid",
-            self.on_toggle_grid,
+        self._toggle_grid_action = CheckableAction[bool](
+            Action("Grid", self.on_toggle_grid, "G", checkable=True),
             self._gl_widget.show_grid,
+            lambda x: x,
             self._gl_widget.on_grid_change,
-            "G",
         )
         self._toggle_axes_action = CheckableAction(
-            "Axes",
-            self.on_toggle_axes,
+            Action("Axes", self.on_toggle_axes, "A", checkable=True),
             self._gl_widget.show_axes,
+            lambda x: x,
             self._gl_widget.on_axes_change,
-            "A",
         )
         self._toggle_edges_action = CheckableAction(
-            "Edges",
-            self.on_toggle_edges,
+            Action("Edges", self.on_toggle_edges, "A", checkable=True),
             self._gl_widget.show_edges,
+            lambda x: x,
             self._gl_widget.on_edges_change,
-            "A",
         )
         self._toggle_gnonom_action = CheckableAction(
-            "Gnomon",
-            self.on_toggle_gnomon,
+            Action("Gnomon", self.on_toggle_gnomon, "A", checkable=True),
             self._gl_widget.show_gnomon,
+            lambda x: x,
             self._gl_widget.on_gnomon_change,
-            "A",
         )
 
     def _set_camera_type(self, cam_type: str):
@@ -105,6 +115,24 @@ class MainFrame(wx.Frame):
     def _add_file_buttons(self):
         load_btn = self._load_action.button(self._button_panel)
         self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._reload_btn = self._reload_action.button(self._button_panel)
+        self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._export_btn = self._export_action.button(self._button_panel)
+        self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, 6)
+
+    def _on_module_path_set(self, path: str) -> bool:
+        return path != ""
+
+    def _can_be_exported(self, status: LoadStatus) -> bool:
+        return status == LoadStatus.COMPLETE
+
+    def _on_current_mesh_set(self, mesh: list[Trimesh] | Trimesh | None) -> bool:
+        if mesh is not None:
+            if isinstance(mesh, list) and len(mesh) > 0:
+                return True
+            elif isinstance(mesh, Trimesh):
+                return True
+        return False
 
     def _add_view_buttons(self):
         for action in [
@@ -134,6 +162,9 @@ class MainFrame(wx.Frame):
     def _create_file_menu(self) -> wx.Menu:
         file_menu = wx.Menu()
         self._load_action.menu_item(file_menu)
+        self._reload_menu_item = self._reload_action.menu_item(file_menu)
+        self._export_menu_item = self._export_action.menu_item(file_menu)
+
         return file_menu
 
     def _create_view_menu(self) -> wx.Menu:
@@ -172,6 +203,10 @@ class MainFrame(wx.Frame):
                 )
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
+    def on_reload(self, _: wx.Event):
+        self._controller.reload_mesh()
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+
     def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
         mesh = load_result.mesh
@@ -195,6 +230,25 @@ class MainFrame(wx.Frame):
 
     def _is_first_in_load(self, load_result: LoadResult) -> bool:
         return self._loader_last_load_number != load_result.load_number
+
+    def export(self, _: wx.Event):
+        default_export_path = self._controller.default_export_path()
+        fmts = export_formats()
+        wildcard = "|".join([f"{fmt.upper()} (*.{fmt})|*.{fmt}" for fmt in fmts])
+        with wx.FileDialog(
+            self,
+            "Export",
+            defaultFile=default_export_path,
+            wildcard=wildcard,
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dlg:  # pyright: ignore[reportUnknownVariableType]
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    self._controller.export(
+                        dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
+                    )
+                except Exception as e:
+                    logger.error(f"Failure on export: {e}")
 
     def on_toggle_grid(self, _: wx.Event):
         self._gl_widget.toggle_grid()

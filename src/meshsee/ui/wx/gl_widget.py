@@ -80,7 +80,8 @@ class GlWidget(GLCanvas):
             self.GetClientSize()
         )
         self._gl_widget_adapter.resize(
-            size.width, size.height  # pyright: ignore[reportUnknownArgumentType]
+            size.width,
+            size.height,  # pyright: ignore[reportUnknownArgumentType]
         )
         self.Refresh(False)
 
