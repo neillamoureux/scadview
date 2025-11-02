@@ -1,11 +1,11 @@
-from typing import Any, Callable, TypeVar, Generic, Protocol
+from typing import Any, Callable, TypeVar, Generic
 
 import wx
 
 from meshsee.observable import Observable
 
 
-class Action(Protocol):
+class Action:
     """The represents an action to be executed, and controls to trigger it.
 
 
@@ -20,7 +20,7 @@ class Action(Protocol):
         label: str,
         callback: Callable[[wx.Event], None],
         accelerator: str | None = None,
-        checkable=False,
+        checkable: bool = False,
     ):
         """Create an action.
 
@@ -119,53 +119,52 @@ class CheckableAction(Action, Generic[T]):
         return chk
 
 
-class EnableableAction(Action):
+class EnableableAction(Action, Generic[T]):
     def __init__(
         self,
-        label: str,
-        callback: Callable[[wx.Event], None],
-        initial_state: bool,
-        on_state_change: Observable,
-        enable_func: Callable[[Any], bool],
-        accelerator: str | None = None,
+        action: Action,
+        initial_value: T,
+        on_value_change: Observable,
+        enable_func: Callable[[T], bool],
     ):
-        """Constructor
+        """Adds the ability to enable/disable the controls associated with an Action
 
         Args:
-            label: Label to be displayed in controls created from this class
-            callback: The function to call to execute the action
-            initial_state: True to show as checked, False as not checked.
-            on_state_change: Sets up feedback from the application to update the state of the controel (checked or not).
-               An Observable must be created in the app that is triggered when the state changes,
-               and passed in as this arg.
-            enable_func: When notified by on_state_change when the new value, returns True or False to enable / disable
-            accelerator: The accelerator key to press to execute the action.
-                This is only set up if `menu_item` is called.
+            action: The action to which you are adding a value-backed enable/disable
+            initial_value: The intial value upon which the control decides if it is enabled or not.
+            on_value_change: Sets up feedback from the application to update the value behing the control.
+                An Observable must be created in the app that ixs triggered when the state changes,
+            enable_func: When notified by on_value_change when the new value, returns True or False to enable / disable
         """
-        super().__init__(label, callback, accelerator)
-        self._initial_state = initial_state
-        on_state_change.subscribe(self._on_state_change)
+        self._action = action
+        self._initial_value = initial_value
         self._enable_func = enable_func
-        self._menu_items: list[wx.MenuItem] = []
-        self._buttons: list[wx.Button] = []
+        self._on_value_change: Observable = on_value_change
+        self._enable_refs = (
+            []
+        )  # keep refs to _check functions so that they are not deleted by Observable
 
     def button(self, parent: wx.Window) -> wx.Button:
-        btn = super().button(parent)
-        btn.Enable() if self._initial_state else btn.Disable()
-        self._buttons.append(btn)
+        btn = self._action.button(parent)
+
+        def _enable(value: T):
+            btn.Enable() if self._enable_func(value) else btn.Disable()
+
+        _enable(self._initial_value)
+        self._on_value_change.subscribe(_enable)
+        self._enable_refs.append(_enable)
         return btn
 
     def menu_item(self, menu: wx.Menu) -> wx.MenuItem:
-        item = super().menu_item(menu)
-        item.Enable(self._initial_state)
-        return item
+        item = self._action.menu_item(menu)
 
-    def _on_state_change(self, state: Any):
-        enable = self._enable_func(state)
-        for item in self._menu_items:
-            item.Enable(enable)
-        for btn in self._buttons:
-            btn.Enable() if enable else btn.Disable()
+        def _enable(value: T):
+            item.Enable(self._enable_func(value))
+
+        _enable(self._initial_value)
+        self._on_value_change.subscribe(_enable)
+        self._enable_refs.append(_enable)
+        return item
 
 
 class ChoiceAction:

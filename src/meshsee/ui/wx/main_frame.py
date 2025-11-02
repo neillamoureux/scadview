@@ -56,20 +56,16 @@ class MainFrame(wx.Frame):
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
-        self._reload_action = EnableableAction(
-            "Reload",
-            self.on_reload,
-            accelerator="R",
-            initial_state=False,
-            on_state_change=self._controller.on_module_path_set,
+        self._reload_action = EnableableAction[str](
+            Action("Reload", self.on_reload, accelerator="R"),
+            initial_value="",
+            on_value_change=self._controller.on_module_path_set,
             enable_func=self._on_module_path_set,
         )
-        self._export_action = EnableableAction(
-            "Export...",
-            self.export,
-            accelerator="E",
-            initial_state=False,
-            on_state_change=self._controller.on_current_mesh_set,
+        self._export_action = EnableableAction[list[Trimesh] | Trimesh | None](
+            Action("Export...", self.export, accelerator="E"),
+            initial_value=None,
+            on_value_change=self._controller.on_current_mesh_set,
             enable_func=self._on_current_mesh_set,
         )
 
