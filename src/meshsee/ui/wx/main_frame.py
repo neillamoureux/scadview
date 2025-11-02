@@ -1,7 +1,6 @@
 import logging
 
 import wx
-from trimesh import Trimesh
 
 from meshsee.controller import Controller, export_formats
 from meshsee.load_status import LoadStatus

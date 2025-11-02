@@ -14,8 +14,8 @@ from wx.glcanvas import (
     GLContext,
 )
 
-from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.load_status import LoadStatus
+from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 
 def create_graphics_widget(

@@ -10,21 +10,17 @@ from trimesh.creation import (
     box,  # pyright: ignore[reportUnknownVariableType] can't resolve
 )
 
-from meshsee.observable import Observable
 from meshsee.load_status import LoadStatus
+from meshsee.observable import Observable
 from meshsee.render.camera import Camera, copy_camera_state
 from meshsee.render.label_atlas import LabelAtlas
-from meshsee.render.label_renderee import (
-    LabelSetRenderee,
-)
+from meshsee.render.label_renderee import LabelSetRenderee
 from meshsee.render.renderee import GnomonRenderee
 from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.trimesh_renderee import (
-    TrimeshListRenderee,
     TrimeshOpaqueRenderee,
     create_trimesh_renderee,
 )
-from meshsee.controller import LoadStatus
 
 logger = logging.getLogger(__name__)
 

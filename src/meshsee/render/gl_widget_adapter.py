@@ -4,10 +4,10 @@ import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
 
+from meshsee.load_status import LoadStatus
 from meshsee.observable import Observable
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
-from meshsee.controller import LoadStatus
 
 logger = logging.getLogger(__name__)
 
