@@ -1,11 +1,11 @@
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar, Generic, Protocol
 
 import wx
 
 from meshsee.observable import Observable
 
 
-class Action:
+class Action(Protocol):
     """The represents an action to be executed, and controls to trigger it.
 
 
@@ -20,6 +20,7 @@ class Action:
         label: str,
         callback: Callable[[wx.Event], None],
         accelerator: str | None = None,
+        checkable=False,
     ):
         """Create an action.
 
@@ -28,12 +29,15 @@ class Action:
             callback: The function to call to execute the action
             accelerator: The accelerator key to press to execute the action.
                 This is only set up if `menu_item` is called.
+            checkable: If you are planning to include this Action
+              in the CheckableAction class, you need to ensure this is set to True.
 
         """
 
         self._label = label
         self._callback = callback
         self._accelerator = accelerator
+        self._checkable = checkable
         self._id: int = wx.NewIdRef()
 
     def button(self, parent: wx.Window) -> wx.Button:
@@ -43,7 +47,10 @@ class Action:
 
     def menu_item(self, menu: wx.Menu) -> wx.MenuItem:
         label = self._menu_item_label()
-        item = menu.Append(self._id, label)
+        if self._checkable:
+            item = menu.AppendCheckItem(self._id, label)
+        else:
+            item = menu.Append(self._id, label)
         menu.Bind(wx.EVT_MENU, self._callback, item)
         return item
 
@@ -55,58 +62,61 @@ class Action:
         )
 
 
-class CheckableAction(Action):
-    """Create an action that changes a binary state, and can be represented by a "checked" control like a checkbox"""
+T = TypeVar("T")
+
+
+class CheckableAction(Action, Generic[T]):
+    """Adds checkboxes and checkable menu items, binding to an Observable for updates
+
+    Args:
+        action: The action to add checkability to
+        initial_value: The initial value this represents.
+        check_func: Callled on the represented value, must return True of False to set whether the control is checked.
+            If the value is already True or False, set this as `check_func=lambda x: x`
+        on_value_change: Sets up feedback from the application to update the state of the controel (checked or not).
+            An Observable must be created in the app that is triggered when the state changes,
+            and passed in as this arg.
+    """
 
     def __init__(
         self,
-        label: str,
-        callback: Callable[[wx.Event], None],
-        initial_state: bool,
-        on_state_change: Observable,
-        accelerator: str | None = None,
+        action: Action,
+        initial_value: T,
+        check_func: Callable[[T], bool],
+        on_value_change: Observable,
     ):
-        """Constructor
+        self._action = action
+        self._initial_value = initial_value
+        self._check_func = check_func
+        self._on_value_change: Observable = on_value_change
+        self._check_refs = (
+            []
+        )  # keep refs to _check functions so that they are not deleted by Observable
 
-        Args:
-            label: Label to be displayed in controls created from this class
-            callback: The function to call to execute the action
-            initial_state: True to show as checked, False as not checked.
-            on_state_change: Sets up feedback from the application to update the state of the controel (checked or not).
-               An Observable must be created in the app that is triggered when the state changes,
-               and passed in as this arg.
-            accelerator: The accelerator key to press to execute the action.
-                This is only set up if `menu_item` is called.
-        """
-        super().__init__(label, callback, accelerator)
-        on_state_change.subscribe(self._on_state_change)
-        self._initial_state = initial_state
-        self._menu_items: list[wx.MenuItem] = []
-        self._checkboxes: list[wx.CheckBox] = []
+    def menu_item(self, menu: wx.Menu) -> wx.MenuItem:
+        item = self._action.menu_item(menu)
+        item.Check(self._check_func(self._initial_value))
 
-    def menu_item(self, menu: wx.Menu):
-        label = self._menu_item_label()
-        item = menu.AppendCheckItem(self._id, label)
-        item.Check(self._initial_state)
-        menu.Bind(wx.EVT_MENU, self._update_state, item)
-        self._menu_items.append(item)
+        def _check(value: T):
+            item.Check(self._check_func(value))
+            return True
+
+        self._on_value_change.subscribe(_check)
+        self._check_refs.append(_check)
         return item
 
     def checkbox(self, parent: wx.Window) -> wx.CheckBox:
-        chk = wx.CheckBox(parent, label=self._label, id=self._id)
-        chk.Bind(wx.EVT_CHECKBOX, self._update_state)
-        chk.SetValue(self._initial_state)
-        self._checkboxes.append(chk)
+        chk = wx.CheckBox(parent, label=self._action._label, id=self._action._id)
+        chk.Bind(wx.EVT_CHECKBOX, self._action._callback)
+        chk.SetValue(self._check_func(self._initial_value))
+
+        def _check(value: T):
+            chk.SetValue(self._check_func(value))
+            return True
+
+        self._on_value_change.subscribe(_check)
+        self._check_refs.append(_check)
         return chk
-
-    def _update_state(self, event: wx.Event):
-        self._callback(event)
-
-    def _on_state_change(self, state: bool):
-        for item in self._menu_items:
-            item.Check(state)
-        for chk in self._checkboxes:
-            chk.SetValue(state)
 
 
 class EnableableAction(Action):

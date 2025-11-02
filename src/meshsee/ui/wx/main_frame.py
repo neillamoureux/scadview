@@ -88,33 +88,29 @@ class MainFrame(wx.Frame):
             self._gl_widget.camera_type,
             self._gl_widget.on_camera_change,
         )
-        self._toggle_grid_action = CheckableAction(
-            "Grid",
-            self.on_toggle_grid,
+        self._toggle_grid_action = CheckableAction[bool](
+            Action("Grid", self.on_toggle_grid, "G", checkable=True),
             self._gl_widget.show_grid,
+            lambda x: x,
             self._gl_widget.on_grid_change,
-            "G",
         )
         self._toggle_axes_action = CheckableAction(
-            "Axes",
-            self.on_toggle_axes,
+            Action("Axes", self.on_toggle_axes, "A", checkable=True),
             self._gl_widget.show_axes,
+            lambda x: x,
             self._gl_widget.on_axes_change,
-            "A",
         )
         self._toggle_edges_action = CheckableAction(
-            "Edges",
-            self.on_toggle_edges,
+            Action("Edges", self.on_toggle_edges, "A", checkable=True),
             self._gl_widget.show_edges,
+            lambda x: x,
             self._gl_widget.on_edges_change,
-            "A",
         )
         self._toggle_gnonom_action = CheckableAction(
-            "Gnomon",
-            self.on_toggle_gnomon,
+            Action("Gnomon", self.on_toggle_gnomon, "A", checkable=True),
             self._gl_widget.show_gnomon,
+            lambda x: x,
             self._gl_widget.on_gnomon_change,
-            "A",
         )
 
     def _set_camera_type(self, cam_type: str):
