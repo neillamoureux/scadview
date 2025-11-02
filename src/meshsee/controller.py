@@ -36,8 +36,6 @@ class LoadStatus(Enum):
 
 class Controller:
     def __init__(self):
-        self.on_current_mesh_set = Observable()
-        self._current_mesh: list[Trimesh] | Trimesh | None = None
         self.on_module_path_set = Observable()
         self.module_path = ""
         self._last_export_path = ""
@@ -55,7 +53,6 @@ class Controller:
     @current_mesh.setter
     def current_mesh(self, value: list[Trimesh] | Trimesh | None):
         self._current_mesh = value
-        self.on_current_mesh_set.notify(value)
 
     @property
     def module_path(self) -> str:
