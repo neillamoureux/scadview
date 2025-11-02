@@ -88,19 +88,10 @@ class Controller:
             load_result = self._load_queue.get_nowait()
             if load_result.mesh is not None:
                 self.current_mesh = load_result.mesh
-            self.load_status = self._set_load_status(load_result)
+            self.load_status = load_result.status
         except queue.Empty:
             load_result = LoadResult(0, 0, None, None, False)
         return load_result
-
-    def _set_load_status(self, load_result: LoadResult) -> LoadStatus:
-        if load_result.error is not None:
-            return LoadStatus.ERROR
-        if load_result.debug:
-            return LoadStatus.DEBUG
-        if load_result.complete:
-            return LoadStatus.COMPLETE
-        return self.load_status
 
     def export(self, file_path: str):
         if not self.current_mesh:
