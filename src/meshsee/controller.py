@@ -1,11 +1,11 @@
 import logging
 import os
 import queue
-from enum import Enum, auto
 
 from trimesh import Trimesh
 from trimesh.exchange import export
 
+from meshsee.load_status import LoadStatus
 from meshsee.mesh_loader_process import (
     Command,
     LoadMeshCommand,
@@ -27,13 +27,6 @@ def export_formats() -> list[str]:
     ]
 
 
-class LoadStatus(Enum):
-    IDLE = auto()
-    START = auto()
-    COMPLETE = auto()
-    ERROR = auto()
-
-
 class Controller:
     def __init__(self):
         self.on_module_path_set = Observable()
@@ -44,7 +37,7 @@ class Controller:
         self._loader_process = MeshLoaderProcess(self._command_queue, self._load_queue)
         self._loader_process.start()
         self.on_load_status_change = Observable()
-        self._load_status = LoadStatus.IDLE
+        self._load_status = LoadStatus.NONE
 
     @property
     def current_mesh(self) -> list[Trimesh] | Trimesh | None:
@@ -95,6 +88,8 @@ class Controller:
                 self.current_mesh = load_result.mesh
             if load_result.complete:
                 self.load_status = LoadStatus.COMPLETE
+            if load_result.debug:
+                self.load_status = LoadStatus.DEBUG
             if load_result.error is not None:
                 self.load_status = LoadStatus.ERROR
         except queue.Empty:

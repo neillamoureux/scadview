@@ -11,6 +11,7 @@ from trimesh import Trimesh
 
 from meshsee.api.utils import manifold_to_trimesh
 from meshsee.module_loader import ModuleLoader
+from meshsee.render.trimesh_renderee import TrimeshListRenderee
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,10 @@ class LoadResult:
     mesh: MeshType | None
     error: Exception | None
     complete: bool = False
+
+    @property
+    def debug(self) -> bool:
+        return isinstance(self.mesh, list)
 
 
 MpLoadQueue = MpQueue[LoadResult]

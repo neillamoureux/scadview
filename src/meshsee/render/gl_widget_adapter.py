@@ -7,6 +7,7 @@ from trimesh import Trimesh
 from meshsee.observable import Observable
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
+from meshsee.controller import LoadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ class GlWidgetAdapter:
         up = np.array([0, 1, 0])
         self._renderer.frame(direction, up)
 
-    def indicate_load_state(self, state: str):
+    def indicate_load_state(self, state: LoadStatus):
         self._renderer.indicate_load_state(state)
 
     def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
