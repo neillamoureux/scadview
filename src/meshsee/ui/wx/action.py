@@ -1,4 +1,4 @@
-from typing import Any, Callable, TypeVar, Generic
+from typing import Callable, Generic, TypeVar
 
 import wx
 
@@ -89,9 +89,7 @@ class CheckableAction(Action, Generic[T]):
         self._initial_value = initial_value
         self._check_func = check_func
         self._on_value_change: Observable = on_value_change
-        self._check_refs = (
-            []
-        )  # keep refs to _check functions so that they are not deleted by Observable
+        self._check_refs = []  # keep refs to _check functions so that they are not deleted by Observable
 
     def menu_item(self, menu: wx.Menu) -> wx.MenuItem:
         item = self._action.menu_item(menu)
@@ -140,9 +138,7 @@ class EnableableAction(Action, Generic[T]):
         self._initial_value = initial_value
         self._enable_func = enable_func
         self._on_value_change: Observable = on_value_change
-        self._enable_refs = (
-            []
-        )  # keep refs to _check functions so that they are not deleted by Observable
+        self._enable_refs = []  # keep refs to _check functions so that they are not deleted by Observable
 
     def button(self, parent: wx.Window) -> wx.Button:
         btn = self._action.button(parent)
