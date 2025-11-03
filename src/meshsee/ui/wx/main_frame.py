@@ -7,6 +7,7 @@ from meshsee.load_status import LoadStatus
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction, EnableableAction
+from meshsee.ui.wx.font_dialog import FontDialog
 from meshsee.ui.wx.gl_widget import create_graphics_widget
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class MainFrame(wx.Frame):
 
         self._create_file_actions()
         self._create_view_actions()
+        self._create_help_actions()
 
         self._panel_sizer = wx.BoxSizer(wx.VERTICAL)
         self._load_progress_gauge = wx.Gauge(
@@ -57,6 +59,7 @@ class MainFrame(wx.Frame):
         menu_bar = wx.MenuBar()
         menu_bar.Append(self._create_file_menu(), "File")
         menu_bar.Append(self._create_view_menu(), "View")
+        menu_bar.Append(self._create_help_menu(), "Help")
         self.SetMenuBar(menu_bar)
 
         self._loader_timer = wx.Timer(self)
@@ -123,6 +126,14 @@ class MainFrame(wx.Frame):
 
     def _set_camera_type(self, cam_type: str):
         self._gl_widget.camera_type = cam_type
+
+    def _create_help_actions(self) -> None:
+        self._show_fonts_action = Action("Fonts", self._open_font_dialog)
+
+    def _open_font_dialog(self, _evt: wx.Event):
+        dlg = FontDialog(None)
+        dlg.ShowModal()
+        dlg.Destroy()
 
     def _add_file_buttons(self):
         load_btn = self._load_action.button(self._button_panel)
@@ -193,6 +204,11 @@ class MainFrame(wx.Frame):
             action.menu_item(view_menu)
 
         return view_menu
+
+    def _create_help_menu(self) -> wx.Menu:
+        help_menu = wx.Menu()
+        self._show_fonts_action.menu_item(help_menu)
+        return help_menu
 
     def on_load(self, _: wx.Event):
         with wx.FileDialog(
