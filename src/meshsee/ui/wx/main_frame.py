@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 LOAD_CHECK_INTERVAL_MS = 10
 INITIAL_FRAME_SIZE = (900, 600)
+BORDER_SIZE = 6
 
 
 class MainFrame(wx.Frame):
@@ -32,6 +33,12 @@ class MainFrame(wx.Frame):
         self._create_view_actions()
 
         self._panel_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._load_progress_gauge = wx.Gauge(
+            self._button_panel, style=wx.GA_HORIZONTAL | wx.GA_SMOOTH | wx.GA_PROGRESS
+        )
+        self._panel_sizer.Add(
+            self._load_progress_gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, BORDER_SIZE
+        )
 
         self._add_file_buttons()
         self._add_view_buttons()
@@ -39,8 +46,12 @@ class MainFrame(wx.Frame):
         self._panel_sizer.AddStretchSpacer()
 
         root = wx.BoxSizer(wx.HORIZONTAL)
-        root.Add(self._gl_widget, 1, wx.EXPAND | wx.ALL, 6)
-        root.Add(self._panel_sizer, 0, wx.EXPAND | wx.ALL, 6)
+        root.Add(
+            self._gl_widget,
+            1,
+            wx.EXPAND | wx.ALL,
+        )
+        root.Add(self._panel_sizer, 0, wx.EXPAND | wx.ALL, BORDER_SIZE)
         self._button_panel.SetSizer(root)
 
         menu_bar = wx.MenuBar()
@@ -115,11 +126,11 @@ class MainFrame(wx.Frame):
 
     def _add_file_buttons(self):
         load_btn = self._load_action.button(self._button_panel)
-        self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
         self._reload_btn = self._reload_action.button(self._button_panel)
-        self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
         self._export_btn = self._export_action.button(self._button_panel)
-        self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, 6)
+        self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
     def _on_module_path_set(self, path: str) -> bool:
         return path != ""
@@ -136,13 +147,13 @@ class MainFrame(wx.Frame):
             self._view_from_z_action,
         ]:
             btn = action.button(self._button_panel)
-            self._panel_sizer.Add(btn, 0, wx.ALL | wx.EXPAND, 6)
+            self._panel_sizer.Add(btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
         chk = self._toggle_grid_action.checkbox(self._button_panel)
-        self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
+        self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
         for rb in self._select_camera_action.radio_buttons(self._button_panel):
-            self._panel_sizer.Add(rb, 0, wx.ALL | wx.EXPAND, 6)
+            self._panel_sizer.Add(rb, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
         for action in [
             self._toggle_axes_action,
@@ -150,7 +161,7 @@ class MainFrame(wx.Frame):
             self._toggle_gnonom_action,
         ]:
             chk = action.checkbox(self._button_panel)
-            self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, 6)
+            self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
     def _create_file_menu(self) -> wx.Menu:
         file_menu = wx.Menu()
@@ -195,16 +206,19 @@ class MainFrame(wx.Frame):
                     dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
                 )
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+                self._load_progress_gauge.Pulse()
 
     def on_reload(self, _: wx.Event):
         self._controller.reload_mesh()
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
 
     def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
         mesh = load_result.mesh
         if load_result.complete:
             self._loader_timer.Stop()
+            self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
         if load_result.error:
             logger.error(load_result.error)
         if self._has_mesh_changed(load_result):
