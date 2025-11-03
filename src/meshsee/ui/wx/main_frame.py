@@ -32,6 +32,12 @@ class MainFrame(wx.Frame):
         self._create_view_actions()
 
         self._panel_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._load_progress_gauge = wx.Gauge(
+            self._button_panel, style=wx.GA_HORIZONTAL | wx.GA_SMOOTH | wx.GA_PROGRESS
+        )
+        self._panel_sizer.Add(
+            self._load_progress_gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12
+        )
 
         self._add_file_buttons()
         self._add_view_buttons()
@@ -195,16 +201,19 @@ class MainFrame(wx.Frame):
                     dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
                 )
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+                self._load_progress_gauge.Pulse()
 
     def on_reload(self, _: wx.Event):
         self._controller.reload_mesh()
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
 
     def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
         mesh = load_result.mesh
         if load_result.complete:
             self._loader_timer.Stop()
+            self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
         if load_result.error:
             logger.error(load_result.error)
         if self._has_mesh_changed(load_result):
