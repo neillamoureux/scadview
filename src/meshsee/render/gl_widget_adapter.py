@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
 
+from meshsee.load_status import LoadStatus
 from meshsee.observable import Observable
 from meshsee.render.camera import CameraOrthogonal, CameraPerspective
 from meshsee.render.renderer import RendererFactory
@@ -178,8 +179,8 @@ class GlWidgetAdapter:
         up = np.array([0, 1, 0])
         self._renderer.frame(direction, up)
 
-    def indicate_load_state(self, state: str):
-        self._renderer.indicate_load_state(state)
+    def indicate_load_status(self, status: LoadStatus):
+        self._renderer.indicate_load_status(status)
 
     def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
         self._renderer.load_mesh(mesh, name)

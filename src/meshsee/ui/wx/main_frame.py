@@ -1,9 +1,9 @@
 import logging
 
 import wx
-from trimesh import Trimesh
 
-from meshsee.controller import Controller, LoadStatus, export_formats
+from meshsee.controller import Controller, export_formats
+from meshsee.load_status import LoadStatus
 from meshsee.mesh_loader_process import LoadResult
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction, EnableableAction
@@ -53,6 +53,7 @@ class MainFrame(wx.Frame):
         self._loader_load_completed = False
         self._loader_last_load_number = 0
         self._loader_last_sequence_number = 0
+        self._controller.on_load_status_change.subscribe(self._indicate_load_status)
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
@@ -64,7 +65,7 @@ class MainFrame(wx.Frame):
         )
         self._export_action = EnableableAction[LoadStatus](
             Action("Export...", self.export, accelerator="E"),
-            initial_value=LoadStatus.IDLE,
+            initial_value=LoadStatus.NONE,
             on_value_change=self._controller.on_load_status_change,
             enable_func=self._can_be_exported,
         )
@@ -125,14 +126,6 @@ class MainFrame(wx.Frame):
 
     def _can_be_exported(self, status: LoadStatus) -> bool:
         return status == LoadStatus.COMPLETE
-
-    def _on_current_mesh_set(self, mesh: list[Trimesh] | Trimesh | None) -> bool:
-        if mesh is not None:
-            if isinstance(mesh, list) and len(mesh) > 0:
-                return True
-            elif isinstance(mesh, Trimesh):
-                return True
-        return False
 
     def _add_view_buttons(self):
         for action in [
@@ -221,6 +214,9 @@ class MainFrame(wx.Frame):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
+
+    def _indicate_load_status(self, status: LoadStatus):
+        self._gl_widget.indicate_load_status(status)
 
     def _has_mesh_changed(self, load_result: LoadResult) -> bool:
         return load_result.mesh is not None and (

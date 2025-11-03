@@ -14,6 +14,7 @@ from wx.glcanvas import (
     GLContext,
 )
 
+from meshsee.load_status import LoadStatus
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 
 
@@ -189,4 +190,8 @@ class GlWidget(GLCanvas):
 
     def toggle_gnomon(self):
         self._gl_widget_adapter.toggle_gnomon()
+        self.Refresh(False)
+
+    def indicate_load_status(self, status: LoadStatus):
+        self._gl_widget_adapter.indicate_load_status(status)
         self.Refresh(False)
