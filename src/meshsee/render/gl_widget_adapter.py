@@ -99,11 +99,13 @@ class GlWidgetAdapter:
             self.use_orthogonal_camera()
 
     def render(self, width: int, height: int):  # override
+        logger.debug("render start")
         if not self._gl_initialized:
             self._init_gl(width, height)
         self._renderer.render(
             self.show_grid, self.show_edges, self.show_gnomon, self.show_axes
         )
+        logger.debug("render end")
 
     def _init_gl(self, width: int, height: int):
         # You cannot create the context before initializeGL is called

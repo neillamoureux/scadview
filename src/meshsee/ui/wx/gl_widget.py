@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import logging
 import wx
 from trimesh import Trimesh
 from wx.glcanvas import (
@@ -16,6 +16,8 @@ from wx.glcanvas import (
 
 from meshsee.load_status import LoadStatus
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
+
+logger = logging.getLogger(__name__)
 
 
 def create_graphics_widget(
@@ -87,6 +89,7 @@ class GlWidget(GLCanvas):
         self.Refresh(False)
 
     def on_paint(self, _evt: wx.PaintEvent):
+        logger.debug("on_paint start")
         # Required so wx knows we handled the paint.
         try:
             self.SetSwapInterval(1)  # 0 = disable vsync, 1 = enable
@@ -104,6 +107,7 @@ class GlWidget(GLCanvas):
             scale * size.height,  # pyright: ignore[reportUnknownArgumentType]
         )
         self.SwapBuffers()
+        logger.debug("on_paint end")
 
     def on_mouse_press_left(self, event: wx.MouseEvent):
         pos = event.GetPosition()

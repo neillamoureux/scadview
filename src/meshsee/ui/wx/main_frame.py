@@ -238,6 +238,7 @@ class MainFrame(wx.Frame):
         if load_result.error:
             logger.error(load_result.error)
         if self._has_mesh_changed(load_result):
+            logger.debug("on_load_time: mesh has changed")
             if mesh is not None:  # Keep the type checker happy
                 self._gl_widget.load_mesh(mesh, "loaded mesh")
             if self._is_first_in_load(load_result):

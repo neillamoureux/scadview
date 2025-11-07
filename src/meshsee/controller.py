@@ -87,9 +87,13 @@ class Controller:
         try:
             load_result = self._load_queue.get_nowait()
             if load_result.mesh is not None:
+                logger.debug("check_load_queue got mesh")
                 self.current_mesh = load_result.mesh
+            else:
+                logger.debug("check_load_queue got mesh == None")
             self.load_status = load_result.status
         except queue.Empty:
+            logger.debug("check_load_queue empty")
             load_result = LoadResult(0, 0, None, None, False)
         return load_result
 
