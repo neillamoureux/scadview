@@ -1,5 +1,6 @@
 import logging
 import queue
+from time import time
 from dataclasses import dataclass
 from multiprocessing import Process, Queue
 from threading import Thread
@@ -103,6 +104,7 @@ MpCommandQueue = MpQueue[Command]
 
 
 class LoadWorker(Thread):
+    PUT_QUEUE_TIMEOUT = 0.1
     load_number = 0
 
     def __init__(self, module_path: str, load_queue: MpLoadQueue):
@@ -117,28 +119,36 @@ class LoadWorker(Thread):
 
     def load(self):
         sequence_number = 0
+        self.load_start_time = time()
         last_mesh = None
         try:
             for mesh in self.run_mesh_module():
+                last_mesh = mesh
                 sequence_number += 1
                 if self.cancelled:
                     logger.info("LoadWorker cancelled, stopping load")
                     return
-                if isinstance(mesh, Manifold):
-                    mesh2 = manifold_to_trimesh(mesh)
-                else:
-                    mesh2 = mesh
-                last_mesh = mesh2
-                self.put_in_queue(
-                    LoadResult(self.load_number, sequence_number, mesh2, None)
-                )
+                self._update_mesh(sequence_number, mesh)
         except Exception as e:
-            self.put_in_queue(
-                LoadResult(self.load_number, sequence_number, last_mesh, e, True)
-            )
+            self._update_mesh(sequence_number, last_mesh, final=True, error=e)
             return
+        self._update_mesh(sequence_number, last_mesh, final=True)
+
+    def _update_mesh(
+        self,
+        sequence_number: int,
+        mesh: MeshType | None,
+        final: bool = False,
+        error: Exception | None = None,
+    ):
+        if isinstance(mesh, Manifold):
+            mesh2 = manifold_to_trimesh(mesh)
+        else:
+            mesh2 = mesh
         self.put_in_queue(
-            LoadResult(self.load_number, sequence_number, last_mesh, None, True)
+            LoadResult(
+                self.load_number, sequence_number, mesh2, error=error, complete=final
+            )
         )
 
     def put_in_queue(self, result: LoadResult):
@@ -148,7 +158,7 @@ class LoadWorker(Thread):
                 logger.info("LoadWorker cancelled, stopping load")
                 return
             try:
-                self.load_queue.put_nowait(result)
+                self.load_queue.put(result, timeout=self.PUT_QUEUE_TIMEOUT)
                 result_put = True
             except queue.Full:
                 try:
@@ -170,7 +180,8 @@ class LoadWorker(Thread):
 
 
 class MeshLoaderProcess(Process):
-    COMMAND_QUEUE_CHECK_INTERVAL = 0.1
+
+    COMMAND_QUEUE_CHECK_TIMEOUT = 0.1
 
     def __init__(self, command_queue: MpCommandQueue, load_queue: MpLoadQueue):
         super().__init__()
@@ -180,9 +191,10 @@ class MeshLoaderProcess(Process):
 
     def run(self):
         while True:
-            sleep(self.COMMAND_QUEUE_CHECK_INTERVAL)
             try:
-                command = self._command_queue.get_nowait()
+                command = self._command_queue.get(
+                    timeout=self.COMMAND_QUEUE_CHECK_TIMEOUT
+                )
             except queue.Empty:
                 continue
             if isinstance(command, LoadMeshCommand):
