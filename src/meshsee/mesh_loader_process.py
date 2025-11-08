@@ -1,10 +1,9 @@
 import logging
 import queue
-from time import time
 from dataclasses import dataclass
 from multiprocessing import Process, Queue
 from threading import Thread
-from time import sleep, time
+from time import time
 from typing import Any, Generator, Generic, Type, TypeVar
 
 from manifold3d import Manifold
@@ -180,7 +179,6 @@ class LoadWorker(Thread):
 
 
 class MeshLoaderProcess(Process):
-
     COMMAND_QUEUE_CHECK_TIMEOUT = 0.1
 
     def __init__(self, command_queue: MpCommandQueue, load_queue: MpLoadQueue):
