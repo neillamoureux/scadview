@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+
 import wx
 from trimesh import Trimesh
 from wx.glcanvas import (
@@ -83,7 +85,7 @@ class GlWidget(GLCanvas):
             self.GetClientSize()
         )
         self._gl_widget_adapter.resize(
-            size.width,
+            size.width,  # pyright: ignore[reportUnknownArgumentType]
             size.height,  # pyright: ignore[reportUnknownArgumentType]
         )
         self.Refresh(False)
