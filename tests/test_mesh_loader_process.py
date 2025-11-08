@@ -1,16 +1,16 @@
 from unittest.mock import patch
 
+import numpy.testing as npt
 import pytest
+from trimesh.creation import box, icosphere
 
 from meshsee.mesh_loader_process import (
-    MpQueue,
     LoadResult,
     LoadStatus,
-    MpLoadQueue,
     LoadWorker,
+    MpLoadQueue,
+    MpQueue,
 )
-
-from trimesh.creation import box
 
 
 @pytest.fixture
@@ -107,18 +107,89 @@ def test_load_result_status():
 
 
 @pytest.fixture
-def load_worker():
+def mesh(request):
+    m = getattr(request, "param", box())
+    return m
+
+
+@pytest.fixture
+def load_queue():
+    yield MpLoadQueue(maxsize=10, type_=LoadResult)
+
+
+@pytest.fixture
+def load_worker(mesh, load_queue):
     with patch("meshsee.mesh_loader_process.ModuleLoader") as mock_module_loader:
         ml_instance = mock_module_loader.return_value
-        ml_instance.run_function.return_value = box()
-        load_queue = MpLoadQueue(maxsize=10, type_=LoadResult)
-        load_worker = LoadWorker("test/path", load_queue)
-        # load_worker.start()
-        yield load_worker
-        # load_worker.cancel()
-        # load_worker.join(timeout=1.0)
-        # assert not load_worker.is_alive()
+        if isinstance(mesh, list):
+            ml_instance.run_function.return_value = iter(mesh)
+        else:
+            ml_instance.run_function.return_value = iter([mesh])
+        worker = LoadWorker("test/path", load_queue)
+        yield worker
+
+
+@pytest.fixture
+def started_load_worker(load_worker):
+    load_worker.start()
+    yield load_worker
+    load_worker.cancel()
+    load_worker.join(timeout=1.0)
+    assert not load_worker.is_alive()
 
 
 def test_load_worker_init(load_worker):
     assert load_worker.load_number == 0
+
+
+def test_load_worker_put_in_queue(mesh, load_queue, started_load_worker):
+    result = load_queue.get(timeout=1.0)
+    assert result.load_number == 1
+    assert result.sequence_number == 1
+    npt.assert_array_equal(result.mesh.vertices, mesh.vertices)
+    npt.assert_array_equal(result.mesh.faces, mesh.faces)
+    assert not result.error
+    assert not result.complete  # Even though no more meshes, not set complete
+
+    # On get after last mesh, returns the last mesh with same load result and seq
+    # with complete is True
+
+    result = load_queue.get(timeout=1.0)
+    assert result.load_number == 1
+    assert result.sequence_number == 1
+    npt.assert_array_equal(result.mesh.vertices, mesh.vertices)
+    npt.assert_array_equal(result.mesh.faces, mesh.faces)
+    assert not result.error
+    assert result.complete
+
+
+@pytest.mark.parametrize(
+    "mesh", [[box(), icosphere()]], indirect=True, ids=["box and sphere"]
+)
+def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_worker):
+    result = load_queue.get(timeout=1.0)
+    assert result.load_number == 1
+    assert result.sequence_number == 1
+    npt.assert_array_equal(result.mesh.vertices, mesh[0].vertices)
+    npt.assert_array_equal(result.mesh.faces, mesh[0].faces)
+    assert not result.error
+    assert not result.complete
+
+    result = load_queue.get(timeout=1.0)
+    assert result.load_number == 1
+    assert result.sequence_number == 2
+    npt.assert_array_equal(result.mesh.vertices, mesh[1].vertices)
+    npt.assert_array_equal(result.mesh.faces, mesh[1].faces)
+    assert not result.error
+    assert not result.complete  # Even though no more meshes, not set complete
+
+    # On get after last mesh, returns the last mesh with same load result and seq
+    # with complete is True
+
+    result = load_queue.get(timeout=1.0)
+    assert result.load_number == 1
+    assert result.sequence_number == 2
+    npt.assert_array_equal(result.mesh.vertices, mesh[1].vertices)
+    npt.assert_array_equal(result.mesh.faces, mesh[1].faces)
+    assert not result.error
+    assert result.complete
