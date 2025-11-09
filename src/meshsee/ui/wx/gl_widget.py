@@ -120,16 +120,6 @@ class GlWidget(GLCanvas):
             self._mouse_captured = True
         self._gl_widget_adapter.start_orbit(int(pos.x), int(pos.y))
 
-    def _get_scaled_position(self, event: wx.MouseEvent) -> wx.Point:
-        pos = event.GetPosition()
-        device_scale = (  # pyright: ignore[reportUnknownVariableType]
-            self.GetContentScaleFactor()
-        )
-        return wx.Point(
-            int(pos.x * device_scale),  # pyright: ignore[reportUnknownArgumentType]
-            int(pos.y * device_scale),  # pyright: ignore[reportUnknownArgumentType]
-        )
-
     def on_mouse_release_left(self, event: wx.MouseEvent):
         if self._mouse_captured:
             self.ReleaseMouse()
@@ -146,6 +136,16 @@ class GlWidget(GLCanvas):
                 distance,
             )
         self.Refresh(False)
+
+    def _get_scaled_position(self, event: wx.MouseEvent) -> wx.Point:
+        pos = event.GetPosition()
+        device_scale = (  # pyright: ignore[reportUnknownVariableType]
+            self.GetContentScaleFactor()
+        )
+        return wx.Point(
+            int(pos.x * device_scale),  # pyright: ignore[reportUnknownArgumentType]
+            int(pos.y * device_scale),  # pyright: ignore[reportUnknownArgumentType]
+        )
 
     def on_mouse_move(self, event: wx.MouseEvent):
         """
