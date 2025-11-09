@@ -127,6 +127,7 @@ def load_worker(mesh, load_queue):
             ml_instance.run_function.return_value = iter([mesh])
         worker = LoadWorker("test/path", load_queue)
         yield worker
+        LoadWorker.load_number = 0  # reset
 
 
 @pytest.fixture
