@@ -1,5 +1,5 @@
 import logging
-
+import os
 import wx
 
 from meshsee.controller import Controller, export_formats
@@ -260,12 +260,14 @@ class MainFrame(wx.Frame):
 
     def export(self, _: wx.Event):
         default_export_path = self._controller.default_export_path()
+        default_export_dir, default_export_file = os.path.split(default_export_path)
         fmts = export_formats()
         wildcard = "|".join([f"{fmt.upper()} (*.{fmt})|*.{fmt}" for fmt in fmts])
         with wx.FileDialog(
             self,
             "Export",
-            defaultFile=default_export_path,
+            defaultDir=default_export_dir,
+            defaultFile=default_export_file,
             wildcard=wildcard,
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as dlg:  # pyright: ignore[reportUnknownVariableType]
