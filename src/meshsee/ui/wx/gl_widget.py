@@ -124,8 +124,19 @@ class GlWidget(GLCanvas):
         if event.GetWheelAxis() == wx.MOUSE_WHEEL_VERTICAL:
             distance = event.GetWheelRotation()
             position = event.GetPosition()
+            device_scale = (  # pyright: ignore[reportUnknownVariableType]
+                self.GetContentScaleFactor()
+            )
             self._gl_widget_adapter.move_to_screen(
-                int(position.x), int(position.y), distance
+                int(
+                    position.x
+                    * device_scale  # pyright: ignore[reportUnknownArgumentType]
+                ),
+                int(
+                    position.y
+                    * device_scale  # pyright: ignore[reportUnknownArgumentType]
+                ),
+                distance,
             )
         self.Refresh(False)
 
