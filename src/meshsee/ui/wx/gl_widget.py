@@ -66,6 +66,8 @@ class GlWidget(GLCanvas):
         self.on_edges_change = self._gl_widget_adapter.on_edges_change
         self.on_gnomon_change = self._gl_widget_adapter.on_gnomon_change
 
+        self._mouse_captured = False
+
     @property
     def show_grid(self):
         return self._gl_widget_adapter.show_grid
@@ -113,21 +115,37 @@ class GlWidget(GLCanvas):
 
     def on_mouse_press_left(self, event: wx.MouseEvent):
         pos = event.GetPosition()
-        self.CaptureMouse()
+        if not self._mouse_captured:
+            self.CaptureMouse()
+            self._mouse_captured = True
         self._gl_widget_adapter.start_orbit(int(pos.x), int(pos.y))
 
     def on_mouse_release_left(self, event: wx.MouseEvent):
-        self.ReleaseMouse()
+        if self._mouse_captured:
+            self.ReleaseMouse()
+            self._mouse_captured = False
         self._gl_widget_adapter.end_orbit()
 
     def on_mouse_wheel(self, event: wx.MouseEvent):
         if event.GetWheelAxis() == wx.MOUSE_WHEEL_VERTICAL:
             distance = event.GetWheelRotation()
-            position = event.GetPosition()
+            position = self._get_scaled_position(event)
             self._gl_widget_adapter.move_to_screen(
-                int(position.x), int(position.y), distance
+                int(position.x),
+                int(position.y),
+                distance,
             )
         self.Refresh(False)
+
+    def _get_scaled_position(self, event: wx.MouseEvent) -> wx.Point:
+        pos = event.GetPosition()
+        device_scale = (  # pyright: ignore[reportUnknownVariableType]
+            self.GetContentScaleFactor()
+        )
+        return wx.Point(
+            int(pos.x * device_scale),  # pyright: ignore[reportUnknownArgumentType]
+            int(pos.y * device_scale),  # pyright: ignore[reportUnknownArgumentType]
+        )
 
     def on_mouse_move(self, event: wx.MouseEvent):
         """
