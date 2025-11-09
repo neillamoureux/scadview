@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from time import sleep
 import numpy.testing as npt
 import pytest
 from trimesh.creation import box, icosphere
@@ -194,3 +195,11 @@ def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_work
     npt.assert_array_equal(result.mesh.faces, mesh[1].faces)
     assert not result.error
     assert result.complete
+
+
+@pytest.mark.skip  # Flakey
+def test_load_worker_cancel(started_load_worker):
+    assert started_load_worker.is_alive()
+    started_load_worker.cancel()
+    started_load_worker.join(timeout=1.0)
+    assert not started_load_worker.is_alive()
