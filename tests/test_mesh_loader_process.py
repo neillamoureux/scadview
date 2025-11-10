@@ -1,6 +1,5 @@
 from unittest.mock import patch
 
-from time import sleep
 import numpy.testing as npt
 import pytest
 from trimesh.creation import box, icosphere
