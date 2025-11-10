@@ -60,6 +60,8 @@ class GlWidget(GLCanvas):
         self.Bind(wx.EVT_MOTION, self.on_mouse_move)
         self.Bind(wx.EVT_MOUSEWHEEL, self.on_mouse_wheel)
 
+        self.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
+
         self.on_camera_change = self._gl_widget_adapter.on_camera_change
         self.on_grid_change = self._gl_widget_adapter.on_grid_change
         self.on_axes_change = self._gl_widget_adapter.on_axes_change
@@ -153,6 +155,25 @@ class GlWidget(GLCanvas):
         """
         pos = event.GetPosition()
         self._gl_widget_adapter.do_orbit(int(pos.x), int(pos.y))
+        self.Refresh(False)
+
+    def on_key_down(self, event: wx.KeyEvent):
+        code = event.GetKeyCode()
+        if code in (wx.WXK_UP, ord("W"), ord("w")):
+            self._gl_widget_adapter.move(1.0)
+        elif code in (wx.WXK_DOWN, ord("S"), ord("s")):
+            self._gl_widget_adapter.move(-1.0)
+        elif code in (wx.WXK_LEFT, ord("A"), ord("a")):
+            self._gl_widget_adapter.move_right(-1.0)
+        elif code in (wx.WXK_RIGHT, ord("D"), ord("d")):
+            self._gl_widget_adapter.move_right(1.0)
+        elif code in (wx.WXK_PAGEUP, ord("Q"), ord("q")):
+            self._gl_widget_adapter.move_up(1.0)
+        elif code in (wx.WXK_PAGEDOWN, ord("E"), ord("e")):
+            self._gl_widget_adapter.move_up(-1.0)
+        else:
+            event.Skip()  # let other handlers process unhandled keys
+            return
         self.Refresh(False)
 
     def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
