@@ -12,7 +12,6 @@ dependencies = [
     "numpy==2.*",
     "pillow>=11.2.1",
     "pyrr>=0.10.3",
-    "pyside6==6.*",
     "scipy>=1.16.1",
     "shapely>=2.1.1",
     "trimesh>=4.6.1",
