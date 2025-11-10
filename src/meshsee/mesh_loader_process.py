@@ -34,7 +34,7 @@ class MpQueue(Generic[T]):
         return self.get(False)
 
     def put_nowait(self, item: T):
-        return self._queue.put(item, False)
+        return self.put(item, False)
 
     def put(self, item: T, block: bool = True, timeout: float | None = None):
         item = self._check_type(item)
