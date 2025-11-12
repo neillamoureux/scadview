@@ -6,7 +6,7 @@ from meshsee.logconfig import setup_logging
 from meshsee.render.camera import CameraPerspective
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.render.renderer import RendererFactory
-from meshsee.ui.gl_ui import GlUi
+from meshsee.ui.wx.gl_ui import GlUi
 
 setup_logging()
 logger = logging.getLogger(__name__)

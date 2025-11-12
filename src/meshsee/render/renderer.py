@@ -10,16 +10,14 @@ from trimesh.creation import (
     box,  # pyright: ignore[reportUnknownVariableType] can't resolve
 )
 
+from meshsee.load_status import LoadStatus
 from meshsee.observable import Observable
 from meshsee.render.camera import Camera, copy_camera_state
 from meshsee.render.label_atlas import LabelAtlas
-from meshsee.render.label_renderee import (
-    LabelSetRenderee,
-)
+from meshsee.render.label_renderee import LabelSetRenderee
 from meshsee.render.renderee import GnomonRenderee
 from meshsee.render.shader_program import ShaderProgram, ShaderVar
 from meshsee.render.trimesh_renderee import (
-    TrimeshListRenderee,
     TrimeshOpaqueRenderee,
     create_trimesh_renderee,
 )
@@ -262,8 +260,8 @@ class Renderer:
             "label_vertex.glsl", "label_fragment.glsl", program_vars, observable
         )
 
-    def indicate_load_state(self, state: str):
-        if state == "loading":
+    def indicate_load_status(self, status: LoadStatus):
+        if status == LoadStatus.START:
             self.background_color = self.LOADING_BACKGROUND_COLOR
             self._main_renderee = create_trimesh_renderee(
                 self._ctx,
@@ -273,12 +271,11 @@ class Renderer:
                 self._camera.view_matrix,
                 name="loading",
             )
-        elif state == "success":
-            if isinstance(self._main_renderee, TrimeshListRenderee):
-                self.background_color = self.DEBUG_BACKGROUND_COLOR
-            else:
-                self.background_color = self.SUCCESS_BACKGROUND_COLOR
-        elif state == "error":
+        elif status == LoadStatus.COMPLETE:
+            self.background_color = self.SUCCESS_BACKGROUND_COLOR
+        elif status == LoadStatus.DEBUG:
+            self.background_color = self.DEBUG_BACKGROUND_COLOR
+        elif status == LoadStatus.ERROR:
             self.background_color = self.ERROR_BACKGROUND_COLOR
         else:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR
@@ -329,6 +326,11 @@ class Renderer:
     def render(
         self, show_grid: bool, show_edges: bool, show_gnomon: bool, show_axes: bool
     ):  # override
+        self._main_prog.update_all_program_vars()
+        self._axis_prog.update_all_program_vars()
+        self._num_prog.update_all_program_vars()
+        self._gnomon_prog.update_all_program_vars()
+
         self._ctx.clear(*self._background_color, depth=1.0)
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
 
@@ -346,7 +348,6 @@ class Renderer:
 
         if show_gnomon:
             self._gnomon_renderee.render()
-        # self._ctx.enable(moderngl.DEPTH_TEST)
 
 
 class RendererFactory:
