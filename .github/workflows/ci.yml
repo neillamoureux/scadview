@@ -32,7 +32,8 @@ jobs:
       
       - name: Install dependencies
         run: |
-          uv sync --frozen
+          URL=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04
+          PIP_FIND_LINKS=$URL UV_NO_BUILD=1 uv sync --frozen
 
       - name: Run formatter check
         run: uv run ./scripts/format.sh --check
