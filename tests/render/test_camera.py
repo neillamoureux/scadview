@@ -534,12 +534,15 @@ def test_move_along():
     cam.position = position
     cam.look_at = look_at
     perp_up = cam.perpendicular_up
-    halves = 1.7
+    halves = 0.8
     distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
     offset = vector / np.linalg.norm(vector) * distance
     cam.move_along(vector, halves)
     assert np.allclose(cam.position, position + offset)
-    assert np.allclose(cam.look_at, look_at + offset)
+    # check the direction after and before (= look_at - position) are parallel
+    assert np.dot(cam.direction, look_at - position) == approx(
+        np.linalg.norm(cam.direction) * np.linalg.norm(look_at - position)
+    )
     assert np.allclose(cam.perpendicular_up, perp_up)
 
 
@@ -555,12 +558,15 @@ def test_move_to_screen_perspective():
     halves = 1.5
     ndx = 0.6
     ndy = -0.7
-    cam.move_to_screen(ndx, ndy, halves)
     distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
+    cam.move_to_screen(ndx, ndy, halves)
 
     displacement = cam.position - position
     assert np.linalg.norm(displacement) == approx(distance)
-    assert np.allclose(cam.direction, look_at - position)
+    # check the direction after and before (= look_at - position) are parallel
+    assert np.dot(cam.direction, look_at - position) == approx(
+        np.linalg.norm(cam.direction) * np.linalg.norm(look_at - position)
+    )
     assert np.allclose(cam.perpendicular_up, perp_up)
 
     check_pointer_world_position_stationary_on_screen(
@@ -604,11 +610,15 @@ def test_move_to_screen_orthogonal():
     ndx = 0.6
     ndy = -0.7
     orig_fp_distance = cam._distance_to_focal_plane()
-    cam.move_to_screen(ndx, ndy, halves)
     distance = np.linalg.norm(cam.direction) * (1 - np.power(0.5, halves))
+    cam.move_to_screen(ndx, ndy, halves)
     new_fp_distance = cam._distance_to_focal_plane()
     assert (orig_fp_distance - new_fp_distance) == approx(distance)
-    assert np.allclose(cam.direction, look_at - position)
+    # check the direction after and before (= look_at - position) are parallel
+    assert np.dot(cam.direction, look_at - position) == approx(
+        np.linalg.norm(cam.direction) * np.linalg.norm(look_at - position)
+    )
+
     assert np.allclose(cam.perpendicular_up, perp_up)
 
     check_pointer_world_position_stationary_on_screen(
