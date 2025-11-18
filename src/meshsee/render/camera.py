@@ -294,9 +294,21 @@ class Camera:
         self.update_matrices()
 
     def move_along_by(self, vector: NDArray[np.float32]):
+        # Move the look at as the projectiob of the vector
+        # along the plane perpendicular to the direction.
+        # This keeps direction parallel to the original direction
+        # after the move
+        look_at_move = self._project_on_plane(vector, self.direction)
         self.position = self.position + vector
-        self.look_at = self.look_at + vector
+        self.look_at = self.look_at + look_at_move
         self.update_matrices()
+
+    def _project_on_plane(
+        self, vec: NDArray[np.float32], plane_perp_vec: NDArray[np.float32]
+    ) -> NDArray[np.float32]:
+        return vec - plane_perp_vec * np.dot(vec, plane_perp_vec) / np.dot(
+            plane_perp_vec, plane_perp_vec
+        )
 
     def move_to_screen(self, ndx: float, ndy: float, halves: float):
         """
