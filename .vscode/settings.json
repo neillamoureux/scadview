@@ -6,5 +6,12 @@
     "python.testing.pytestEnabled": true,
     "coverage-gutters.coverageFileNames": [
         "coverage.xml"
-    ]
+    ],
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    }
 }
