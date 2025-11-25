@@ -5,6 +5,6 @@
 ::: meshsee.surface
 ::: meshsee.mesh_from_heightmap
 ::: meshsee.text
+::: meshsee.ProfileType
+::: meshsee.linear_extrude
 ::: meshsee.manifold_to_trimesh
-
-

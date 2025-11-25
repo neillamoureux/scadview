@@ -1,5 +1,6 @@
 from meshsee.api.colors import Color as Color
 from meshsee.api.colors import set_mesh_color as set_mesh_color
+from meshsee.api.linear_extrude import ProfileType as ProfileType
 from meshsee.api.linear_extrude import linear_extrude as linear_extrude
 from meshsee.api.surface import mesh_from_heightmap as mesh_from_heightmap
 from meshsee.api.surface import surface as surface
