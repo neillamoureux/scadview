@@ -9,9 +9,9 @@ and loading it from the Meshsee UI.
 
 Meshsee enables a iterative work flow to build Trimesh objects.
 
-1.  Run Meshsee
 1.  Create a new python file, and 
 1.  Write a `create_mesh` function code to build a Trimesh object.  
+1.  Run Meshsee
 1.  Load the Python file into Meshsee.
 1.  Meshsee shows you the mesh.  You can move the camera around to inspect your mesh.
 1.  Edit your Python file to modify your mesh.
@@ -22,23 +22,38 @@ Meshsee enables a iterative work flow to build Trimesh objects.
 
 ### Installation
 
-If you have python 3.11 or greater, you can install Meshsee directly into your
-system.  Or, as is always a good practice, set up a python virtual environment and activate it - see [Creating virual environments](https://docs.python.org/3/library/venv.html#creating-virtual-environments).
+Check that you have Python 3.11 or greater via
 
-Meshsee requires python 3.11 or greater, 
-so install an appropriate version in your virtual environment
-(or system if running without the virtual environment).
+`python --version`
 
-First install Trimesh so you can script your 3d models (activate your virtual environment first):
+or, if the `python` command cannot be found:
+
+`python3 --version`
+
+If Python 3.11 or greater is installed on your system, 
+you can install Meshsee directly into your system.
+
+#### Virtual venv option
+
+As is always a good practice, 
+set up a Python virtual environment and activate it: 
+- see [Creating virtual environments](https://docs.python.org/3/library/venv.html#creating-virtual-environments).
+
+#### Install Trimesh
+
+First install Trimesh so you can script your 3d models 
+(if using a virtual environment, activate it first):
 
 `pip install trimesh`
 
 Trimesh has optional modules you can add.  
 Read its docs to determine which ones will help you most.
 
+#### Install Meshsee
+
 To install, Meshsee run 
 
-`pip install meshsee`
+`pip install git+https://github.com/neillamoureux/meshsee.git@main`
 
 If you already have a project using Trimesh set up, add meshsee to that project instead and install there.
 
@@ -46,7 +61,11 @@ If you already have a project using Trimesh set up, add meshsee to that project 
 
 To run: `python -m meshsee`
 
-The first time you run, it may take longer than when you run it in future runs.
+The first time you run, 
+it can take some time to set up the user interface,
+and so it may take longer than when you run it in future runs.
+
+Notice that your console/terminal shows output from the Meshsee module.
 
 ### Loading in your model
 
@@ -79,5 +98,14 @@ def create_mesh():
 ```
 
 Click Reload. You should see an updated sphere with fewer triangles.
+
+### Export
+
+Once you are happy with your mesh, 
+you can export it for 3d printing
+or for loading other 3d software.
+
+1. Click the `Export` button.
+1. Choose a format. 
 
 
