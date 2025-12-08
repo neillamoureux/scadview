@@ -1,7 +1,7 @@
-from multiprocessing import Process, Pipe
+import tkinter as tk
+from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from pathlib import Path
-import tkinter as tk
 
 SPLASH_IMAGE = Path(__file__) / ".." / ".." / "resources" / "splash.png"
 SPLASH_MIN_DISPLAY_TIME_MS = 1000

@@ -4,7 +4,7 @@
 # Things to expose at the top level
 # type: ignore[reportUnsupportedDunderAll]
 __all__ = [
-    "Color", 
+    "Color",
     "set_mesh_color",
     "linear_extrude",
     "mesh_from_heightmap",
@@ -41,4 +41,3 @@ def __getattr__(name: str):
     # Cache it in globals so next access is fast
     globals()[name] = value
     return value
-
