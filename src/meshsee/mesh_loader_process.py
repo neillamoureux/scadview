@@ -11,6 +11,7 @@ from trimesh import Trimesh
 
 from meshsee.api.utils import manifold_to_trimesh
 from meshsee.load_status import LoadStatus
+from meshsee.logconfig import setup_logging
 from meshsee.module_loader import ModuleLoader
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,7 @@ class MeshLoaderProcess(Process):
         self._worker: LoadWorker | None = None
 
     def run(self):
+        setup_logging()
         while True:
             try:
                 command = self._command_queue.get(
