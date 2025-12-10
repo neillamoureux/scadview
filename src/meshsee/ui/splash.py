@@ -5,7 +5,7 @@ from multiprocessing.connection import Connection
 from pathlib import Path
 from tkinter import TclError
 
-from meshsee.logconfig import set_logging_level, setup_logging
+from meshsee.logconfig import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,6 @@ def stop_splash_process(conn: Connection) -> None:
 def splash_worker(image_path: str, conn: Connection) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
     setup_logging()
-    set_logging_level()
-    logger = logging.getLogger(__name__)
     logger.debug(f"worker starting, image_path={image_path}")
     root = create_tk_root()
     splash = create_splash_window(root, image_path)
