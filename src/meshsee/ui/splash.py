@@ -3,13 +3,12 @@ from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from pathlib import Path
 from tkinter import TclError
+import logging
+from meshsee.logconfig import setup_logging
 
-SPLASH_IMAGE = (
-    Path(__file__).resolve()
-    .parent.parent  
-    / "resources"
-    / "splash.png"
-)
+setup_logging()
+logger = logging.getLogger(__name__)
+SPLASH_IMAGE = Path(__file__).resolve().parent.parent / "resources" / "splash.png"
 SPLASH_MIN_DISPLAY_TIME_MS = 1000
 CHECK_INTERVAL_MS = 100
 TITLE_TEXT = "Meshsee"
@@ -35,14 +34,14 @@ def stop_splash_process(conn: Connection) -> None:
 
 def splash_worker(image_path: str, conn: Connection) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
-    print(f"[splash] worker starting, image_path={image_path}")
+    logger.debug(f"[splash] worker starting, image_path={image_path}")
     root = create_tk_root()
     splash = create_splash_window(root, image_path)
 
     def check_pipe():
         if conn.poll():
             msg = conn.recv()
-            print(f"[splash] received message: {msg}")
+            logger.debug(f"received message: {msg}")
             if msg == "CLOSE":
                 splash.destroy()
                 root.destroy()
@@ -115,13 +114,13 @@ def add_message(frame: tk.Frame) -> None:
 
 def add_image(window: tk.Tk | tk.Toplevel, image_path: str, frame: tk.Frame) -> None:
     if not Path(image_path).is_file():
-        print(f"[splash] WARNING: splash image not found at {image_path}")
+        logger.warning(f"splash image not found at {image_path}")
         return
 
     try:
         img = tk.PhotoImage(file=image_path)
     except TclError as e:
-        print(f"[splash] Failed to load image '{image_path}': {e}")
+        logger.debug(f"Failed to load image '{image_path}': {e}")
         return
 
     # Keep reference to avoid garbage collection
@@ -136,7 +135,7 @@ def center_window(win: tk.Tk | tk.Toplevel) -> None:
     h = win.winfo_height()
     sw = win.winfo_screenwidth()
     sh = win.winfo_screenheight()
-    print(f"[splash] geometry w={w}, h={h}, sw={sw}, sh={sh}")
+    logger.debug(f"geometry w={w}, h={h}, sw={sw}, sh={sh}")
 
     if w <= 0 or h <= 0 or sw <= 0 or sh <= 0:
         # Fallback: let Tk choose, do not force geometry
