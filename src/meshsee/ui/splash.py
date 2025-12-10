@@ -1,13 +1,14 @@
+import logging
 import tkinter as tk
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from pathlib import Path
 from tkinter import TclError
-import logging
-from meshsee.logconfig import setup_logging
 
-setup_logging()
+from meshsee.logconfig import set_logging_level, setup_logging
+
 logger = logging.getLogger(__name__)
+
 SPLASH_IMAGE = Path(__file__).resolve().parent.parent / "resources" / "splash.png"
 SPLASH_MIN_DISPLAY_TIME_MS = 1000
 CHECK_INTERVAL_MS = 100
@@ -34,7 +35,10 @@ def stop_splash_process(conn: Connection) -> None:
 
 def splash_worker(image_path: str, conn: Connection) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
-    logger.debug(f"[splash] worker starting, image_path={image_path}")
+    setup_logging()
+    set_logging_level()
+    logger = logging.getLogger(__name__)
+    logger.debug(f"worker starting, image_path={image_path}")
     root = create_tk_root()
     splash = create_splash_window(root, image_path)
 
