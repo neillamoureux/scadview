@@ -1,18 +1,38 @@
 # Importing the modules takes time the first run, so we use lazy loading
 # to speed up the initial import of meshsee.
 
+# This is so the the documetation tools can see these symbols
+if False:
+    from meshsee.api.colors import (
+        Color,
+        set_mesh_color,
+    )
+    from meshsee.api.linear_extrude import (
+        ProfileType,
+        linear_extrude,
+    )
+    from meshsee.api.surface import (
+        mesh_from_heightmap,
+        surface,
+    )
+    from meshsee.api.text_builder import (
+        text,
+        text_polys,
+    )
+    from meshsee.api.utils import manifold_to_trimesh
+
+
 # Things to expose at the top level
-# type: ignore[reportUnsupportedDunderAll]
 __all__ = [
-    "Color",
-    "set_mesh_color",
-    "ProfileType",
-    "linear_extrude",
-    "mesh_from_heightmap",
-    "surface",
-    "text",
-    "text_polys",
-    "manifold_to_trimesh",
+    "Color",  # type: ignore[reportUnsupportedDunderAll]
+    "set_mesh_color",  # type: ignore[reportUnsupportedDunderAll]
+    "ProfileType",  # type: ignore[reportUnsupportedDunderAll]
+    "linear_extrude",  # type: ignore[reportUnsupportedDunderAll]
+    "mesh_from_heightmap",  # type: ignore[reportUnsupportedDunderAll]
+    "surface",  # type: ignore[reportUnsupportedDunderAll]
+    "text",  # type: ignore[reportUnsupportedDunderAll]
+    "text_polys",  # type: ignore[reportUnsupportedDunderAll]
+    "manifold_to_trimesh",  # type: ignore[reportUnsupportedDunderAll]
 ]
 
 # Map attribute names to (module, attribute) so we can lazy-load
@@ -43,3 +63,8 @@ def __getattr__(name: str):
     # Cache it in globals so next access is fast
     globals()[name] = value
     return value
+
+
+def __dir__() -> list[str]:
+    # Helps tools that use dir() to discover members
+    return sorted(list(globals().keys()) + list(_lazy_map.keys()))

@@ -1,4 +1,4 @@
-# Welcome to  Meshsee
+# Welcome to  {{ project_name }}
 
 Meshsee enables quickly viewing and iterating on scripted 3d models created by [Trimesh](https://trimesh.org/) or [manifold3d](https://pypi.org/project/manifold3d/).
 It has a 3d viewer - you create a 3d (Mesh) that you can view (see) - Meshsee!  
