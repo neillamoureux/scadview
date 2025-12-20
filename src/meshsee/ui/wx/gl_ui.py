@@ -1,8 +1,12 @@
+import logging
+
 import wx
 
 from meshsee.controller import Controller
 from meshsee.render.gl_widget_adapter import GlWidgetAdapter
 from meshsee.ui.wx.main_frame import MainFrame
+
+logger = logging.getLogger(__name__)
 
 
 class GlUi:
@@ -12,5 +16,23 @@ class GlUi:
 
     def run(self):
         self.frame.Show()
-        self.frame.Raise()
+        wx.CallAfter(self._bring_to_front)
         self.app.MainLoop()
+
+    def _bring_to_front(self):
+        self.frame.Raise()
+        self.frame.SetFocus()
+        self.frame.SetFocusFromKbd()
+        self.frame.Restore()
+
+        if wx.Platform == "__WXMAC__":
+            self._bring_to_front_mac()
+
+    def _bring_to_front_mac(self):
+        try:
+            from AppKit import NSApplication  # type: ignore[reportAttributeAccessIssue]
+
+            app = NSApplication.sharedApplication()  # type: ignore[reportUnknownVariableType]
+            app.activateIgnoringOtherApps_(True)
+        except Exception:
+            pass
