@@ -1,7 +1,6 @@
 import logging
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
-from pathlib import Path
 
 from meshsee.logconfig import setup_logging
 from meshsee.ui.splash_window import (
