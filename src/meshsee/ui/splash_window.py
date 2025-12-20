@@ -28,8 +28,6 @@ from typing import Any, Callable
 logger = logging.getLogger(__name__)
 
 SPLASH_IMAGE = Path(__file__).resolve().parent.parent / "resources" / "splash.png"
-SPLASH_MIN_DISPLAY_TIME_MS = 1000
-CHECK_INTERVAL_MS = 100
 TITLE_TEXT = "Meshsee"
 MESSAGE_TEXT = "First run may take longer to initialize; please wait..."
 
@@ -54,9 +52,7 @@ class NullSplash:
         pass
 
 
-def create_splash_window(
-    image_path: str,
-) -> tuple[tk.Tk | NullRoot, tk.Toplevel | NullSplash]:
+def create_splash_window() -> tuple[tk.Tk | NullRoot, tk.Toplevel | NullSplash]:
     """Create and show the splash window."""
     if not tkinter_available:
         logger.warning("The splash screen is not available so it will not be shown.")
@@ -74,7 +70,8 @@ def create_splash_window(
     # Container frame (so text + image are together)
     frame = _create_frame(splash)
     _add_title(frame)
-    _add_image(splash, image_path, frame)
+    _add_image(splash, str(SPLASH_IMAGE), frame)
+    _add_message(frame)
     _center_window(splash)
 
     # Bring to front (Windows can be picky)
