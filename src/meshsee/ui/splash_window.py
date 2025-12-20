@@ -59,7 +59,7 @@ def create_splash_window(
 ) -> tuple[tk.Tk | NullRoot, tk.Toplevel | NullSplash]:
     """Create and show the splash window."""
     if not tkinter_available:
-        logger.warning("tkinter not available; skipping splash window")
+        logger.warning("The splash screen is not available so it will not be shown.")
         logger.warning(f"***** {MESSAGE_TEXT} *****")
         return NullRoot(), NullSplash()
     root = _create_tk_root()
