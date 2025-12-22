@@ -1,5 +1,4 @@
 site_name: Scadview Documentation
-# site_name: "Meshsee Documentation"
 watch: 
   - src
   - docs
@@ -14,7 +13,33 @@ nav:
   - Tutorials: tutorials.md
   - Contributing: contributing.md
   - License: license.md
-theme: readthedocs
+theme: 
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.top
+    - search.suggestions
+    - search.highlight
+    - toc.integrated
+    - content.code.annotate
+    - content.code.copy
+    - content.code.foldable
+    - content.code.tabbed
+    - content.tabs.linked
+    - header.autohide
+    - footer.social
+    - palette.toggle
+    - palette.switcher
+    - announcement.bar
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
 plugins:
   - include-markdown
   - search

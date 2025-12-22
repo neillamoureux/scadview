@@ -65,8 +65,12 @@ The first time you run,
 it can take some time to set up the user interface,
 and so it may take longer than when you run it in future runs.
 
+A splash screen shows on startup:
+
+![Splash](./images/splash_window.png){ .md-image width=400 }
+
 Once it has initialized, you should see the main user interface:
-![Startup Window](./images/startup_window.png)
+![Startup Window](./images/startup_window.png){ .md-image width=700 }
 
 Notice that your console/terminal shows output from the {{ package_name }} module.
 
