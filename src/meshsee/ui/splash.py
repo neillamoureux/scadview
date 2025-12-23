@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import logging
+import multiprocessing.queues as mp_queues
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
@@ -17,7 +20,7 @@ CHECK_INTERVAL_MS = 100
 def start_splash_process() -> Connection:
     """Helper to start splash and return parent_conn."""
     parent_conn, child_conn = Pipe()
-    p = Process(target=_splash_worker, args=(child_conn,))
+    p = Process(target=_splash_worker, args=(child_conn, log_queue))
     p.start()
     return parent_conn
 
@@ -31,9 +34,9 @@ def stop_splash_process(conn: Connection) -> None:
         pass
 
 
-def _splash_worker(conn: Connection) -> None:
+def _splash_worker(conn: Connection, log_q: mp_queues.Queue[logging.LogRecord]) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
-    configure_worker_logging(log_queue)
+    configure_worker_logging(log_q)
     logger.debug("worker starting")
     root, splash = create_splash_window()  # type: ignore[reportUnknownVariableType]
 

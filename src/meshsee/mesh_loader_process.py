@@ -199,11 +199,6 @@ class MeshLoaderProcess(Process):
 
     def run(self) -> None:
         configure_worker_logging(self._log_queue)
-        root = logging.getLogger()
-        print("WORKER root level:", root.level)
-        print("WORKER handlers:", root.handlers)
-        for h in root.handlers:
-            print("  handler:", type(h), "level:", h.level)
 
         while True:
             try:
