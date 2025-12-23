@@ -2,7 +2,8 @@ import logging
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from meshsee.logconfig import setup_logging
+from meshsee.logging_main import log_queue
+from meshsee.logging_worker import configure_worker_logging
 from meshsee.ui.splash_window import (
     create_splash_window,  # type: ignore[reportUnknownVariableType]
 )
@@ -32,7 +33,7 @@ def stop_splash_process(conn: Connection) -> None:
 
 def _splash_worker(conn: Connection) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
-    setup_logging()
+    configure_worker_logging(log_queue)
     logger.debug("worker starting")
     root, splash = create_splash_window()  # type: ignore[reportUnknownVariableType]
 
