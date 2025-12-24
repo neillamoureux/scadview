@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
 import queue
 from dataclasses import dataclass
 from multiprocessing import Process, Queue
+from multiprocessing import queues as mp_queues
 from threading import Thread
 from time import time
 from typing import Any, Generator, Generic, Type, TypeVar
@@ -11,7 +14,7 @@ from trimesh import Trimesh
 
 from meshsee.api.utils import manifold_to_trimesh
 from meshsee.load_status import LoadStatus
-from meshsee.logconfig import setup_logging
+from meshsee.logging_worker import configure_worker_logging
 from meshsee.module_loader import ModuleLoader
 
 logger = logging.getLogger(__name__)
@@ -182,14 +185,21 @@ class LoadWorker(Thread):
 class MeshLoaderProcess(Process):
     COMMAND_QUEUE_CHECK_TIMEOUT = 0.1
 
-    def __init__(self, command_queue: MpCommandQueue, load_queue: MpLoadQueue):
+    def __init__(
+        self,
+        command_queue: MpCommandQueue,
+        load_queue: MpLoadQueue,
+        log_queue: mp_queues.Queue[logging.LogRecord],
+    ):
         super().__init__()
         self._command_queue = command_queue
         self._load_queue = load_queue
         self._worker: LoadWorker | None = None
+        self._log_queue = log_queue
 
-    def run(self):
-        setup_logging()
+    def run(self) -> None:
+        configure_worker_logging(self._log_queue)
+
         while True:
             try:
                 command = self._command_queue.get(
