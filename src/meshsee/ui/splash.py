@@ -17,10 +17,10 @@ SPLASH_MIN_DISPLAY_TIME_MS = 1000
 CHECK_INTERVAL_MS = 100
 
 
-def start_splash_process() -> Connection:
+def start_splash_process(log_level: int = logging.DEBUG) -> Connection:
     """Helper to start splash and return parent_conn."""
     parent_conn, child_conn = Pipe()
-    p = Process(target=_splash_worker, args=(child_conn, log_queue))
+    p = Process(target=_splash_worker, args=(child_conn, log_queue, log_level))
     p.start()
     return parent_conn
 
@@ -34,9 +34,13 @@ def stop_splash_process(conn: Connection) -> None:
         pass
 
 
-def _splash_worker(conn: Connection, log_q: mp_queues.Queue[logging.LogRecord]) -> None:
+def _splash_worker(
+    conn: Connection,
+    log_q: mp_queues.Queue[logging.LogRecord],
+    log_level: int,
+) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
-    configure_worker_logging(log_q)
+    configure_worker_logging(log_q, log_level)
     logger.debug("worker starting")
     root, splash = create_splash_window()  # type: ignore[reportUnknownVariableType]
 

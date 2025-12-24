@@ -11,7 +11,20 @@ LOG_QUEUE_SIZE = 1000
 log_queue: mp_queues.Queue[logging.LogRecord] = mp.Queue(maxsize=LOG_QUEUE_SIZE)
 
 
-def configure_logging(log_level: int) -> logging.handlers.QueueListener:
+class MainProcessLevelFilter(logging.Filter):
+    def __init__(self, min_level: int) -> None:
+        super().__init__()
+        self._min_level = min_level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not (
+            record.processName == "MainProcess" and record.levelno < self._min_level
+        )
+
+
+def configure_logging(
+    log_level: int, main_process_level: int | None = None
+) -> logging.handlers.QueueListener:
     root = logging.getLogger()
     root.handlers.clear()
     root.setLevel(log_level)
@@ -22,7 +35,8 @@ def configure_logging(log_level: int) -> logging.handlers.QueueListener:
 
     console = logging.StreamHandler()
     console.setFormatter(formatter)
-    console.setLevel(log_level)
+    console.setLevel(logging.DEBUG)
+    console.addFilter(MainProcessLevelFilter(main_process_level or log_level))
     root.addHandler(console)
 
     listener = logging.handlers.QueueListener(
@@ -35,7 +49,7 @@ def configure_logging(log_level: int) -> logging.handlers.QueueListener:
     return listener
 
 
-def parse_logging_level():
+def get_logging_level_from_args(args: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v",
@@ -50,19 +64,21 @@ def parse_logging_level():
         help="Set the logging level directly",
     )
 
-    args = parser.parse_args()
+    parsed = parser.parse_args(args=args)
 
-    if args.log_level:
-        level = getattr(logging, args.log_level)
-    elif args.verbose == 1:
-        level = logging.INFO
-    elif args.verbose >= 2:
-        level = logging.DEBUG
-    else:
-        level = logging.WARNING
+    if parsed.log_level:
+        return getattr(logging, parsed.log_level)
+    if parsed.verbose == 1:
+        return logging.INFO
+    if parsed.verbose >= 2:
+        return logging.DEBUG
+    return logging.WARNING
+
+
+def parse_logging_level() -> int:
+    level = get_logging_level_from_args()
 
     logger = logging.getLogger()
     logger.warning(f"Setting logging to {level} ({logging.getLevelName(level)})")
     logger.setLevel(level=level)
-    for handler in logger.handlers:
-        handler.setLevel(level=level)
+    return level

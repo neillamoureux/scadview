@@ -1,5 +1,8 @@
+import logging
 from trimesh.creation import box, cylinder
 from trimesh.transformations import translation_matrix
+
+logger = logging.getLogger(__name__)
 
 # Dimensions of the brick (H)/ plate (h)
 DIMS = (10, 20)
@@ -7,6 +10,9 @@ IS_PLATE = False
 
 
 class LegoBrick:
+    logger.setLevel(logging.DEBUG)
+    logger.warning("Creating LegoBrick instance")
+    logger.info(f"Dimensions: {DIMS}, Is plate: {IS_PLATE}")
     # Lego constants
     P = 8.0  # multiplier for the peg size
     h = 3.2  # height of a plate

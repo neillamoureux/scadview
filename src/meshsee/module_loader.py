@@ -5,6 +5,8 @@ import sys
 from types import GeneratorType
 from typing import Any, Generator
 
+from meshsee.logging_worker import configure_worker_logging
+
 logger = logging.getLogger(__name__)
 
 

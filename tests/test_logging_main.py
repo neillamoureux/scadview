@@ -56,25 +56,25 @@ def test_parse_logging_level_default_warning(root_logger, parse_with_args):
     handler = _configure_root_with_handler(root_logger, logging.DEBUG)
     parse_with_args([])
     assert root_logger.level == logging.WARNING
-    assert handler.level == logging.WARNING
+    assert handler.level == logging.DEBUG
 
 
 def test_parse_logging_level_verbose_info(root_logger, parse_with_args):
     handler = _configure_root_with_handler(root_logger)
     parse_with_args(["-v"])
     assert root_logger.level == logging.INFO
-    assert handler.level == logging.INFO
+    assert handler.level == logging.NOTSET
 
 
 def test_parse_logging_level_verbose_debug(root_logger, parse_with_args):
     handler = _configure_root_with_handler(root_logger)
     parse_with_args(["-vv"])
     assert root_logger.level == logging.DEBUG
-    assert handler.level == logging.DEBUG
+    assert handler.level == logging.NOTSET
 
 
 def test_parse_logging_level_explicit_overrides_verbose(root_logger, parse_with_args):
     handler = _configure_root_with_handler(root_logger)
     parse_with_args(["-v", "--log-level", "ERROR"])
     assert root_logger.level == logging.ERROR
-    assert handler.level == logging.ERROR
+    assert handler.level == logging.NOTSET
