@@ -6,6 +6,7 @@ from trimesh import Trimesh
 from trimesh.exchange import export
 
 from meshsee.load_status import LoadStatus
+from meshsee.logging_main import log_queue
 from meshsee.mesh_loader_process import (
     Command,
     LoadMeshCommand,
@@ -34,7 +35,9 @@ class Controller:
         self._last_export_path = ""
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
-        self._loader_process = MeshLoaderProcess(self._command_queue, self._load_queue)
+        self._loader_process = MeshLoaderProcess(
+            self._command_queue, self._load_queue, log_queue=log_queue
+        )
         self._loader_process.start()
         self.on_load_status_change = Observable()
         self._load_status = LoadStatus.NONE
