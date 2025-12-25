@@ -22,11 +22,11 @@ def root_logger():
 
 def test_configure_worker_logging_sets_queue_handler(root_logger):
     log_queue = mp.Queue()
-    configure_worker_logging(log_queue)
+    configure_worker_logging(log_queue, logging.INFO)
 
     assert root_logger.level == logging.DEBUG
     assert len(root_logger.handlers) == 1
     handler = root_logger.handlers[0]
     assert isinstance(handler, logging.handlers.QueueHandler)
-    assert handler.level == logging.DEBUG
+    assert handler.level == logging.INFO
     assert handler.queue is log_queue
