@@ -190,15 +190,21 @@ class MeshLoaderProcess(Process):
         command_queue: MpCommandQueue,
         load_queue: MpLoadQueue,
         log_queue: mp_queues.Queue[logging.LogRecord],
+        log_level: int,
     ):
         super().__init__()
         self._command_queue = command_queue
         self._load_queue = load_queue
         self._worker: LoadWorker | None = None
         self._log_queue = log_queue
+        self._log_level = log_level
 
     def run(self) -> None:
-        configure_worker_logging(self._log_queue)
+        # Set logging level for the loaded module; it can be changed in that module
+        configure_worker_logging(self._log_queue, logging.DEBUG)
+
+        # Set the level for the logger in the function to the level passed
+        logger.setLevel(self._log_level)
 
         while True:
             try:

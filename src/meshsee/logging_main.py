@@ -7,6 +7,7 @@ import multiprocessing as mp
 import multiprocessing.queues as mp_queues
 
 LOG_QUEUE_SIZE = 1000
+DEFAULT_LOG_LEVEL = logging.WARNING
 
 log_queue: mp_queues.Queue[logging.LogRecord] = mp.Queue(maxsize=LOG_QUEUE_SIZE)
 
@@ -28,7 +29,7 @@ def configure_logging(log_level: int) -> logging.handlers.QueueListener:
     listener = logging.handlers.QueueListener(
         log_queue,
         console,
-        respect_handler_level=True,
+        respect_handler_level=False,
     )
     listener.start()
 

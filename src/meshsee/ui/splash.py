@@ -36,7 +36,7 @@ def stop_splash_process(conn: Connection) -> None:
 
 def _splash_worker(conn: Connection, log_q: mp_queues.Queue[logging.LogRecord]) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
-    configure_worker_logging(log_q)
+    configure_worker_logging(log_q, logger.getEffectiveLevel())
     logger.debug("worker starting")
     root, splash = create_splash_window()  # type: ignore[reportUnknownVariableType]
 

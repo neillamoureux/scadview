@@ -16,6 +16,7 @@ def main(splash_conn: Connection):
     renderer_factory = RendererFactory(CameraPerspective())
     gl_widget_adapter = GlWidgetAdapter(renderer_factory)
     controller = Controller()
+    logger.warning("*** Meshee has initialized ***")
     stop_splash_process(splash_conn)
     GlUi(controller, gl_widget_adapter).run()
     logger.info("Meshee app stopping")
