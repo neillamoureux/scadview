@@ -36,7 +36,10 @@ class Controller:
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(
-            self._command_queue, self._load_queue, log_queue=log_queue
+            self._command_queue,
+            self._load_queue,
+            log_queue=log_queue,
+            log_level=logger.getEffectiveLevel(),
         )
         self._loader_process.start()
         self.on_load_status_change = Observable()
