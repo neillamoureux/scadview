@@ -10,7 +10,7 @@ nav:
   - About: about.md
   - Examples: examples.md
   - API Reference: api.md
-  - Tutorials: tutorials.md
+  - Tutorial: tutorial.md
   - Contributing: contributing.md
   - License: license.md
 theme: 

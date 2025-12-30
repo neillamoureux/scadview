@@ -174,6 +174,16 @@ class LoadWorker(Thread):
         t0 = time()
         for i, mesh in enumerate(module_loader.run_function(self.module_path)):
             logger.info(f"Loading mesh #{i + 1}")
+            if not isinstance(mesh, Trimesh):
+                if not isinstance(mesh, list):
+                    raise TypeError(
+                        f"Expected mesh to be of type Trimesh or list[Trimesh], got {type(mesh)}"
+                    )
+                for i, m in enumerate(mesh):  # type: ignore[reportUnknowVariableType] - can't resolve
+                    if not isinstance(m, Trimesh):
+                        raise TypeError(
+                            f"Expected mesh[{i}] to be of type Trimesh, got {type(m)}"  # type: ignore[reportUnknowVariableType] - can't resolve
+                        )
             yield mesh
         t1 = time()
         logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")

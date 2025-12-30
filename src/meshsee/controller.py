@@ -20,11 +20,14 @@ from meshsee.observable import Observable
 
 logger = logging.getLogger(__name__)
 
+UNSUPPORTED_EXPORT_FORMATS = ["dict", "dict64", "stl_ascii", "xyz"]
+
 
 def export_formats() -> list[str]:
     return [
         fmt
         for fmt in export._mesh_exporters.keys()  # pyright: ignore[reportPrivateUsage] - only way to access this
+        if fmt not in UNSUPPORTED_EXPORT_FORMATS
     ]
 
 
