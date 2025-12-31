@@ -475,14 +475,233 @@ Now all that remains is:
 - Carve out each dimple (`difference`)
 - Return a final mesh (not an array) so that "Export" is available.
 
-Let's carve out each dimple:
+Let's carve out each dimple.  
+- We add a line to remove each dimple after we create it.
+- And we just want to return the final ball, 
+not an array of meshes.
 ```python
+        dimple_mesh.apply_translation(face_center)
+        ball = ball.difference(dimple_mesh) # <- Add this line
+        dimples.append(dimple_mesh)
+    # return [ball] + dimples
+    return ball
+```
+We don't need to keep the `dimples` list 
+and add each dimple to it via `dimples.append(dimple_mesh)`, 
+but I have a premonition we may want it for some more debugging.
+
+Press "Reload".
+
+Hmm. 
+That took longer to load.
+You might have some questions.
+
+1. Q: Why did the screen turn a light purple during the load.
+    - A: It always does that.  It is not noticeable for a fast load.
+1. Q: What is that bar above the "Load .py..." button and what was it doing during the load.
+    - A: That is an "indeterminant progress bar" meant to show there is progress,
+    but we don't know how much more to go. 
+    It also always shows progress during any load, 
+    but it is also not noticeable for a fast load.
+1. Q: Why so slow?
+    - A: The slowness is due to the complexity of boolean geometric operations. 
+    Each dimple has 162 vertices, 320 faces and 480 edges, 
+    as does the original ball.  
+    That is a lot of intersections to calculate!
+1. Q: Why is the ball gray?  We are still calling `set_mesh_color(ball, [1, 0, 0], alpha=0.5)`
+    - A: Color does not survive a boolean operation, so it reverts to gray.
+    You can set the color after all of the boolean operations are complete.
+1. Q: Where are the dimples?
+    - A: If you look closely, there are 1 or 2.
+1.  Q: Where are the rest of them?
+    - A: Let's find out.
+
+## Step 8: Debug (Again)
+
+To see what is going on, 
+let's return the ball and dimples as an array again,
+making the ball transparent red.
+This is a little different than before,
+because the ball we are returning this time
+should have had dimples removed.
+
+```python
+        dimples.append(dimple_mesh)
+    set_mesh_color(ball, [1, 0, 0], alpha=0.1) # <- Add 
+    return [ball] + dimples # <- Uncommented
+    # return ball # <- Commented 
 ```
 
+- Press "Reload".
+
+Whoa!
+That looks cool -
+like a small solar system in the ball.
+
+It is worth noting 
+that we could just had, 
+in addition to setting the ball to transparent red:
+```python
+    return ball
+```
+The transparency would have shown us voids in the ball,
+without return an array for "debug" mode.
+We could have also written:
+```python
+    return [ball]
+```
+We'd see the same result, 
+but since `ball` is in an array,
+we'd be in debug mode.
+
+Feel free to try these out to see the difference.
+
+But why the "planets"?
+
+This bug is more subtle than our previous ones.
+The problem is:
+
+- We are iterating through the faces of the ball.
+- But we are also modifying the ball as we do this.
+- So the faces are being actively changed -
+and we are just getting weird results.
+
+## Step 9: Fix
+
+To fix this, 
+we will:
+- Collect all of the dimples first without modifying `ball`
+- Then remove each dimple.
+```python
+`        # ball = ball.difference(dimple_mesh) # <- Commented
+        dimples.append(dimple_mesh)
+    for dimple_mesh in dimples: # <- Add
+        ball = ball.difference(dimple_mesh) # <- Add 
+    # set_mesh_color(ball, [1, 0, 0], alpha=0.1) # <- Commented
+    # return [ball] + dimples # <- Commented
+    return ball # <- Uncommented
+```
+
+- Press "Reload" and wait while it load.
+
+This looks good!
+
+Let's removed the commented code, 
+and so we have:
+```python
+import numpy as np
+from meshsee import set_mesh_color
+from trimesh.creation import icosphere
 
 
+GOLF_BALL_RADIUS = 42.67 / 2
+DIMPLE_RADIUS_FRACTION = 1 / 6
+SUBDIVISIONS = 2
 
 
+def create_mesh():
+    ball = icosphere(subdivisions=SUBDIVISIONS, radius=GOLF_BALL_RADIUS)
+    print(
+        f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
+    )
+    set_mesh_color(ball, [1, 0, 0], alpha=0.5)
+    dimples = []
+    for face in ball.faces:
+        verts = ball.vertices[face]
+        face_center = verts.mean(axis=0)
+        dist_to_center = np.linalg.norm(verts[0] - face_center)
+        dimple_r = dist_to_center * DIMPLE_RADIUS_FRACTION
+        dimple_mesh = icosphere(
+            subdivisions=SUBDIVISIONS, radius=dimple_r, center=face_center
+        )
+        dimple_mesh.apply_translation(face_center)
+        dimples.append(dimple_mesh)
+    for dimple_mesh in dimples:
+        ball = ball.difference(dimple_mesh)
+    return ball
+```
 
+## Step 10: Export
+All that is left is to export the mesh for printing!
 
+- Press "Export..."
+- Select "File Type" as "OBJ (.obj)" (or whatever you need)
+- Select what folder you want to save to.
+- Press "Save".  
+
+You should now be able to import into your 3D slicer,
+and create the necessary gcode file for printing.
+
+# Additional topics
+
+## Creating multiple meshes
+
+The `create_mesh()` allows you to return multiple meshes in an array,
+but this is "debug" mode, 
+and so you cannot export them.
+
+To resolve this, `union` your meshes into a final mesh,
+even if they are disjoint. 
+For example, for 3 meshes:
+```python
+    return mesh1.union(mesh2).union(mesh3)
+```
+
+## Incremental builds
+
+If you have a complex build that takes many seconds, 
+minutes, hours or more,
+you don't want to wait that long while debugging.
+
+A couple of options are:
+
+- Build a smaller, faster version.
+For example, with the golf ball,
+we could have use fewer subdivisions in the ball and dimples,
+and that would have revealed our bugs.
+Once fixed, we could revert to the lengthier build.
+- Only build the problematic parts.
+
+But {{ project_name }} also adds an "incremental" build option.
+In this option, instead of using the `return ...` statement,
+you use the `yield ...` statement as you build your mesh.
+This will send whatever you have built so far to {{ project_name }},
+and it will display it.
+
+If you see a problem early on, 
+you can make a change and reload before the previous load or reload completes.
+
+Let's try this with the golf ball:
+
+- Lets `yield ball` each time we remove a dimple.
+
+```python
+    for dimple_mesh in dimples:
+        ball = ball.difference(dimple_mesh)
+        yield ball # <- Add 
+    # return ball # <- Commented 
+```
+
+You will see the ball, 
+and then the dimples progressively appear.
+
+You can also yield arrays for debug mode.
+
+## Animation
+
+An incremental build is an animation,
+and you can do other animations,
+like move objects around the scene,
+and then yield the new scene.
+
+To add a little shake to the incremental build golf ball when it is done:
+```python
+    from time import sleep # <- Add at top
+...
+# After last for loop, add:
+    for i in range(100):
+        ball.apply_translation([0, 0, 1.0 - 2.0 * (i % 2)])
+        yield ball
+        sleep(0.03)
+```
 
