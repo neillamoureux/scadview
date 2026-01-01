@@ -1,20 +1,38 @@
 # Creating a Golf Ball
 
+This tutorial will go through the process of creating a non-trivial 3D model.
+We will explore:
+- The basic structure of the Python script.
+- Some of the capabilities of [Trimesh](https://trimesh.org){target="_blank"}.
+- Basic debugging
+- Exporting the created 3D mesh for use by other programs.
+
+Let's get started!
+
+## The Scenario
+
 You have a golf date, 
 but have misplaced all of your golf balls.
 You decide to 3D print some.
 
-## Step 1: Set up
+## Step 1: Set Up
 
 Follow the instructions in [Getting Started](index.md#getting-started)
 
-## Step 2: Create a ball
+## Step 2: Create a Ball
 
-1. First step is to create a ball.
-- Create a python file, and call it `golf_ball.py`
-1. Using [Trimesh](https://trimesh.org){target="_blank"} to create a ball is your first step, 
-so you look at the creation api and see [icosphere](https://trimesh.org/trimesh.creation.html#trimesh.creation.icosphere){target="_blank"} which seems appropriate.
-1.  Edit `golf_ball.py` and write:
+The first task is to create a ball.
+
+1.  Create a python file, and call it `golf_ball.py`. 
+    - This must be in a location that has access to wherever you installed [Trimesh](https://trimesh.org){target="_blank"}
+    and {{ project_name }} in the set up.
+    - If you installed system wide, than anywhere on your system is fine.
+    - If you've installed in a virtual environment, then place this file in the same environment.
+1. We want to use Trimesh to create a ball, 
+so we look at Trimesh's creation api 
+and see [icosphere](https://trimesh.org/trimesh.creation.html#trimesh.creation.icosphere){target="_blank"} 
+which seems appropriate.
+1.  Edit `golf_ball.py` in your favourite code editor and write:
 ```python
 from trimesh.creation import icosphere
 
@@ -22,7 +40,7 @@ def create_mesh():
     return icosphere()
 ```
 1.  Let's see what it looks like. 
-If you haven't already run from the command line:
+If you haven't already, run from the command line:
 ```bash
 python -m {{ package_name }}
 ```
@@ -38,7 +56,7 @@ The {{ project_name }} UI should appear.
     - This should load the file
     and show you a sphere.
     - If you don't see a sphere,
-    check the output in the command line for any error messages
+    check the output from the command line for any error messages
     and edit `golf_ball.py` to fix them.
     - Click thhe "Reload" button to reload the file; 
     if all errors are corrected,
@@ -47,14 +65,20 @@ The {{ project_name }} UI should appear.
 ## Step 3: Experiment with `icosphere`
 Let's take a look at what options `icosphere` has to offer.
 The api docs show 3 parameters:
+
 - `subdivisions`
 - `radius`
 - `kwargs`
 
+Let's see what `subdivisions` does, 
+and then choose a good `radius` for our golf ball.
+We are going to ignore `kwargs`.
+
 ### Subdivisions
 Our plan is to put one dimple in each subdivision, 
 so let's see what 1 subdivision looks like.
-- Change the code to set `subdivisions=1` and hit "Reload":
+
+- Change the code to set `subdivisions=1` and press "Reload":
 ```python
 from trimesh.creation import icosphere
 
@@ -84,10 +108,10 @@ Created ball with 42 vertices and 80 faces
 ```
 
 80 faces means 80 dimples with our 1-dimple-per-face-plan.
-We read the Wikipedia article and discover:
+We read the ["Golf ball" Wikipedia article](https://en.wikipedia.org/wiki/Golf_ball){target="_blank} and discover:
 
-- There is no limit to the number of dimples
-- Most golf balls have 300-500 dimples
+- There is no limit to the number of dimples.
+- Most golf balls have 300-500 dimples.
 - The record is 1070 dimples.
 
 So we'd like to be in the 300-500 range,
@@ -95,14 +119,14 @@ let's up `sudivisions=2` by editing one line:
 ```python
     ball = icosphere(subdivisions=2)
 ```
-The hit "Reload".
+Then press "Reload".
 
 Great, that looks smoother,
 and the command line output is
 ```cli
 Created ball with 162 vertices and 320 faces
 ```
-320 faces!  
+320 faces!
 We are in the 300 - 500 range already.
 If you like, you can also try `subdivisions=3`
 
@@ -114,7 +138,7 @@ It says a golf ball must have a diameter of not less than 42.67 mm.
 but {{ project_name }} itself does not assign inches, millimeters, 
 or any other size to the units).
 
-Let modify that one line again and hit "Reload":
+Let modify that one line again and press "Reload":
 ```python
     ball = icosphere(subdivisions=2, radius=42.67/2)
 ```
@@ -123,122 +147,28 @@ You should now see a larger ball.
 ## Interlude: Play with the UI.
 
 Let's see what you can do with the {{ project_name }} UI.
-We've already used a couple of buttons.  
+We've already used a couple of buttons, 
+but lets read about the [user interface](./user_interface.md)
 
-### Controls
-Here is what all of the buttons and other controls do - try them out!
 
-- Load.py...
-    - Loads a python file, and runs the `create_mesh` function in it, 
-    and displays the returned `Trimesh`
-    - The `create_mesh` function must take no parameters,
-    and return a `Trimesh`, 
-    like a `icosphere` or a `box`, 
-    or a `Trimesh` created from other `Trimesh`es using geometric boolean methods,
-    such as [union](https://trimesh.org/trimesh.base.html#trimesh.base.Trimesh.union){target="_blank"}
-    or [difference](https://trimesh.org/trimesh.base.html#trimesh.base.Trimesh.difference){target="_blank"}.
-    - `trimesh` is a rich package with lots of other ways to create `Trimesh`es.
-- Reload
-    - Reload the last file you've loaded, run it, and display the result.
-    - This enables quick iterations on viewing your changes in the UI
-- Export
-    - Export the mesh to a file suitable for 3D printing, like `obj` or `stl`,
-    or some other 3D software.
-    The available 
-    - You may see errors that tell you a package is missing.
-    You can either export using a different format, or install the misssing package.
-    For example, when exporting in the `dae` format, you might see:
-    ```
-    ERROR meshsee.ui.wx.main_frame: Failure on export: missing `pip install pycollada`
-    ```
-    which means you need to install the `pycollada` package.
-    And when exporting the `3mf` format, 
-    ```
-    ERROR meshsee.ui.wx.main_frame: Failure on export: No module named 'networkx'
-    ```
-    means you need to install the `networkx` package.
-- Frame
-    - Point the camera to the centre of your mesh, 
-    and move it forward or backwards so it fills a large part of the screen.
-    - This is useful if you've used the mouse and keyboard controls 
-    and want to see the entire mesh at a reasonable distance.
-- XYZ
-    - Move to [1, -1, 1] and frame.
-    This gives a nice canonical view, with:
-        - +X pointing right and towards the screen
-        - +Y pointing right and away from the screen
-        - +Z pointing up
-- X
-    - Move to [1, 0, 0] and frame.
-    - This shows the mesh from the +X side
-- Y
-    - Move to [0, 1, 0] and frame.
-    - This shows the mesh from the +Y side
-- Z
-    - Move to [0, 0, 1] and frame.
-    - This shows the mesh from (you guessed it!) the +Z side
-- Grid
-    - When activated, 
-    this projects a grid on the mesh.
-    Each grid line is the intersection of a plane perpendicular to the X, Y and Z axes
-    with the mesh.
-    - There is a grid line every 0.1 unit, with larger lines at 1 and 10.
-    - You can use this to visually check sizes of fine details.
-- Perspective/Orthogonal
-   - These change the camera from showing a perspective view,
-   where parallel line intersect at the "infinity" (horizon),
-   or an orthogonal view, where parallel lines in 3D are shown parallel in 2D.
-   - A perspective view simulate human vision, and shows further away objects as smaller.
-   - An orthogonal view show objects of the same size in 3D as the same size in 2D, 
-   but can confuse understanding placement.
-- Axes
-    - Turns off and on the display of the X, Y, and Z axes.
-- Edges
-    - Shows all of the face edges in the mesh.
-- Gnomon
-    - Show the gnomon - 3 half-axes in the bottom left, 
-    that shows oriention of the scene with respect to the camera.
 
-### Mouse and keyboard
-
-The mouse (or trackpad) and keyboard move the camera 
-so you can view your mesh from different angles.
-
-- Arrow keys
-    - Move left (or key A), right (D), forward (W) or back (S)
-- Letter keys only
-    - Move up (E) or down (Q)
-- Mouse drag
-    - Orbit the mesh
-- Mouse scroll
-    - Move forward or back
-
-These controls enable you to load 
-and quickly reload your Python script 
-to view your mesh.
-You can view from different angles
-and distances,
-and use the different camera projections
-and grid to inspect your mesh closely.
-
-## Step 4: Add dimples
+## Step 4: Add Dimples
 
 Now we want to add dimples.
 We will add a dimple at the center of each face,
 sizing them somewhat smaller than the face.
 
-Let's start by adding one dimple.  
-We don't know the right size yet, 
+Let's start by adding one dimple. 
+
+- We don't know the right size yet, 
 so let's start with 1 mm diameter
-
-We create a `icosphere` of 1 mm diameter,
+- We create a `icosphere` of 1 mm diameter,
 and "subtract" (remove it) from the ball.
-
-We add a line to create a dimple,
+- We add a line to create a dimple,
 and return `ball.subtract(dimple)`
-
-Notice that we `apply_translation` 
-to move the dimple to the edge of the ball.
+- Notice that we `apply_translation` 
+to move the dimple to the edge of the ball,
+in this case to the top (the z direction is up).
 
 ```python
 from trimesh.creation import icosphere
@@ -250,16 +180,18 @@ def create_mesh():
     return ball.subtract(dimple)
 ```
 
-When hitting "Reload", something bad happens - 
+### Red Screen
+After pressing "Reload", something bad happens - 
 no ball, and the screen turns red.
-Something when wrong.  
+Something when wrong!
 
 The screen turning red indicates a problem with your code.
 Check the command line output. 
 In this case we see:
 
 ```
-[MainProcess 44881] ERROR meshsee.ui.wx.main_frame: 'Trimesh' object has no attribute 'subtract'
+[MainProcess 44881] ERROR {{ package_name }}.ui.wx.main_frame: 
+'Trimesh' object has no attribute 'subtract'
 ```
 
 Oh - right, my fault, 
@@ -268,7 +200,7 @@ The correct name is `difference`, so let change the `return` line to:
 ```python
     return ball.difference(dimple)
 ```
-and hit "Reload".
+and press "Reload".
 
 Great!  Now the ball is showing again, 
 the background is green (which is good).
@@ -282,15 +214,18 @@ but let's suppose you don't know what is wrong.
 
 ## Step 5 Debug
 
-{{ project_name }} enables debugging by:
+We are going to try out some of {{ project_name }}'s unique debugging tools:
 
 - Enabling viewing multiple meshes at the same time
 - Setting colors and transparency of the meshes.
 
-So let's try this out.
+So let's try them out.
+
+### Debug Mode - Return an Array of Meshes
 
 To enable seeing multiple meshes, 
-return them in an array.
+for example, before we combine them,
+we return them in an array.
 
 So let's:
 
@@ -309,14 +244,16 @@ the smaller one a distance away from the main ball.
     dimple = icosphere(subdivisions=2, radius=10).apply_translation([0, 11.335, 0])
 ```
 - Press "Reload".
-- Now the large dimple has completely disappeared! What!
+- Now the large dimple has completely disappeared! What!?!
+
+### Using Color and Transparency for Debugging
 
 Again, you probably saw how I messed up, but let's debug anyway.
 Once a mesh is complete, 
 and you don't intend to perform any more operations on it,
 you can assign it a color and an opaqueness (alpha).
 
-- Colors are a list or typle of 3 floats from 0.0 - 1.0,
+- A color is defined by a list or tuple of 3 floats from 0.0 - 1.0,
 representing the red, green and blue values.
 - `alpha` is a value betweeh 0.0 and 1.0 as well.
     - 0.0 is completely transparent
@@ -339,7 +276,7 @@ from {{ package_name }} import set_mesh_color
 - Put this all together:
 ```python
 from trimesh.creation import icosphere
-from meshsee import set_mesh_color
+from {{ package_name }} import set_mesh_color
 
 def create_mesh():
     ball = icosphere(subdivisions=2, radius=42.67/2)  
@@ -351,7 +288,7 @@ def create_mesh():
     return [ball, dimple]
 ```
 
-Now we can see that our dimple is inside the main ball.
+Press "Reload". Now we can see that our dimple is inside the main ball.
 I shouldn't have done the math in my head!
 
 Let's clean up the script a bit by giving names to some of our values.
@@ -370,7 +307,7 @@ def create_mesh():
 Replacing the values in the script, we get:
 ```python
 from trimesh.creation import icosphere
-from meshsee import set_mesh_color
+from {{ package_name }} import set_mesh_color
 
 GOLF_BALL_RADIUS = 42.67 / 2
 DIMPLE_RADIUS = 10
@@ -391,7 +328,8 @@ def create_mesh():
 ## Step 6: Make all the dimples
 
 Now it is time to make all of the dimples.
-- Make one for each face.
+
+- Make a dimple for each face.
 - Translate (move) it to the center of the face.
 
 `Trimesh`es store vertices and faces as [numpy ndarrays](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html).  
@@ -401,6 +339,7 @@ but it can get confusing if we go too deep.
 So we will just scratch the surface of what `numpy` can do.
 
 Our strategy:
+
 - Iterate through each face
 ```python
     for face in ball.faces:
@@ -418,18 +357,18 @@ We use the numpy `norm` function:
 ```python
         dist_to_center = np.linalg.norm(verts[0] - face_center)
 ```
-- Make a dimple some fraction of this (say 1/6), and place at the center.
+- Make a dimple radius some fraction of this (say 1/6), and place at the center.
 ```python
         dimple_r = dist_to_center / 6.0
         dimple_mesh = icosphere(subdivisions=2, radius=dimple_r, center=face_center)
         dimple_mesh.apply_translation(face_center)
 ```
 - Put this all together, plus:
-    - Replacing `DIMPLE_RADIUS` with `DIMPLE_RADIUS_FRACTION`
-    - Keeping the dimples in an array
+    - Replace `DIMPLE_RADIUS` with `DIMPLE_RADIUS_FRACTION`
+    - Keep the dimples in an array
 ```python
 import numpy as np
-from meshsee import set_mesh_color
+from {{ package_name }} import set_mesh_color
 from trimesh.creation import icosphere
 
 
@@ -472,23 +411,26 @@ DIMPLE_RADIUS_FRACTION = 1 / 4
 ## Step 7: Carve out the dimples
 
 Now all that remains is:
+
 - Carve out each dimple (`difference`)
 - Return a final mesh (not an array) so that "Export" is available.
+    - You may have noticed that in "debug" mode, "Export" is unavailable.
 
 Let's carve out each dimple.  
+
 - We add a line to remove each dimple after we create it.
 - And we just want to return the final ball, 
 not an array of meshes.
 ```python
         dimple_mesh.apply_translation(face_center)
-        ball = ball.difference(dimple_mesh) # <- Add this line
+        ball = ball.difference(dimple_mesh) # <- Added this line
         dimples.append(dimple_mesh)
-    # return [ball] + dimples
+    # return [ball] + dimples # <- Commented
     return ball
 ```
 We don't need to keep the `dimples` list 
 and add each dimple to it via `dimples.append(dimple_mesh)`, 
-but I have a premonition we may want it for some more debugging.
+but I have a premonition we may want it again later.
 
 Press "Reload".
 
@@ -497,7 +439,8 @@ That took longer to load.
 You might have some questions.
 
 1. Q: Why did the screen turn a light purple during the load.
-    - A: It always does that.  It is not noticeable for a fast load.
+    - A: It always does that, to show that it is loading a script.
+    It is not noticeable for a fast load.
 1. Q: What is that bar above the "Load .py..." button and what was it doing during the load.
     - A: That is an "indeterminant progress bar" meant to show there is progress,
     but we don't know how much more to go. 
@@ -511,6 +454,9 @@ You might have some questions.
 1. Q: Why is the ball gray?  We are still calling `set_mesh_color(ball, [1, 0, 0], alpha=0.5)`
     - A: Color does not survive a boolean operation, so it reverts to gray.
     You can set the color after all of the boolean operations are complete.
+    Although color is used for debugging, 
+    a single color + alpha can be assigned to the final mesh
+    even when not debugging.
 1. Q: Where are the dimples?
     - A: If you look closely, there are 1 or 2.
 1.  Q: Where are the rest of them?
@@ -539,8 +485,8 @@ That looks cool -
 like a small solar system in the ball.
 
 It is worth noting 
-that we could just had, 
-in addition to setting the ball to transparent red:
+that in addition to setting the ball to transparent red,
+we could just written:
 ```python
     return ball
 ```
@@ -556,6 +502,8 @@ we'd be in debug mode.
 
 Feel free to try these out to see the difference.
 
+### A Subtle Bug
+
 But why the "planets"?
 
 This bug is more subtle than our previous ones.
@@ -563,34 +511,35 @@ The problem is:
 
 - We are iterating through the faces of the ball.
 - But we are also modifying the ball as we do this.
-- So the faces are being actively changed -
+- So the faces are being actively changed as we interate through them - 
 and we are just getting weird results.
 
 ## Step 9: Fix
 
 To fix this, 
 we will:
+
 - Collect all of the dimples first without modifying `ball`
 - Then remove each dimple.
 ```python
 `        # ball = ball.difference(dimple_mesh) # <- Commented
         dimples.append(dimple_mesh)
-    for dimple_mesh in dimples: # <- Add
-        ball = ball.difference(dimple_mesh) # <- Add 
+    for dimple_mesh in dimples: # <- Added
+        ball = ball.difference(dimple_mesh) # <- Added 
     # set_mesh_color(ball, [1, 0, 0], alpha=0.1) # <- Commented
     # return [ball] + dimples # <- Commented
     return ball # <- Uncommented
 ```
 
-- Press "Reload" and wait while it load.
+- Press "Reload" and wait while it loads.
 
 This looks good!
 
 Let's removed the commented code, 
-and so we have:
+and so we have our final code:
 ```python
 import numpy as np
-from meshsee import set_mesh_color
+from {{ package_name }} import set_mesh_color
 from trimesh.creation import icosphere
 
 
@@ -632,9 +581,9 @@ All that is left is to export the mesh for printing!
 You should now be able to import into your 3D slicer,
 and create the necessary gcode file for printing.
 
-# Additional topics
+# Additional Topics
 
-## Creating multiple meshes
+## Creating Multiple Meshes for Export
 
 The `create_mesh()` allows you to return multiple meshes in an array,
 but this is "debug" mode, 
@@ -647,7 +596,7 @@ For example, for 3 meshes:
     return mesh1.union(mesh2).union(mesh3)
 ```
 
-## Incremental builds
+## Incremental Builds
 
 If you have a complex build that takes many seconds, 
 minutes, hours or more,
@@ -660,9 +609,12 @@ For example, with the golf ball,
 we could have use fewer subdivisions in the ball and dimples,
 and that would have revealed our bugs.
 Once fixed, we could revert to the lengthier build.
-- Only build the problematic parts.
+- Only build the problematic parts, hopefully quickly.
+Fix and iterate.
+Once the problems are fixed,
+add back in the rest of the build.
 
-But {{ project_name }} also adds an "incremental" build option.
+But {{ project_name }} also has an "incremental" build option.
 In this option, instead of using the `return ...` statement,
 you use the `yield ...` statement as you build your mesh.
 This will send whatever you have built so far to {{ project_name }},
@@ -678,7 +630,7 @@ Let's try this with the golf ball:
 ```python
     for dimple_mesh in dimples:
         ball = ball.difference(dimple_mesh)
-        yield ball # <- Add 
+        yield ball # <- Added 
     # return ball # <- Commented 
 ```
 
