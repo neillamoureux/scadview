@@ -2,6 +2,7 @@
 
 This tutorial will go through the process of creating a non-trivial 3D model.
 We will explore:
+
 - The basic structure of the Python script.
 - Some of the capabilities of [Trimesh](https://trimesh.org){target="_blank"}.
 - Basic debugging
@@ -26,7 +27,7 @@ The first task is to create a ball.
 1.  Create a python file, and call it `golf_ball.py`. 
     - This must be in a location that has access to wherever you installed [Trimesh](https://trimesh.org){target="_blank"}
     and {{ project_name }} in the set up.
-    - If you installed system wide, than anywhere on your system is fine.
+    - If you installed system wide, then anywhere on your system is fine.
     - If you've installed in a virtual environment, then place this file in the same environment.
 1. We want to use Trimesh to create a ball, 
 so we look at Trimesh's creation api 
@@ -35,6 +36,7 @@ which seems appropriate.
 1.  Edit `golf_ball.py` in your favourite code editor and write:
 ```python
 from trimesh.creation import icosphere
+
 
 def create_mesh():
     return icosphere()
@@ -82,20 +84,24 @@ so let's see what 1 subdivision looks like.
 ```python
 from trimesh.creation import icosphere
 
+
 def create_mesh():
     return icosphere(subdivisions=1)
 ```
 Hmmm... looks like it could be smoother.
 Let's get some information about the ball.
-`icosphere` is a [Trimesh](https://trimesh.org/trimesh.base.html),
+`icosphere` is a [Trimesh](https://trimesh.org/trimesh.base.html){target="_blank"},
 which has a wealth of attributes and methods you can use on meshes you create.
 Let's add a print statement to show the number of vertices and faces:
 ```python
 from trimesh.creation import icosphere
 
+
 def create_mesh():
     ball = icosphere(subdivisions=1)
-    print(f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces")
+    print(
+        f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
+    )
     return ball
 ```
 Note that we have now created variable, `ball`,
@@ -173,10 +179,13 @@ in this case to the top (the z direction is up).
 ```python
 from trimesh.creation import icosphere
 
+
 def create_mesh():
-    ball = icosphere(subdivisions=2, radius=42.67/2)  
-    print(f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces")
-    dimple = icosphere(subdivisions=2, radius=1/2).apply_translation([0, 0, 42.67])
+    ball = icosphere(subdivisions=2, radius=42.67 / 2)
+    print(
+        f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
+    )
+    dimple = icosphere(subdivisions=2, radius=1 / 2).apply_translation([0, 0, 42.67])
     return ball.subtract(dimple)
 ```
 
@@ -275,12 +284,15 @@ from {{ package_name }} import set_mesh_color
 ```
 - Put this all together:
 ```python
-from trimesh.creation import icosphere
 from {{ package_name }} import set_mesh_color
+from trimesh.creation import icosphere
+
 
 def create_mesh():
-    ball = icosphere(subdivisions=2, radius=42.67/2)  
-    print(f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces")
+    ball = icosphere(subdivisions=2, radius=42.67 / 2)
+    print(
+        f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
+    )
     dimple = icosphere(subdivisions=2, radius=10).apply_translation([0, 11.335, 0])
     set_mesh_color(ball, [1.0, 0, 0], alpha=0.5)
     set_mesh_color(dimple, [0, 0, 1.0], alpha=0.5)
@@ -306,22 +318,27 @@ def create_mesh():
 ```
 Replacing the values in the script, we get:
 ```python
-from trimesh.creation import icosphere
 from {{ package_name }} import set_mesh_color
+from trimesh.creation import icosphere
+
 
 GOLF_BALL_RADIUS = 42.67 / 2
 DIMPLE_RADIUS = 10
 SUBDIVISIONS = 2
 
+
 def create_mesh():
-    ball = icosphere(subdivisions=SUBDIVISIONS, radius=GOLF_BALL_RADIUS)  
-    print(f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces")
-    dimple = icosphere(subdivisions=SUBDIVISIONS, radius=DIMPLE_RADIUS).apply_translation([0, GOLF_BALL_RADIUS, 0])
+    ball = icosphere(subdivisions=SUBDIVISIONS, radius=GOLF_BALL_RADIUS)
+    print(
+        f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
+    )
+    dimple = icosphere(
+        subdivisions=SUBDIVISIONS, radius=DIMPLE_RADIUS
+    ).apply_translation([0, GOLF_BALL_RADIUS, 0])
     set_mesh_color(ball, [1, 0, 0], alpha=0.5)
     set_mesh_color(dimple, [0, 0, 1], alpha=0.5)
     # return ball.difference(dimple)
     return [ball, dimple]
-
 ```
 - Press "Reload" to make sure this works (it should).
 
@@ -332,7 +349,7 @@ Now it is time to make all of the dimples.
 - Make a dimple for each face.
 - Translate (move) it to the center of the face.
 
-`Trimesh`es store vertices and faces as [numpy ndarrays](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html).  
+`Trimesh`es store vertices and faces as [numpy ndarrays](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html){target="_blank"}.  
 `numpy` is a very fast package for preforming calculations on large arrays.
 We will take advantage of some of this,
 but it can get confusing if we go too deep.
@@ -383,7 +400,6 @@ def create_mesh():
         f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
     )
     set_mesh_color(ball, [1, 0, 0], alpha=0.5)
-    meshes = [ball]
     dimples = []
     for face in ball.faces:
         verts = ball.vertices[face]
@@ -486,12 +502,12 @@ like a small solar system in the ball.
 
 It is worth noting 
 that in addition to setting the ball to transparent red,
-we could just written:
+we could have just written:
 ```python
     return ball
 ```
 The transparency would have shown us voids in the ball,
-without return an array for "debug" mode.
+without returning an array for "debug" mode.
 We could have also written:
 ```python
     return [ball]
@@ -539,7 +555,7 @@ Let's removed the commented code,
 and so we have our final code:
 ```python
 import numpy as np
-from {{ package_name }} import set_mesh_color
+from {{package_name}} import set_mesh_color
 from trimesh.creation import icosphere
 
 
