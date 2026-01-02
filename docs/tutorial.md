@@ -597,9 +597,9 @@ All that is left is to export the mesh for printing!
 You should now be able to import into your 3D slicer,
 and create the necessary gcode file for printing.
 
-# Additional Topics
+## Additional Topics
 
-## Creating Multiple Meshes for Export
+### Creating Multiple Meshes for Export
 
 The `create_mesh()` allows you to return multiple meshes in an array,
 but this is "debug" mode, 
@@ -612,7 +612,7 @@ For example, for 3 meshes:
     return mesh1.union(mesh2).union(mesh3)
 ```
 
-## Incremental Builds
+### Incremental Builds
 
 If you have a complex build that takes many seconds, 
 minutes, hours or more,
@@ -655,7 +655,7 @@ and then the dimples progressively appear.
 
 You can also yield arrays for debug mode.
 
-## Animation
+### Animation
 
 An incremental build is an animation,
 and you can do other animations,
