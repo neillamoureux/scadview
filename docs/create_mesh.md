@@ -9,8 +9,8 @@ and shows the returned mesh.
 
 The function `create_mesh` must:
 
-- Take no parameters
-- Returns a `Trimesh`, `Manifold` or `list[Trimesh | Manifold]` 
+- Take no parameters, or all parameters have default values.
+- Return a `Trimesh`, `Manifold` or `list[Trimesh | Manifold]` or... (see below).
 
 That is, the function should look like this with type hints 
 (but type hints are not required):
@@ -39,7 +39,7 @@ So if you are combining 100s of meshes, consider trying out `manifold3d`.
 ## Debug Mode: Return a `list`
 
 Returning a `list` of objects results in {{ project_name }}
-displaying each object separately.
+displaying each object in the list.
 It is intended to be used for debugging purposes. 
 Sometimes, if you are getting unexpected results, 
 returning the objects in the `list` 
@@ -58,7 +58,7 @@ and make them transparent so you can see other meshes hidden inside.
 `set_mesh_color` only works for `Trimesh` objects, 
 and colors do not survive boolean operations.
 
-`set_mesh_color` can alos be useful when returning a single `Trimesh`,
+`set_mesh_color` can also be useful when returning a single `Trimesh`,
 for example if you are removing hidded voids.
 
 ## Incremental Builds
@@ -84,10 +84,32 @@ def create_mesh():
     yield mesh2
 ```
 
+As this adds additional renders, 
+building incrementatlly is generally slower than a single build.
+If you yield very quickly (many times per second),
+some renders may be skipped to keep the speed up.
+
 As with `create_mesh` as a "regular" function, 
 you can yield a singular mesh or a list of them.
 As above, yielding a list also puts {{ project_name }} into debug mode.
 
 
+## Animation
+
+By pausing between each yield, 
+you can animate at a consistent frame rate.
+
+For example:
+```python
+from time import sleep
+
+from trimesh.creation import box
 
 
+def create_mesh():
+    b = box([10, 10, 20])
+    for _ in range(100):
+        yield b
+        sleep(0.1)
+        b.apply_translation([0.2, 0, 0])
+```
