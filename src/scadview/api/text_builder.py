@@ -41,7 +41,8 @@ def text_polys(
     Args:
         text: The text to convert to a polygons.
         size: The size of the text in mesh units.
-        font: The font family name to use for the text.
+        font: The font family name and style to use for the text.
+            This is in the form "Family:style", e.g. "Arial:style=Bold".
         halign: Horizontal alignment of the text ('left', 'center', 'right').
         valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
         spacing: Spacing between characters in mesh units (not used in this implementtion).
@@ -95,6 +96,7 @@ def text(
         text: The text to convert to a 3D mesh.
         size: The size of the text in mesh units (per openSCAD).
         font: The font family name to use for the text.
+            This is in the form "Family:style", e.g. "Arial:style=Bold".
         halign: Horizontal alignment of the text ('left', 'center', 'right').
         valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
         spacing: Spacing between characters in mesh units (not used in this implementtion).
