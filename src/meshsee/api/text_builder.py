@@ -17,7 +17,8 @@ from meshsee.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
 
 logger = logging.getLogger(__name__)
 
-SIZE_MULTIPLIER = 1.374  # Used to convert pt size to mesh units
+SIZE_MULTIPLIER = 1.374
+""" Used to convert pt size to mesh units. """
 
 
 def text_polys(
@@ -33,6 +34,9 @@ def text_polys(
 ) -> list[Polygon]:
     """
     Create a list of Polygons from the given text using the specified font and size.
+    This is based on OpenSCAD's text() function,
+    but returns 2D polygons instead of a 3D mesh,
+    suitable for extrusion or other operations.
 
     Args:
         text: The text to convert to a polygons.
@@ -85,10 +89,11 @@ def text(
 ) -> Trimesh:
     """
     Create a 3D mesh from the given text using the specified font and size.
+    This is based on OpenSCAD's text() function.
 
     Args:
         text: The text to convert to a 3D mesh.
-        size: The size of the text in mesh units.
+        size: The size of the text in mesh units (per openSCAD).
         font: The font family name to use for the text.
         halign: Horizontal alignment of the text ('left', 'center', 'right').
         valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').

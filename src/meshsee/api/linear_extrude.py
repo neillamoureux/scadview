@@ -13,6 +13,7 @@ ProfileType = (
     | list[tuple[float, float, float]]
     | list[list[float]]
 )
+"""The type for the 2D profile for extrusion."""
 
 
 class _RingType(Enum):
@@ -40,11 +41,22 @@ def linear_extrude(
     Signature & defaults mirror OpenSCAD:
       linear_extrude(height, center=false, convexity, twist=0, slices, scale)
 
-    Notes:
-      - `convexity` is accepted but ignored (OpenSCAD uses it for preview rays).
-      - If `slices` is None and `fn` is provided (>0), uses `slices=fn`.
-        Otherwise defaults to 20 (a reasonable OpenSCAD-like fallback).
-      - `scale` may be scalar or (sx, sy).
+    Args:
+        profile: The 2D shape to extrude. Can be a shapely Polygon, Nx2 or Nx3 ndarray, or list of 2/3-float tuples/lists.
+            If Nx3 or 3d elements in list, the Z values are ignored.
+        height: The extrusion height.
+        center: If true, the solid is centered after extrusion.
+        convexity: Accepted but ignored (OpenSCAD uses it for preview rays).
+        twist: The extrusion twist in degrees.
+        scale: Scales the 2D shape by this value over the height of the extrusion.
+            May be scalar or (sx, sy).
+        slices: Similar to special variable $fn without being passed down to the child 2D shape.
+        fn: If `slices` is None and `fn` is provided (>0), uses `slices=fn`.
+            Otherwise defaults to 20 (a reasonable OpenSCAD-like fallback).
+
+    Returns:
+        The extruded shape.
+
     """
     _raise_if_profile_incorrect_type(profile)
     slices = _determine_slice_value(slices, fn)
@@ -60,7 +72,6 @@ def linear_extrude(
         verts_2d, rings, slices, height, twist, final_scale, poly.centroid
     )
 
-    # stitch layers
     faces = _stitch_layers(verts_2d, poly_faces, rings, slices)
 
     mesh = trimesh.Trimesh(vertices=verts_3d, faces=faces)
@@ -216,7 +227,7 @@ def _build_layers(
                 ),
             )
         )
-    # Top layer
+
     top_layer = np.column_stack([verts_2d, np.ones(len(verts_2d)) * height]).astype(
         np.float32
     )
@@ -265,11 +276,11 @@ def _stitch_layers(
     faces = poly_faces.copy()[:, ::-1]  # Reverse orientation for bottom
 
     for i in range(0, slices):
-        # In each loop, determing how to index the rings
-        # for slice; we need to stitch together the rings on the bottom edge of a slice
-        # to the on on on the upper edge of the slice.
+        # In each loop, determing how to index the rings for each slice.
+        # We need to stitch together the rings on the bottom edge of a slice
+        # to the ring on the upper edge of the slice.
         # The bottom edge of the bottom slice and the top edge of the top slice
-        # have the rings embedded in the fully polygon since the bottom
+        # have the rings embedded in the full polygon since the bottom
         # and top layer are a copy of the polygon.
         # These must use rings_indx to find the ring vertices
         # For other edges, the rings were added as a sequence, and so are

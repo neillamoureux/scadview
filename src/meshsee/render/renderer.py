@@ -21,6 +21,7 @@ from meshsee.render.trimesh_renderee import (
     TrimeshOpaqueRenderee,
     create_trimesh_renderee,
 )
+from meshsee.resources.xyz_cube import create_mesh
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,10 @@ PER_NUMBER_FRAC_OF_AXIS = 0.04
 
 def _make_default_mesh() -> Trimesh:
     return box([1.0, 1.0, 1.0])
+
+
+def _make_initial_mesh() -> Trimesh:
+    return create_mesh()
 
 
 def _make_base_axes() -> Trimesh:
@@ -82,8 +87,12 @@ class Renderer:
         self._clear_background = True
         self._last_background_color = self.ERROR_BACKGROUND_COLOR
         self.background_color = self.DEFAULT_BACKGROUND_COLOR
-        self.load_mesh(_make_default_mesh(), "default_mesh")
-        self.frame()
+        self.load_mesh(_make_initial_mesh(), "default_mesh")
+        direction = np.array([-1, 1, -1])
+        up = np.array([0, 0, 1])
+        self.frame(direction, up)
+
+        # self.frame()
 
     def _create_shaders(self):
         self.on_program_value_change = Observable()

@@ -75,6 +75,7 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
+CreateMeshResultType = Trimesh | Manifold | list[Trimesh | Manifold]
 
 
 @dataclass
@@ -144,14 +145,37 @@ class LoadWorker(Thread):
         final: bool = False,
         error: Exception | None = None,
     ):
-        if isinstance(mesh, Manifold):
-            mesh2 = manifold_to_trimesh(mesh)
-        else:
-            mesh2 = mesh
         self.put_in_queue(
             LoadResult(
-                self.load_number, sequence_number, mesh2, error=error, complete=final
+                self.load_number,
+                sequence_number,
+                self._ensure_trimesh(mesh),
+                error=error,
+                complete=final,
             )
+        )
+
+    def _ensure_trimesh(self, mesh: Any) -> MeshType | None:
+        if mesh is None:
+            return None
+        if isinstance(mesh, Trimesh):
+            return mesh
+        if isinstance(mesh, Manifold):
+            return manifold_to_trimesh(mesh)
+        if isinstance(mesh, list):
+            result: list[Trimesh] = []
+            for m in mesh:  # type: ignore[reportUnknowVariableType] - can't resolve
+                if isinstance(m, Trimesh):
+                    result.append(m)
+                elif isinstance(m, Manifold):
+                    result.append(manifold_to_trimesh(m))
+                else:
+                    raise TypeError(
+                        f"Expected mesh item to be of type Trimesh or Manifold, got {type(m)}"  # type: ignore[reportUnknowArgumentType] - can't resolve
+                    )
+            return result
+        raise TypeError(
+            f"Expected mesh to be of type Trimesh, list[Trimesh], Manifold, or list[Manifold], got {type(mesh)}"
         )
 
     def put_in_queue(self, result: LoadResult):
@@ -174,9 +198,26 @@ class LoadWorker(Thread):
         t0 = time()
         for i, mesh in enumerate(module_loader.run_function(self.module_path)):
             logger.info(f"Loading mesh #{i + 1}")
+            self._check_mesh_type(mesh)
             yield mesh
         t1 = time()
         logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
+
+    def _check_mesh_type(self, mesh: Any):
+        if isinstance(mesh, Trimesh):
+            return
+        if isinstance(mesh, Manifold):
+            return
+        if isinstance(mesh, list):
+            for i, m in enumerate(mesh):  # type: ignore[reportUnknowVariableType] - can't resolve
+                if not isinstance(m, Trimesh) and not isinstance(m, Manifold):
+                    raise TypeError(
+                        f"Expected mesh[{i}] to be of type Trimesh or Manifold, got {type(m)}"  # type: ignore[reportUnknowArgumentType] - can't resolve
+                    )
+            return
+        raise TypeError(
+            f"Expected mesh to be of type Trimesh, list[Trimesh], Manifold, or list[Manifold], got {type(mesh)}"
+        )
 
     def cancel(self):
         self.cancelled = True

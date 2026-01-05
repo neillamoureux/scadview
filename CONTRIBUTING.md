@@ -11,13 +11,16 @@ We welcome bug reports, feature ideas, documentation improvements, and code cont
 
        git checkout -b feat/your-feature-name
 
-2. **Follow Coding Standards**, as noted below.
+1. **Read the README**: This explains some basics about developing in this repo.
 
-2. **Make your changes** with clear commit messages, using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standards.
+1. **Follow coding standards**, as noted below.
 
-3. **Run tests** and verify your code passes linting/type checks (if applicable).
+1. **Make your changes** with clear commit messages, using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standards.
 
-4. **Submit a Pull Request** describing your changes and why they improve MeshSee.
+1. **Run tests** and verify your code passes linting, formating and type checks.  
+There are `make` commands to help with this.  Also, run `make preflight` before creating a pull requests.
+
+1. **Submit a pull request** describing your changes and how they improve MeshSee.
 
 ---
 
@@ -54,7 +57,7 @@ Consider better naming,
 or extracting a method to make the intent of the code obvious.
 - Use type hints for all methods / functions.
 - Use docstrings for public methods / functions in [src/meshsee/api/](src/meshsee/api/).
-    - They should use the style from [Google Python Style Guide: Functions and Methods](https://google.github.io/styleguide/pyguide.html#383-functions-and-methods)
+    - Use the style from [Google Python Style Guide: Functions and Methods](https://google.github.io/styleguide/pyguide.html#383-functions-and-methods)
 - Keep dependencies minimal and cross-platform.
 - Write clear, descriptive commit messages.
 - Where possible, add or update tests for new functionality.

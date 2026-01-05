@@ -1,25 +1,64 @@
-site_name: Meshsee Documentation
+site_name: SCADview Documentation
 watch: 
   - src
   - docs
+  - CONTRIBUTING.md
+  - LICENSE
+docs_dir: docs
 nav:
   - Home: index.md
   - About: about.md
+  - Tutorial: tutorial.md
+  - User Interface: user_interface.md
+  - Creating a Mesh: create_mesh.md
   - Examples: examples.md
   - API Reference: api.md
-  - Tutorials: tutorials.md
+  - Command-Line Export: cli_export.md
   - Contributing: contributing.md
   - License: license.md
-theme: readthedocs
+theme: 
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.top
+    - search.suggestions
+    - search.highlight
+    - toc.integrated
+    - content.code.annotate
+    - content.code.copy
+    - content.code.foldable
+    - content.code.tabbed
+    - content.tabs.linked
+    - header.autohide
+    - footer.social
+    - palette.toggle
+    - palette.switcher
+    - announcement.bar
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
 plugins:
-- search
-- mkdocstrings:
-    handlers:
-      python:
-        paths: [src]
-        options:
-            docstring_style: google
-            show_root_full_path: true
-            show_root_heading: true
+  - include-markdown
+  - search
+  - macros:    # Jinja in markdown
+      # include_dir: docs/includes   # optional, eg for macros
+      verbose: false               # set true if you want debug info    
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+              docstring_style: google
+              show_root_full_path: true
+              show_root_heading: true
+extra:
+  project_name: SCADview
+  package_name: scadview
 
 

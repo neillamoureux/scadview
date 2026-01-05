@@ -26,9 +26,9 @@ def surface(
         scale: A 3-tuple that scales in each dimension.
         base: The base height of the pedestal upon which the mesh will be placed.
         invert: If True, inverts the heightmap values between min and max values.
-        binary_split: Converts the heightmap to 0s or 1s only,
-        based on whether the height is below or equal (changes to 0) or above (changes to 1) the
-        binary_split_value.
+        binary_split: Converts the heightmap to 0s or 1s only.
+            based on whether the height is below or equal (changes to 0) or above (changes to 1) the
+            binary_split_value.
         binary_split_value: Only usedif binary_splt=ut it True.
 
 

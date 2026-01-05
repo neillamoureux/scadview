@@ -55,5 +55,14 @@ def set_mesh_color(
     """
     if isinstance(color, Color):
         color = color.value
-    mesh.metadata["meshsee"] = {"color": [color[0], color[1], color[2], alpha]}
+    for c in color:
+        if not (0.0 <= c <= 1.0):
+            raise ValueError("Color components must be in the range [0.0, 1.0]")
+    if not (0.0 <= alpha <= 1.0):
+        raise ValueError("Alpha value must be in the range [0.0, 1.0]")
+    float_color = [float(c) for c in color]
+    float_alpha = float(alpha)
+    mesh.metadata["meshsee"] = {
+        "color": [float_color[0], float_color[1], float_color[2], float_alpha]
+    }
     return mesh
