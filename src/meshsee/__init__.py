@@ -16,6 +16,7 @@ if False:
         surface,
     )
     from meshsee.api.text_builder import (
+        SIZE_MULTIPLIER,
         text,
         text_polys,
     )
@@ -30,6 +31,7 @@ __all__ = [
     "linear_extrude",  # type: ignore[reportUnsupportedDunderAll]
     "mesh_from_heightmap",  # type: ignore[reportUnsupportedDunderAll]
     "surface",  # type: ignore[reportUnsupportedDunderAll]
+    "SIZE_MULTIPLIER",  # type: ignore[reportUnsupportedDunderAll]
     "text",  # type: ignore[reportUnsupportedDunderAll]
     "text_polys",  # type: ignore[reportUnsupportedDunderAll]
     "manifold_to_trimesh",  # type: ignore[reportUnsupportedDunderAll]
@@ -43,6 +45,7 @@ _lazy_map = {
     "linear_extrude": ("meshsee.api.linear_extrude", "linear_extrude"),
     "mesh_from_heightmap": ("meshsee.api.surface", "mesh_from_heightmap"),
     "surface": ("meshsee.api.surface", "surface"),
+    "SIZE_MULTIPLIER": ("meshsee.api.text_builder", "SIZE_MULTIPLIER"),
     "text": ("meshsee.api.text_builder", "text"),
     "text_polys": ("meshsee.api.text_builder", "text_polys"),
     "manifold_to_trimesh": ("meshsee.api.utils", "manifold_to_trimesh"),

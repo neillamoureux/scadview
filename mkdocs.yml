@@ -8,12 +8,12 @@ docs_dir: docs
 nav:
   - Home: index.md
   - About: about.md
-  - Creating a Mesh: create_mesh.md
+  - Tutorial: tutorial.md
   - User Interface: user_interface.md
-  - Command-Line Export: cli_export.md
+  - Creating a Mesh: create_mesh.md
   - Examples: examples.md
   - API Reference: api.md
-  - Tutorial: tutorial.md
+  - Command-Line Export: cli_export.md
   - Contributing: contributing.md
   - License: license.md
 theme: 

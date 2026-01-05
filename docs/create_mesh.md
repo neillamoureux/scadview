@@ -9,8 +9,8 @@ and shows the returned mesh.
 
 The function `create_mesh` must:
 
-- Take no parameters, or all parameters have default values.
-- Return a `Trimesh`, `Manifold` or `list[Trimesh | Manifold]` or... (see below).
+- Take no parameters, or all parameters must have default values.
+- Return a `Trimesh`, `Manifold` or `list[Trimesh | Manifold]` or... [see below](#incremental-builds).
 
 That is, the function should look like this with type hints 
 (but type hints are not required):
@@ -51,7 +51,7 @@ the "Export" feature is not available.
 
 ## Using Color and Transparency
 
-[`set_mesh_color`](/api/#meshsee.set_mesh_color) may be applied to a `Trimesh`, 
+[`set_mesh_color`](api.md#meshsee.set_mesh_color) may be applied to a `Trimesh`, 
 which affects its color and transparency.
 This allows you to see different meshes in the list in different colors,
 and make them transparent so you can see other meshes hidden inside.
@@ -60,6 +60,12 @@ and colors do not survive boolean operations.
 
 `set_mesh_color` can also be useful when returning a single `Trimesh`,
 for example if you are removing hidded voids.
+
+## Output and Logging
+
+Console output goes to the terminal where you launched `python -m {{ package_name }}`.
+You can use `print(...)` or Python's `logging` module inside your script. If you
+need more detail, you can set the logging level in your script.
 
 ## Incremental Builds
 
