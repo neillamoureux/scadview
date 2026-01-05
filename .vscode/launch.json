@@ -29,6 +29,21 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "Run create_mesh script",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/cli_export.py",
+            "args": [
+                "--radius",
+                "12",
+                "--height",
+                "30",
+                "--out",
+                "${workspaceFolder}/build/cyl.stl"
+            ],
+            "console": "integratedTerminal"
         }
     ]
 }

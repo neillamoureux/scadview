@@ -2,6 +2,23 @@
 
 This page explains each script in `examples/` and lets you expand the full source.
 
+## cli_export.py
+
+Command-line example that parses arguments, builds a mesh, and exports it with Trimesh.
+
+<details>
+<summary>Source</summary>
+
+
+```python
+
+{% include "../examples/cli_export.py" %}
+
+```
+
+
+</details>
+
 ## colors.py
 
 Builds a list of colored text meshes, one per `Color` enum value. This shows how returning a `list[Trimesh]` enables debug-mode display of multiple meshes at once.

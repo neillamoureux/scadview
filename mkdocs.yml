@@ -11,6 +11,7 @@ nav:
   - Features: features.md
   - Creating a Mesh: create_mesh.md
   - User Interface: user_interface.md
+  - Command-Line Export: cli_export.md
   - Examples: examples.md
   - API Reference: api.md
   - Tutorial: tutorial.md
@@ -60,6 +61,5 @@ plugins:
 extra:
   project_name: SCADview
   package_name: scadview
-
 
 
