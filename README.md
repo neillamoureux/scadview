@@ -7,6 +7,12 @@ An application to view 3D meshes created from Python.
 - uv
 - make
 
+## Versioning
+SCADview follows [Semantic Versioning 2.0.0](https://semver.org/).  
+In short: MAJOR versions for incompatible API changes, MINOR for backward-compatible
+features, and PATCH for backward-compatible bug fixes. While the major version
+is 0, we may introduce breaking changes in minor releases.
+
 ### Set up
 This project uses `make` for commmon tasks. 
 - Most of the make commands require that you run `make shell` first.
@@ -48,4 +54,3 @@ While you are free to fork and modify the code under the Apache License,
 you **may not use the name SCADview** to promote or distribute modified versions  
 without prior written permission.  
 Please choose a distinct name for derivative works (e.g. *“YourTool, based on SCADview*).
-
