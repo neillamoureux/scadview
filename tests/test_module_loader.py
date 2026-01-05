@@ -1,6 +1,6 @@
 import pytest
 
-from meshsee.module_loader import ModuleLoader, yield_if_return
+from scadview.module_loader import ModuleLoader, yield_if_return
 
 
 def test_yield_if_return():

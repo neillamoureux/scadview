@@ -1,7 +1,8 @@
 # Welcome to  {{ project_name }}
 
 {{ project_name }} enables quickly viewing and iterating on scripted 3d models created by [Trimesh](https://trimesh.org/) or [manifold3d](https://pypi.org/project/manifold3d/).
-It has a 3d viewer - you create a 3d (Mesh) that you can view (see) - {{ project_name }}!  
+SCAD is "scripted computer assisted design", 
+and SCADview allows you to view your SCAD models.
 You do this by running {{ project_name }}, writing code to create a Trimesh object, 
 and loading it from the {{ project_name }} UI.
 

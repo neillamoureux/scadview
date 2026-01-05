@@ -18,7 +18,7 @@ def create_mesh():
         [9 * MILLIS_PER_INCH, 9 * MILLIS_PER_INCH, 4.5 * MILLIS_PER_INCH]
     ).apply_translation([0.0, 0.0, -4.5 / 2 * MILLIS_PER_INCH])
 
-    cut.metadata = {"meshsee": {"color": [0.0, 1.0, 0.0, 0.3]}}
+    cut.metadata = {"scadview": {"color": [0.0, 1.0, 0.0, 0.3]}}
     inner_top = icosphere(radius=(TOP_R - 0.1) * MILLIS_PER_INCH).apply_scale(
         [1.0, 1.0, 0.5]
     )
@@ -45,6 +45,3 @@ def create_mesh():
         ]
     )
     return top.union(stem).union(join).union(edge)
-    # return edge
-    # top.metadata = {"meshsee": {"color": [1.0, 0.0, 0.0, 0.3]}}
-    # return [top, stem, cut, join, edge]

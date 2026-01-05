@@ -5,9 +5,9 @@ import multiprocessing.queues as mp_queues
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 
-from meshsee.logging_main import log_queue
-from meshsee.logging_worker import configure_worker_logging
-from meshsee.ui.splash_window import (
+from scadview.logging_main import log_queue
+from scadview.logging_worker import configure_worker_logging
+from scadview.ui.splash_window import (
     create_splash_window,  # type: ignore[reportUnknownVariableType]
 )
 

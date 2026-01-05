@@ -6,8 +6,8 @@ from typing import Any
 import moderngl
 from moderngl import Uniform
 
-import meshsee.resources.shaders
-from meshsee.observable import Observable
+import scadview.resources.shaders
+from scadview.observable import Observable
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,10 @@ class ShaderProgram:
         self._ctx = ctx
         self._current_values: dict[ShaderVar, Any] = {}
         self.register = register
-        vertex_shader_source = files(meshsee.resources.shaders).joinpath(
+        vertex_shader_source = files(scadview.resources.shaders).joinpath(
             vertex_shader_loc
         )
-        fragment_shader_source = files(meshsee.resources.shaders).joinpath(
+        fragment_shader_source = files(scadview.resources.shaders).joinpath(
             fragment_shader_loc
         )
         with (

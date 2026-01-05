@@ -4,7 +4,7 @@ from trimesh import Trimesh
 
 
 class Color(Enum):
-    """Enum for common colors used in Meshsee visualizations."""
+    """Enum for common colors used in SCADview visualizations."""
 
     RED = (1.0, 0.0, 0.0)
     GREEN = (0.0, 1.0, 0.0)
@@ -43,7 +43,7 @@ def set_mesh_color(
     color: tuple[float, float, float] | list[float] | Color,
     alpha: float = 1.0,
 ) -> Trimesh:
-    """Set the color of a Trimesh object for Meshsee visualization.
+    """Set the color of a Trimesh object for SCADview visualization.
 
     Args:
         mesh: The input mesh to which the color will be applied.
@@ -62,7 +62,7 @@ def set_mesh_color(
         raise ValueError("Alpha value must be in the range [0.0, 1.0]")
     float_color = [float(c) for c in color]
     float_alpha = float(alpha)
-    mesh.metadata["meshsee"] = {
+    mesh.metadata["scadview"] = {
         "color": [float_color[0], float_color[1], float_color[2], float_alpha]
     }
     return mesh

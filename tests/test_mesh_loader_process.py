@@ -4,7 +4,7 @@ import numpy.testing as npt
 import pytest
 from trimesh.creation import box, icosphere
 
-from meshsee.mesh_loader_process import (
+from scadview.mesh_loader_process import (
     LoadResult,
     LoadStatus,
     LoadWorker,
@@ -15,7 +15,7 @@ from meshsee.mesh_loader_process import (
 
 @pytest.fixture
 def mock_queue():
-    with patch("meshsee.mesh_loader_process.Queue") as mock_cls:
+    with patch("scadview.mesh_loader_process.Queue") as mock_cls:
         yield mock_cls
 
 
@@ -119,7 +119,7 @@ def load_queue():
 
 @pytest.fixture
 def load_worker(mesh, load_queue):
-    with patch("meshsee.mesh_loader_process.ModuleLoader") as mock_module_loader:
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
         ml_instance = mock_module_loader.return_value
         if isinstance(mesh, list):
             ml_instance.run_function.return_value = iter(mesh)

@@ -1,5 +1,5 @@
 import numpy as np
-from meshsee import set_mesh_color
+from scadview import set_mesh_color
 from trimesh.creation import icosphere
 
 

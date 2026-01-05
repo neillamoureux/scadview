@@ -10,18 +10,18 @@ from trimesh.creation import (
     box,  # pyright: ignore[reportUnknownVariableType] can't resolve
 )
 
-from meshsee.load_status import LoadStatus
-from meshsee.observable import Observable
-from meshsee.render.camera import Camera, copy_camera_state
-from meshsee.render.label_atlas import LabelAtlas
-from meshsee.render.label_renderee import LabelSetRenderee
-from meshsee.render.renderee import GnomonRenderee
-from meshsee.render.shader_program import ShaderProgram, ShaderVar
-from meshsee.render.trimesh_renderee import (
+from scadview.load_status import LoadStatus
+from scadview.observable import Observable
+from scadview.render.camera import Camera, copy_camera_state
+from scadview.render.label_atlas import LabelAtlas
+from scadview.render.label_renderee import LabelSetRenderee
+from scadview.render.renderee import GnomonRenderee
+from scadview.render.shader_program import ShaderProgram, ShaderVar
+from scadview.render.trimesh_renderee import (
     TrimeshOpaqueRenderee,
     create_trimesh_renderee,
 )
-from meshsee.resources.xyz_cube import create_mesh
+from scadview.resources.xyz_cube import create_mesh
 
 logger = logging.getLogger(__name__)
 

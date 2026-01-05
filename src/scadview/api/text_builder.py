@@ -13,7 +13,7 @@ from trimesh.creation import (
     extrude_polygon,  # pyright: ignore[reportUnknownVariableType] - trimesh function
 )
 
-from meshsee.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
+from scadview.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
 
 logger = logging.getLogger(__name__)
 

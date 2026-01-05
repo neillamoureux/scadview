@@ -2,9 +2,9 @@ import numpy as np
 from numpy.typing import NDArray
 from pyrr import matrix33, matrix44
 
-from meshsee.observable import Observable
-from meshsee.render.shader_program import ShaderVar
-from meshsee.render.span import Span
+from scadview.observable import Observable
+from scadview.render.shader_program import ShaderVar
+from scadview.render.span import Span
 
 
 def intersection(

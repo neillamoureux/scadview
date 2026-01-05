@@ -1,7 +1,7 @@
 import numpy as np
 import shapely.geometry as sg
 
-from meshsee import linear_extrude
+from scadview import linear_extrude
 
 KOCH_DEFAULT_BUMP_LENGTH_FRACTION = np.sqrt(
     1.0 / 3.0**2 - 1.0 / 6.0**2

@@ -5,7 +5,7 @@ from shapely.geometry import Polygon
 from trimesh import Trimesh, transformations
 from trimesh.creation import box, cylinder, extrude_polygon
 
-from meshsee import text
+from scadview import text
 
 """
 A toothbrush holder with a tube for each person in the household.

@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 
-from meshsee.render.camera import Camera
-from meshsee.render.renderer import Renderer
+from scadview.render.camera import Camera
+from scadview.render.renderer import Renderer
 
 
 def test_window_size():
@@ -22,7 +22,7 @@ def test_window_size():
     camera = Camera()
     window_size = (50, 100)
     aspect_ratio = float(window_size[0]) / window_size[1]
-    with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
+    with patch("scadview.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         renderer = Renderer(context, camera, window_size)
         assert renderer.window_size == window_size
@@ -39,7 +39,7 @@ def test_frame():
     context = MagicMock()
     camera = Mock()
     window_size = (320, 200)
-    with patch("meshsee.render.shader_program.isinstance") as mock_isinstance:
+    with patch("scadview.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         renderer = Renderer(context, camera, window_size)
         renderer.frame(np.array([[1, 0, 0]]))

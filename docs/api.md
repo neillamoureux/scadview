@@ -1,12 +1,12 @@
 # API Reference
 
-::: meshsee.Color
-::: meshsee.set_mesh_color
-::: meshsee.surface
-::: meshsee.mesh_from_heightmap
-::: meshsee.SIZE_MULTIPLIER
-::: meshsee.text
-::: meshsee.text_polys
-::: meshsee.ProfileType
-::: meshsee.linear_extrude
-::: meshsee.manifold_to_trimesh
+::: scadview.Color
+::: scadview.set_mesh_color
+::: scadview.surface
+::: scadview.mesh_from_heightmap
+::: scadview.SIZE_MULTIPLIER
+::: scadview.text
+::: scadview.text_polys
+::: scadview.ProfileType
+::: scadview.linear_extrude
+::: scadview.manifold_to_trimesh

@@ -4,7 +4,7 @@ import shapely.geometry as sg
 import trimesh
 
 # Change this to your module path
-from meshsee.api.linear_extrude import linear_extrude
+from scadview.api.linear_extrude import linear_extrude
 
 
 def _rect_xy_list(w=2.0, h=1.0):

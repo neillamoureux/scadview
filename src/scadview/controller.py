@@ -5,9 +5,9 @@ import queue
 from trimesh import Trimesh
 from trimesh.exchange import export
 
-from meshsee.load_status import LoadStatus
-from meshsee.logging_main import log_queue
-from meshsee.mesh_loader_process import (
+from scadview.load_status import LoadStatus
+from scadview.logging_main import log_queue
+from scadview.mesh_loader_process import (
     Command,
     LoadMeshCommand,
     LoadResult,
@@ -16,7 +16,7 @@ from meshsee.mesh_loader_process import (
     MpLoadQueue,
     ShutDownCommand,
 )
-from meshsee.observable import Observable
+from scadview.observable import Observable
 
 logger = logging.getLogger(__name__)
 
