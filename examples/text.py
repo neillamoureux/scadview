@@ -1,4 +1,4 @@
-from meshsee import text
+from scadview import text
 
 
 def create_mesh():

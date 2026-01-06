@@ -1,6 +1,6 @@
-# MeshSee Pull Request
+# SCADview Pull Request
 
-Thank you for contributing to **MeshSee**!  
+Thank you for contributing to **SCADview**!  
 Please fill out the sections below to help us review your PR efficiently.
 
 ---
@@ -112,7 +112,7 @@ Anything else reviewers should know? For example:
 
 Before requesting review, confirm the following:
 
-- [ ] The code follows MeshSee’s coding standards (PEP 8, type hints, etc.).  
+- [ ] The code follows SCADview's coding standards (PEP 8, type hints, etc.).  
 - [ ] Tests pass locally.  
 - [ ] My changes include or update tests where appropriate.  
 - [ ] I have run linting tools (e.g., `ruff`).  

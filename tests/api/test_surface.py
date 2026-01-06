@@ -3,7 +3,7 @@ import pytest
 import trimesh
 from PIL import Image
 
-from meshsee.api.surface import mesh_from_heightmap, surface
+from scadview.api.surface import mesh_from_heightmap, surface
 
 
 @pytest.fixture

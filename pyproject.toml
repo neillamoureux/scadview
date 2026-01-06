@@ -1,7 +1,7 @@
 [project]
-name = "meshsee"
-version = "0.1.0"
-description = "Add your description here"
+name = "scadview"
+version = "0.2.0"
+description = "A viewer for 3D meshes and constructive solid geometry (CSG) models."
 readme = "README.md"
 authors = [{ name = "Neil Lamoureux", email = "neil.lamoureux@gmail.com" }]
 requires-python = ">=3.11"
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-meshsee = "meshsee:main"
+scadview = "scadview:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -44,10 +44,10 @@ dev = [
 ]
 
 [tool.uv.sources]
-meshsee = { workspace = true }
+scadview = { workspace = true }
 
 [tool.pyright]
-include = ["src/meshsee"]
+include = ["src/scadview"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"

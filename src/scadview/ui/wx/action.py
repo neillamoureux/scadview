@@ -2,7 +2,7 @@ from typing import Callable, Generic, TypeVar
 
 import wx
 
-from meshsee.observable import Observable
+from scadview.observable import Observable
 
 
 class Action:

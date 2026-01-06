@@ -3,7 +3,7 @@ import os
 import numpy as np
 from trimesh import Trimesh, transformations
 
-from meshsee import surface
+from scadview import surface
 
 
 def create_mesh():
@@ -13,7 +13,7 @@ def create_mesh():
     scale = desired_x_size / pixel_size[0]
     parent_dir = os.path.dirname(os.path.abspath(__file__))
     mesh = surface(
-        os.path.join(parent_dir, "../src/meshsee/resources/splash.png"),
+        os.path.join(parent_dir, "../src/scadview/resources/splash.png"),
         scale=(scale, scale, height),
         invert=True,
         base=0.0,

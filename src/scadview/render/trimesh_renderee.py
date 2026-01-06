@@ -9,9 +9,9 @@ from trimesh.bounds import (
     corners,  # pyright: ignore[reportUnknownVariableType] can't resolve
 )
 
-from meshsee.observable import Observable
-from meshsee.render.label_renderee import Renderee
-from meshsee.render.shader_program import ShaderVar
+from scadview.observable import Observable
+from scadview.render.label_renderee import Renderee
+from scadview.render.shader_program import ShaderVar
 
 logger = logging.getLogger(__name__)
 
@@ -40,18 +40,18 @@ def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
     metadata = mesh.metadata  # pyright: ignore[reportUnknownVariableType]
     if (
         isinstance(metadata, dict)  # pyright: ignore[reportUnnecessaryIsInstance] - needed since ignoring type in line above
-        and "meshsee" in metadata
+        and "scadview" in metadata
     ):
         if (
-            metadata["meshsee"] is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
-            and "color" in metadata["meshsee"]
+            metadata["scadview"] is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
+            and "color" in metadata["scadview"]
         ):
-            color = metadata["meshsee"]["color"]
+            color = metadata["scadview"]["color"]
             if len(color) == 4 and all(isinstance(c, float) for c in color):
-                return convert_color_to_uint8(metadata["meshsee"]["color"])
+                return convert_color_to_uint8(metadata["scadview"]["color"])
             else:
                 raise ValueError(
-                    "The color in mesh.metadata['meshsee']['color'] must be a list of 4 floats"
+                    "The color in mesh.metadata['scadview']['color'] must be a list of 4 floats"
                 )
     return convert_color_to_uint8(DEFAULT_COLOR)
 

@@ -1,6 +1,6 @@
 from trimesh.creation import box, icosphere
 
-from meshsee import Color, set_mesh_color
+from scadview import Color, set_mesh_color
 
 
 def create_mesh():

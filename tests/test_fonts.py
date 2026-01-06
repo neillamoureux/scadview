@@ -1,4 +1,4 @@
-from meshsee import fonts
+from scadview import fonts
 
 
 def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):

@@ -45,7 +45,7 @@ test: check-venv
 
 run: check-venv
 	@echo "Running the application..."
-	@python -m meshsee $(ARGS)
+	@python -m scadview $(ARGS)
 
 format: check-venv
 	@echo "Formatting the code..."

@@ -1,7 +1,7 @@
 import numpy as np
 from trimesh.creation import icosphere
 
-from meshsee import set_mesh_color
+from scadview import set_mesh_color
 
 GOLF_BALL_RADIUS = 42.67 / 2
 DIMPLE_RADIUS_FRACTION = 1 / 4

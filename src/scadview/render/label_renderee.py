@@ -6,11 +6,11 @@ import moderngl
 import numpy as np
 from pyrr import Matrix44
 
-from meshsee.render.camera import Camera
-from meshsee.render.label_atlas import LabelAtlas
-from meshsee.render.label_metrics import label_char_width, label_step, labels_to_show
-from meshsee.render.renderee import Renderee
-from meshsee.render.span import Span
+from scadview.render.camera import Camera
+from scadview.render.label_atlas import LabelAtlas
+from scadview.render.label_metrics import label_char_width, label_step, labels_to_show
+from scadview.render.renderee import Renderee
+from scadview.render.span import Span
 
 logger = logging.getLogger(__name__)
 DEFAULT_SHIFT_UP = 0.01

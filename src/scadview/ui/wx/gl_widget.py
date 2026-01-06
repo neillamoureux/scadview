@@ -16,8 +16,8 @@ from wx.glcanvas import (
     GLContext,
 )
 
-from meshsee.load_status import LoadStatus
-from meshsee.render.gl_widget_adapter import GlWidgetAdapter
+from scadview.load_status import LoadStatus
+from scadview.render.gl_widget_adapter import GlWidgetAdapter
 
 logger = logging.getLogger(__name__)
 

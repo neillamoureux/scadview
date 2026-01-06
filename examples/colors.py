@@ -1,4 +1,4 @@
-from meshsee import Color, set_mesh_color, text
+from scadview import Color, set_mesh_color, text
 
 
 def create_mesh():

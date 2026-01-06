@@ -12,10 +12,10 @@ from typing import Any, Generator, Generic, Type, TypeVar
 from manifold3d import Manifold
 from trimesh import Trimesh
 
-from meshsee.api.utils import manifold_to_trimesh
-from meshsee.load_status import LoadStatus
-from meshsee.logging_worker import configure_worker_logging
-from meshsee.module_loader import ModuleLoader
+from scadview.api.utils import manifold_to_trimesh
+from scadview.load_status import LoadStatus
+from scadview.logging_worker import configure_worker_logging
+from scadview.module_loader import ModuleLoader
 
 logger = logging.getLogger(__name__)
 

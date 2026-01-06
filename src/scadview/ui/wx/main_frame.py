@@ -3,13 +3,18 @@ import os
 
 import wx
 
-from meshsee.controller import Controller, export_formats
-from meshsee.load_status import LoadStatus
-from meshsee.mesh_loader_process import LoadResult
-from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.action import Action, CheckableAction, ChoiceAction, EnableableAction
-from meshsee.ui.wx.font_dialog import FontDialog
-from meshsee.ui.wx.gl_widget import create_graphics_widget
+from scadview.controller import Controller, export_formats
+from scadview.load_status import LoadStatus
+from scadview.mesh_loader_process import LoadResult
+from scadview.render.gl_widget_adapter import GlWidgetAdapter
+from scadview.ui.wx.action import (
+    Action,
+    CheckableAction,
+    ChoiceAction,
+    EnableableAction,
+)
+from scadview.ui.wx.font_dialog import FontDialog
+from scadview.ui.wx.gl_widget import create_graphics_widget
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +29,7 @@ class MainFrame(wx.Frame):
         controller: Controller,
         gl_widget_adapter: GlWidgetAdapter,
     ):
-        super().__init__(None, title="Meshsee", size=wx.Size(*INITIAL_FRAME_SIZE))
+        super().__init__(None, title="SCADview", size=wx.Size(*INITIAL_FRAME_SIZE))
         self._controller = controller
 
         self.Bind(wx.EVT_CLOSE, self.on_close)

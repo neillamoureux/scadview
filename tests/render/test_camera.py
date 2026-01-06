@@ -3,7 +3,7 @@ from copy import copy, deepcopy
 import numpy as np
 from pytest import approx, mark
 
-from meshsee.render.camera import (
+from scadview.render.camera import (
     Camera,
     CameraOrthogonal,
     CameraPerspective,

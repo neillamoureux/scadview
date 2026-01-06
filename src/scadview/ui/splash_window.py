@@ -28,7 +28,7 @@ from typing import Any, Callable
 logger = logging.getLogger(__name__)
 
 SPLASH_IMAGE = Path(__file__).resolve().parent.parent / "resources" / "splash.png"
-TITLE_TEXT = "Meshsee"
+TITLE_TEXT = "SCADview"
 MESSAGE_TEXT = "First run may take longer to initialize; please wait..."
 
 

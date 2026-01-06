@@ -1,7 +1,7 @@
 import wx
 import wx.dataview as dv
 
-from meshsee.fonts import list_system_fonts, split_family_style
+from scadview.fonts import list_system_fonts, split_family_style
 
 
 class LoadingDialog(wx.Dialog):
@@ -36,7 +36,7 @@ class FontDialog(wx.Dialog):
 
     def __init__(self, parent: wx.Window | None = None):
         super().__init__(
-            parent, title="Meshsee - Fonts", size=wx.Size(*self.DIALOG_SIZE)
+            parent, title="SCADview - Fonts", size=wx.Size(*self.DIALOG_SIZE)
         )
 
         # Widgets

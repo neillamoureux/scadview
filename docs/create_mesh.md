@@ -51,7 +51,7 @@ the "Export" feature is not available.
 
 ## Using Color and Transparency
 
-[`set_mesh_color`](api.md#meshsee.set_mesh_color) may be applied to a `Trimesh`, 
+[`set_mesh_color`](api.md#{{ package_name }}.set_mesh_color) may be applied to a `Trimesh`, 
 which affects its color and transparency.
 This allows you to see different meshes in the list in different colors,
 and make them transparent so you can see other meshes hidden inside.

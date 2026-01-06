@@ -2,9 +2,9 @@ import logging
 
 import wx
 
-from meshsee.controller import Controller
-from meshsee.render.gl_widget_adapter import GlWidgetAdapter
-from meshsee.ui.wx.main_frame import MainFrame
+from scadview.controller import Controller
+from scadview.render.gl_widget_adapter import GlWidgetAdapter
+from scadview.ui.wx.main_frame import MainFrame
 
 logger = logging.getLogger(__name__)
 
