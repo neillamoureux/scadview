@@ -204,6 +204,20 @@ Loads a heightmap from the splash image using `surface(...)`, then bends its ver
 ```
 </details>
 ![Surface Bend](images/surface_bend.png)
+## surface_.py
+
+Loads a heightmap from the splash image using `surface(...)`.
+
+<details>
+<summary>Source</summary>
+
+```python
+
+{% include "../examples/surface.py" %}
+
+```
+</details>
+![Surface](images/surface.png)
 ## text.py
 
 Uses `text(...)` with a specific font and alignment options, then scales in Z to add thickness. Demonstrates text mesh creation and font selection.
