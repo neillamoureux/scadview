@@ -15,6 +15,13 @@ We welcome bug reports, feature ideas, documentation improvements, and code cont
 
 1. **Follow coding standards**, as noted below.
 
+1. **Use Gitflow branching**:
+   - `main` is for stable releases.
+   - `develop` is the integration branch for ongoing work.
+   - Feature branches start from `develop` and merge back into `develop`.
+   - Create a release branch when preparing a release candidate, then merge back into
+     `main` and `develop` when ready.
+
 1. **Make your changes** with clear commit messages, using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standards.
 
 1. **Run tests** and verify your code passes linting, formating and type checks.  

@@ -38,10 +38,22 @@ def text_polys(
     but returns 2D polygons instead of a 3D mesh,
     suitable for extrusion or other operations.
 
+    **Font Loading Time Warning**:
+    Loading fonts from the system can be time-consuming, especially if the font cache
+    needs to be rebuilt. The first time this function is called, it may take several seconds
+    to load the font information. Subsequent calls will be faster as the font data is cached.
+
+    **Font Specification**:
+    The `font` parameter should be specified in the form "Family:style", e.g. "Arial:style=Bold".
+    In SCADview, use Help > List System Fonts to see available fonts on your system,
+    and copy the exact name / style string.
+
+
     Args:
         text: The text to convert to a polygons.
         size: The size of the text in mesh units.
-        font: The font family name to use for the text.
+        font: The font family name and style to use for the text.
+            This is in the form "Family:style", e.g. "Arial:style=Bold".
         halign: Horizontal alignment of the text ('left', 'center', 'right').
         valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
         spacing: Spacing between characters in mesh units (not used in this implementtion).
@@ -91,10 +103,22 @@ def text(
     Create a 3D mesh from the given text using the specified font and size.
     This is based on OpenSCAD's text() function.
 
+    **Font Loading Time Warning**:
+    Loading fonts from the system can be time-consuming, especially if the font cache
+    needs to be rebuilt. The first time this function is called, it may take several seconds
+    to load the font information. Subsequent calls will be faster as the font data is cached.
+
+    **Font Specification**:
+    The `font` parameter should be specified in the form "Family:style", e.g. "Arial:style=Bold".
+    In SCADview, use Help > List System Fonts to see available fonts on your system,
+    and copy the exact name / style string.
+
+
     Args:
         text: The text to convert to a 3D mesh.
         size: The size of the text in mesh units (per openSCAD).
         font: The font family name to use for the text.
+            This is in the form "Family:style", e.g. "Arial:style=Bold".
         halign: Horizontal alignment of the text ('left', 'center', 'right').
         valign: Vertical alignment of the text ('baseline', 'top', 'bottom', 'center').
         spacing: Spacing between characters in mesh units (not used in this implementtion).
