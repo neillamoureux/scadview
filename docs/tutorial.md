@@ -50,8 +50,17 @@ Or you may need to run:
 ```bash
 python3 -m {{ package_name }}
 ```
-The {{ project_name }} UI should appear.
+The {{ project_name }} UI should appear. 
+
+![{{ project_name }} UI](images/startup_window.png)
+
+The first time you run {{ project_name }}, 
+it can take longer to appear, 
+but subsequent starts should be almost instant.
+
+
 1.  Click the "Load py..." button.
+![Load Dialog](images/load_dialog.png)
     - This opens a file dialog.
     Choose the file you've just created, 
     `golf_ball.py`.
@@ -60,9 +69,11 @@ The {{ project_name }} UI should appear.
     - If you don't see a sphere,
     check the output from the command line for any error messages
     and edit `golf_ball.py` to fix them.
-    - Click thhe "Reload" button to reload the file; 
+    - Click the "Reload" button to reload the file; 
     if all errors are corrected,
     you should see the sphere.
+
+![Golf Ball Step 2](images/golf_ball_step_02.png)
 
 ## Step 3: Experiment with `icosphere`
 Let's take a look at what options `icosphere` has to offer.
@@ -88,6 +99,7 @@ from trimesh.creation import icosphere
 def create_mesh():
     return icosphere(subdivisions=1)
 ```
+![Golf Ball subdivisions=1](images/golf_ball_step_03_sub_1.png)
 Hmmm... looks like it could be smoother.
 Let's get some information about the ball.
 `icosphere` is a [Trimesh](https://trimesh.org/trimesh.base.html){target="_blank"},
@@ -126,9 +138,10 @@ let's up `sudivisions=2` by editing one line:
     ball = icosphere(subdivisions=2)
 ```
 Then press "Reload".
-
+![Golf Ball subdivisions=2](images/golf_ball_step_02.png)
 Great, that looks smoother,
-and the command line output is
+and it is just what we started with in Step 2.
+The command line output is:
 ```cli
 Created ball with 162 vertices and 320 faces
 ```
@@ -138,7 +151,11 @@ If you like, you can also try `subdivisions=3`
 
 ### Radius
 
-That Wikipedia article continues to deliver!
+If you look at the golf ball, 
+you can see that it is intersecting the axes at +50 and -50,
+so its default radius must be about 50.
+
+Let's check that Wikipedia article for information about the size of a golf ball.
 It says a golf ball must have a diameter of not less than 42.67 mm.
 (We will use metric measurements - 
 but {{ project_name }} itself does not assign inches, millimeters, 
@@ -148,15 +165,21 @@ Let modify that one line again and press "Reload":
 ```python
     ball = icosphere(subdivisions=2, radius=42.67/2)
 ```
-You should now see a larger ball.
+You should now see a resized ball.
+![Golf Ball Resized](images/golf_ball_step_03_sized.png)
+
+But it looks like the same size!
+This is because {{ project_name }} reframes the model
+when it is reloaded.
+If you look at the axes,
+you can now see that the golf ball intersects at about 20,
+so its radius is about 40.
 
 ## Interlude: Play with the UI.
 
 Let's see what you can do with the {{ project_name }} UI.
 We've already used a couple of buttons, 
 but lets read about the [user interface](./user_interface.md)
-
-
 
 ## Step 4: Add Dimples
 
@@ -194,6 +217,8 @@ After pressing "Reload", something bad happens -
 no ball, and the screen turns red.
 Something when wrong!
 
+![Red Screen](images/red.png)
+
 The screen turning red indicates a problem with your code.
 Check the command line output. 
 In this case we see:
@@ -213,6 +238,8 @@ and press "Reload".
 
 Great!  Now the ball is showing again, 
 the background is green (which is good).
+
+![Golf Ball No Dimple](images/golf_ball_step_03_sized.png)
 
 But no dimple. 
 You can move the camera all around 
@@ -247,13 +274,15 @@ So let's:
 ```
 - Press "Reload" and we see two balls - 
 the smaller one a distance away from the main ball.
-- Of course - we moved it the full diameter instead of the radius.
+![Golf Ball Debug](images/golf_ball_step_05_debug.png)
+- Of course! - we moved it the full diameter instead of the radius.
 - We need to halve the diameter - that is 11.335.
 ```python
     dimple = icosphere(subdivisions=2, radius=10).apply_translation([0, 11.335, 0])
 ```
 - Press "Reload".
 - Now the large dimple has completely disappeared! What!?!
+![Golf Ball Debug Again](images/golf_ball_step_05_debug_b.png)
 
 ### Using Color and Transparency for Debugging
 
@@ -302,6 +331,7 @@ def create_mesh():
 
 Press "Reload". Now we can see that our dimple is inside the main ball.
 I shouldn't have done the math in my head!
+![Golf Ball Transparent](images/golf_ball_step_05_debug_c.png)
 
 Let's clean up the script a bit by giving names to some of our values.
 This makes the script easier to read, 
@@ -341,6 +371,7 @@ def create_mesh():
     return [ball, dimple]
 ```
 - Press "Reload" to make sure this works (it should).
+![Golf Ball Transparent OK](images/golf_ball_step_05_debug_d.png)
 
 ## Step 6: Make all the dimples
 
@@ -417,7 +448,8 @@ def create_mesh():
 This shows a transparent ball with a lot of small balls distributed around its surface.
 Not quite a golf ball, 
 but it shows where the dimples will be
-and their size.  
+and their size.
+![Golf Ball Dimples](images/golf_ball_step_06.png)
 It looks good, but I want them bigger,
 so we set
 ```python
@@ -475,6 +507,7 @@ You might have some questions.
     even when not debugging.
 1. Q: Where are the dimples?
     - A: If you look closely, there are 1 or 2.
+![Golf Ball One Dimple](images/golf_ball_step_07.png)
 1.  Q: Where are the rest of them?
     - A: Let's find out.
 
@@ -499,7 +532,7 @@ should have had dimples removed.
 Whoa!
 That looks cool -
 like a small solar system in the ball.
-
+![Golf Ball Solar System](images/golf_ball_step_08.png)
 It is worth noting 
 that in addition to setting the ball to transparent red,
 we could have just written:
@@ -550,7 +583,7 @@ we will:
 - Press "Reload" and wait while it loads.
 
 This looks good!
-
+![Golf Ball Good](images/golf_ball_step_09.png)
 Let's removed the commented code, 
 and so we have our final code:
 ```python
@@ -593,6 +626,7 @@ All that is left is to export the mesh for printing!
 - Select "File Type" as "OBJ (.obj)" (or whatever you need)
 - Select what folder you want to save to.
 - Press "Save".  
+![Export](images/export.png)
 
 You should now be able to import into your 3D slicer,
 and create the necessary gcode file for printing.

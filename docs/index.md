@@ -137,7 +137,7 @@ or for loading other 3d software.
 1. Choose a format. 
 1. Click Save.
 
-The Export window may look different on your computer.
+The Export dialog may look different on your computer.
 ![export](images/getting_started_export.png)
 
 
