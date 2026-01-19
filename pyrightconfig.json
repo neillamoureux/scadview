@@ -1,0 +1,12 @@
+{
+    "typeCheckingMode": "strict",
+    "include": [
+        "src/scadview"
+    ],
+    "exclude": [
+        "src/scadview/ui/wx",
+        "examples",
+        "tests",
+        "**/__pycache__"
+    ]
+}

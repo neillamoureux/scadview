@@ -13,5 +13,8 @@
         "editor.codeActionsOnSave": {
             "source.organizeImports": "explicit"
         }
+    },
+    {
+        "python.analysis.pyrightConfigPath": "pyrightconfig.json"
     }
 }
