@@ -24,9 +24,8 @@ shell: venv
 
 check-venv: 
 	@if [ -z "$$VIRTUAL_ENV" ]; then \
-		$(MAKE) shell
-	# 		echo "Run make shell first."; \
-	# 		exit 1; \
+		echo "Run make shell first."; \
+		exit 1; \
 	fi
 
 test: check-venv ## Run tests.
@@ -52,6 +51,6 @@ type: check-venv ## Type check the code.
 preflight: format lint test type ## Format, lint, test, and type check the code.
 	@echo "Preflight checks complete."
 
-serve_docs: check-venv ## Run the documentation server.
+serve_docs: check-venv
 	@echo "Generating server documentation..."
 	@"$(SCRIPTS_DIR)/serve_docs.sh"
