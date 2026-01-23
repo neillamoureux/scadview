@@ -1,4 +1,4 @@
-if __name__ == "__main__":
+def main():
     # Load modules only when needed to speed up initial import before showing splash
 
     from scadview.logging_main import (
@@ -6,8 +6,6 @@ if __name__ == "__main__":
         configure_logging,
         parse_logging_level,
     )
-
-    LOG_QUEUE_SIZE = 1000
 
     configure_logging(DEFAULT_LOG_LEVEL)
     parse_logging_level()
@@ -18,3 +16,7 @@ if __name__ == "__main__":
     from scadview.app import main
 
     main(splash_conn)
+
+
+if __name__ == "__main__":
+    main()

@@ -12,7 +12,7 @@ and loading it from the {{ project_name }} UI.
 
 1.  Create a new python file, and 
 1.  Write a `create_mesh` function code to build a Trimesh object.  
-1.  Run {{ project_name }} `python -m {{ package_name }}`
+1.  Run {{ project_name }} on the command line via: `{{ package_name }}`
 1.  Load the Python file into {{ project_name }}.
 1.  {{ project_name }} shows you the mesh.  You can move the camera around to inspect your mesh.
 1.  Edit your Python file to modify your mesh.
@@ -60,7 +60,7 @@ If you already have a project using Trimesh set up, install {{ package_name }} i
 
 ### Running
 
-To run: `python -m {{ package_name }}`
+To run: `{{ package_name }}`
 
 The first time you run, 
 it can take some time to set up the user interface,

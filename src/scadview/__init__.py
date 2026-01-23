@@ -70,3 +70,9 @@ def __getattr__(name: str):
 def __dir__() -> list[str]:
     # Helps tools that use dir() to discover members
     return sorted(list(globals().keys()) + list(_lazy_map.keys()))
+
+
+def main():
+    from scadview.__main__ import main as main_func
+
+    main_func()

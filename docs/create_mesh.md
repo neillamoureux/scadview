@@ -63,7 +63,7 @@ for example if you are removing hidded voids.
 
 ## Output and Logging
 
-Console output goes to the terminal where you launched `python -m {{ package_name }}`.
+Console output goes to the terminal where you launched `{{ package_name }}`.
 You can use `print(...)` or Python's `logging` module inside your script. If you
 need more detail, you can set the logging level in your script.
 
