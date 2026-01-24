@@ -62,15 +62,22 @@ This:
 
 ## 🧪 Testing
 
--
-- 
-<!-- Describe how you tested your changes:
+<!-- 
+If no tests needed, check the line below
+Otherwise delete it.
+-->
+- [ ] Not applicable
 
+<!-- 
+Describe how you tested your changes:
 - What tests were added or updated?
 - Did you run the full test suite?
 - Have you tried real use cases (e.g., loading a mesh, rendering, interaction)?
-
 --> 
+
+-
+- 
+
 ---
 
 <!-- This section is REQUIRED! -->
@@ -91,6 +98,7 @@ Does this PR introduce any breaking changes?
 - [ ] Yes (explain below)  
 - [ ] No  
 
+<!-- If no, you may delete the "if yes" section below -->
 If **yes**, describe exactly what breaks and why:
 
 -  
@@ -116,8 +124,7 @@ Anything else reviewers should know? For example:
 Before requesting review, confirm the following:
 
 - [ ] The code follows SCADview's coding standards (PEP 8, type hints, etc.).  
-- [ ] Tests pass locally.  
+- [ ] I have run `make preflight` and all stages pass
 - [ ] My changes include or update tests where appropriate.  
-- [ ] I have run linting tools (e.g., `ruff`).  
 - [ ] I have updated documentation where needed.  
 - [ ] I agree that my contributions are licensed under the **Apache-2.0 License**.
