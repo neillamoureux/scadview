@@ -1,78 +1,86 @@
 # SCADview Pull Request
 
+<!--
 Thank you for contributing to **SCADview**!  
 Please fill out the sections below to help us review your PR efficiently.
+
+- All commented sections should be deleted (HTML commenting used)
+- Optional sections should be deleted if not used
+-->
 
 ---
 
 ## 📌 Summary
 
-**What does this PR do?**  
+<!--
+Each PR must have an associated issue. 
+If this one does not, create one.
+-->
+
+**Issue # (__required__):** #__
+
+<!--
+What does this PR do?
+
 Give a short, clear explanation of the change or feature.
 
 - What problem does it solve?
 - What new capability does it introduce?
 - Why is this behavior desirable?
+-->
 
 ---
 
-## 🧩 Related Issues
+## 🧩 Related Issues <!-- Optional section; delete if not needed -->
 
-If this PR addresses or closes an issue, reference it here:
+<!-- If this PR addresses or closes an issue, reference it here -->
 
-Fixes #____  
-Related to #____
+Related to 
+- #__
+- #__
 
 ---
 
 ## 🔍 Description of Changes
 
-Please describe the main changes in this PR and check all that apply:
-
-- [ ] New feature  
-- [ ] Bug fix  
-- [ ] Performance improvement  
-- [ ] Documentation update  
-- [ ] Refactor / internal change  
-- [ ] Other (explain below)
-
-**Detailed explanation:**
+<!-- Please describe the main changes in this PR  -->
 
 -  
 -  
 -
 
----
 
-## 🛫 Code Preparation (Preflight)
-
-Did you prepare the code by running:
-
-    make preflight
+<!--
+This is a reminder to run `make preflight` locally before submitting the review.
 
 This:
 - formats the code
 - runs the linter
 - checks type hints
 - runs tests
-
-
----
+-->
 
 ## 🧪 Testing
 
-Describe how you tested your changes:
+<!-- 
+If no tests needed, check the line below
+Otherwise delete it.
+-->
+- [ ] Not applicable
 
+<!-- 
+Describe how you tested your changes:
 - What tests were added or updated?
 - Did you run the full test suite?
 - Have you tried real use cases (e.g., loading a mesh, rendering, interaction)?
+--> 
 
-Example command (if applicable):
-
-    make test
+-
+- 
 
 ---
 
+<!-- This section is REQUIRED! -->
 ## 📝 Documentation
 
 If your change affects public APIs or behavior:
@@ -90,12 +98,15 @@ Does this PR introduce any breaking changes?
 - [ ] Yes (explain below)  
 - [ ] No  
 
+<!-- If no, you may delete the "if yes" section below -->
 If **yes**, describe exactly what breaks and why:
 
 -  
 -
 
 ---
+
+<!-- Optional section; delete if not neede -->
 
 ## 🧠 Additional Notes
 
@@ -113,8 +124,7 @@ Anything else reviewers should know? For example:
 Before requesting review, confirm the following:
 
 - [ ] The code follows SCADview's coding standards (PEP 8, type hints, etc.).  
-- [ ] Tests pass locally.  
+- [ ] I have run `make preflight` and all stages pass
 - [ ] My changes include or update tests where appropriate.  
-- [ ] I have run linting tools (e.g., `ruff`).  
 - [ ] I have updated documentation where needed.  
 - [ ] I agree that my contributions are licensed under the **Apache-2.0 License**.

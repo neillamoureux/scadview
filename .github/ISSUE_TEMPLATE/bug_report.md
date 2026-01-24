@@ -1,32 +1,41 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: "[BUG]"
-labels: bug
+title: "[FIX]"
+labels: fix
 assignees: ''
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+###  Description
+<!-- A clear and concise description of what the bug is. -->
 
-**To Reproduce**
-Steps to reproduce the behavior:
+### Steps to reproduce
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+### Expected behavior
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+<!-- A clear and concise description of what you expected to happen. -->
 
-**Desktop (please complete the following information):**
+### Screenshots
+
+<!-- 
+If applicable, add screenshots to help explain your problem. 
+If not, this section may be deleted.
+-->
+
+### Desktop 
+
 - OS: [e.g. macOS]
 - Version [e.g. Sonoma 14.7]
-- OpenGL version (eg 21.0.19)
+- OpenGL version: [e.g. 21.0.19]
 
-**Additional context**
-Add any other context about the problem here.
+### Additional context
+<!-- 
+Add any other context about the problem here
+If none, this section may be deleted
+-->
