@@ -44,11 +44,7 @@ def create_mesh():
 1.  Let's see what it looks like. 
 If you haven't already, run from the command line:
 ```bash
-python -m {{ package_name }}
-```
-Or you may need to run:
-```bash
-python3 -m {{ package_name }}
+{{ package_name }}
 ```
 The {{ project_name }} UI should appear. 
 
