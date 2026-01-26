@@ -51,6 +51,6 @@ type: check-venv ## Type check the code.
 preflight: format lint test type ## Format, lint, test, and type check the code.
 	@echo "Preflight checks complete."
 
-serve_docs: check-venv
+serve_docs: check-venv ## Generate and serve the documentation.
 	@echo "Generating server documentation..."
 	@"$(SCRIPTS_DIR)/serve_docs.sh"

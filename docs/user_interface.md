@@ -4,6 +4,8 @@
 scripts. This guide is organized around common tasks and the controls that help
 you complete them.
 
+![User Interface](images/startup_window.png)
+
 ## Load, Reload, Export
 
 - If you want to load a mesh script, use `File > Load .py...` or the `Load .py...`
@@ -28,12 +30,21 @@ you complete them.
   the right-side panel or the `View` menu. The grid is a size reference with
   minor lines at 0.1 and larger lines at 1 and 10.
 
+### Grid
+
+  ![Grid Example](images/grid.png)
+  
+### Edges
+  
+  ![Edges Example](images/edges.png)
+
 ## Navigate the Viewport
 
 - If you want to orbit, left-click and drag in the viewport.
 - If you want to zoom/dolly, use the mouse wheel.
-- If you want keyboard navigation, use `W/S` for forward/back, `A/D` for
-  left/right, and `Q/E` for up/down.
+- If you want keyboard navigation, use `W/S` or `Up Arrow/Down Arrow` for forward/back, 
+  `A/D` or `Left Arrow/Right Arrow` for left/right, 
+  and `Q/E` for up/down.
 
 ## Fonts Helper
 
@@ -41,10 +52,17 @@ you complete them.
   You can filter by name and copy a `Font Name:style=Style` string to the
   clipboard for your scripts.
 
+  ![Fonts Helper](images/fonts.png)
+
 ## Status Feedback
 
 - If you want to see loading progress, watch the right-side progress bar. It
   pulses while loading and fills when complete.
+- The viewport background color also provides status:
+    - Blue: currently loading
+    - Green: loaded successfully
+    - Yellow: loaded successfully in debug mode (`create_mesh` returned or yielded an array of meshes).
+    - Red: the script has an error.
 
 ## Reference Appendix
 
