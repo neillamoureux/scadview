@@ -1,8 +1,8 @@
-from meshsee import text
+from scadview import text
 
 
 def create_mesh():
-    t = "Abc123"
+    t = "SCADview"
     font = "Papyrus:style=Condensed"
     return text(
         t,
@@ -10,5 +10,5 @@ def create_mesh():
         size=100,
         valign="bottom",
         halign="right",
-        direction="rtl",
+        direction="ltr",
     ).apply_scale((1.0, 1.0, 10.0))

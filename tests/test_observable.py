@@ -1,4 +1,4 @@
-from meshsee.observable import Observable
+from scadview.observable import Observable
 
 
 def test_subscribe_and_notify():

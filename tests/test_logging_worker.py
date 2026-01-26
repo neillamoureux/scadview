@@ -4,7 +4,7 @@ import multiprocessing as mp
 
 import pytest
 
-from meshsee.logging_worker import configure_worker_logging
+from scadview.logging_worker import configure_worker_logging
 
 
 @pytest.fixture()

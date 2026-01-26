@@ -1,6 +1,6 @@
 from pytest import mark
 
-from meshsee.render.span import EmptySpan, Span
+from scadview.render.span import EmptySpan, Span
 
 
 def test_equal():

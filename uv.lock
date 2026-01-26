@@ -1,4 +1,4 @@
-version = 1
+ version = 1
 revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
@@ -744,73 +744,6 @@ wheels = [
 ]
 
 [[package]]
-name = "meshsee"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "manifold3d" },
-    { name = "matplotlib" },
-    { name = "moderngl" },
-    { name = "numpy" },
-    { name = "pillow" },
-    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
-    { name = "pyrr" },
-    { name = "scipy" },
-    { name = "shapely" },
-    { name = "trimesh" },
-    { name = "wxpython" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "click" },
-    { name = "mkdocs" },
-    { name = "mkdocs-include-markdown-plugin" },
-    { name = "mkdocs-macros-plugin" },
-    { name = "mkdocs-material" },
-    { name = "mkdocstrings-python" },
-    { name = "pymdown-extensions" },
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-    { name = "watchdog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "manifold3d", specifier = "==3.*" },
-    { name = "matplotlib", specifier = ">=3.10.3" },
-    { name = "moderngl", specifier = ">=5.12.0" },
-    { name = "numpy", specifier = "==2.*" },
-    { name = "pillow", specifier = ">=11.2.1" },
-    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
-    { name = "pyrr", specifier = ">=0.10.3" },
-    { name = "scipy", specifier = ">=1.16.1" },
-    { name = "shapely", specifier = ">=2.1.1" },
-    { name = "trimesh", specifier = ">=4.6.1" },
-    { name = "wxpython", specifier = ">=4.2.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "click", specifier = "==8.2.1" },
-    { name = "mkdocs", specifier = ">=1.6.1" },
-    { name = "mkdocs-include-markdown-plugin", specifier = ">=7.2.0" },
-    { name = "mkdocs-macros-plugin", specifier = ">=1.5.0" },
-    { name = "mkdocs-material", specifier = ">=9.6.22" },
-    { name = "mkdocstrings-python", specifier = ">=1.18.2" },
-    { name = "pymdown-extensions", specifier = ">=10.16.1" },
-    { name = "pyright", specifier = ">=1.1.407" },
-    { name = "pytest", specifier = ">=8.3.4" },
-    { name = "pytest-cov", specifier = ">=6.1.1" },
-    { name = "pytest-mock", specifier = ">=3.14.0" },
-    { name = "ruff", specifier = ">=0.9.2" },
-    { name = "watchdog", specifier = ">=6.0.0" },
-]
-
-[[package]]
 name = "mkdocs"
 version = "1.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1472,6 +1405,73 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/54/1a/a49f071f04c42345c793d22f6cf5e0920095e286119ee53a64a3a3004825/ruff-0.14.4-py3-none-win32.whl", hash = "sha256:643b69cb63cd996f1fc7229da726d07ac307eae442dd8974dbc7cf22c1e18fff", size = 12493429, upload-time = "2025-11-06T22:07:38.43Z" },
     { url = "https://files.pythonhosted.org/packages/bc/22/e58c43e641145a2b670328fb98bc384e20679b5774258b1e540207580266/ruff-0.14.4-py3-none-win_amd64.whl", hash = "sha256:26673da283b96fe35fa0c939bf8411abec47111644aa9f7cfbd3c573fb125d2c", size = 13635380, upload-time = "2025-11-06T22:07:40.496Z" },
     { url = "https://files.pythonhosted.org/packages/30/bd/4168a751ddbbf43e86544b4de8b5c3b7be8d7167a2a5cb977d274e04f0a1/ruff-0.14.4-py3-none-win_arm64.whl", hash = "sha256:dd09c292479596b0e6fec8cd95c65c3a6dc68e9ad17b8f2382130f87ff6a75bb", size = 12663065, upload-time = "2025-11-06T22:07:42.603Z" },
+]
+
+[[package]]
+name = "scadview"
+version = "0.2.0"
+source = { editable = "." }
+dependencies = [
+    { name = "manifold3d" },
+    { name = "matplotlib" },
+    { name = "moderngl" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyrr" },
+    { name = "scipy" },
+    { name = "shapely" },
+    { name = "trimesh" },
+    { name = "wxpython" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "click" },
+    { name = "mkdocs" },
+    { name = "mkdocs-include-markdown-plugin" },
+    { name = "mkdocs-macros-plugin" },
+    { name = "mkdocs-material" },
+    { name = "mkdocstrings-python" },
+    { name = "pymdown-extensions" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
+    { name = "watchdog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "manifold3d", specifier = "==3.*" },
+    { name = "matplotlib", specifier = ">=3.10.3" },
+    { name = "moderngl", specifier = ">=5.12.0" },
+    { name = "numpy", specifier = "==2.*" },
+    { name = "pillow", specifier = ">=11.2.1" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyrr", specifier = ">=0.10.3" },
+    { name = "scipy", specifier = ">=1.16.1" },
+    { name = "shapely", specifier = ">=2.1.1" },
+    { name = "trimesh", specifier = ">=4.6.1" },
+    { name = "wxpython", specifier = ">=4.2.4" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "click", specifier = "==8.2.1" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-include-markdown-plugin", specifier = ">=7.2.0" },
+    { name = "mkdocs-macros-plugin", specifier = ">=1.5.0" },
+    { name = "mkdocs-material", specifier = ">=9.6.22" },
+    { name = "mkdocstrings-python", specifier = ">=1.18.2" },
+    { name = "pymdown-extensions", specifier = ">=10.16.1" },
+    { name = "pyright", specifier = ">=1.1.407" },
+    { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest-cov", specifier = ">=6.1.1" },
+    { name = "pytest-mock", specifier = ">=3.14.0" },
+    { name = "ruff", specifier = ">=0.9.2" },
+    { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
 [[package]]

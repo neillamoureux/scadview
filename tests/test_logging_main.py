@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from meshsee.logging_main import configure_logging, parse_logging_level
+from scadview.logging_main import configure_logging, parse_logging_level
 
 
 @pytest.fixture()

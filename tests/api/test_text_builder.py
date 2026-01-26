@@ -3,7 +3,7 @@ import pytest
 import trimesh
 from shapely.geometry import Polygon
 
-from meshsee.api import text_builder
+from scadview.api import text_builder
 
 
 def test_text_polys_returns_polygons():

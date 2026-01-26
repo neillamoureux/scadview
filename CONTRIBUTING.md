@@ -1,6 +1,6 @@
-# Contributing to MeshSee
+# Contributing to SCADview
 
-Thanks for your interest in contributing to **MeshSee**!  
+Thanks for your interest in contributing to **SCADview**!  
 We welcome bug reports, feature ideas, documentation improvements, and code contributions.
 
 ---
@@ -20,7 +20,7 @@ We welcome bug reports, feature ideas, documentation improvements, and code cont
 1. **Run tests** and verify your code passes linting, formating and type checks.  
 There are `make` commands to help with this.  Also, run `make preflight` before creating a pull requests.
 
-1. **Submit a pull request** describing your changes and how they improve MeshSee.
+1. **Submit a pull request** describing your changes and how they improve SCADview.
 
 ---
 
@@ -33,7 +33,7 @@ you agree that:
   and may be distributed, modified, and sublicensed under those same terms.
 - You have the right to submit the work (it is your original creation, or you have
   sufficient rights to include it).
-- You grant Neil Lamoureux and all users of MeshSee a **perpetual, worldwide,
+- You grant Neil Lamoureux and all users of SCADview a **perpetual, worldwide,
   non-exclusive, royalty-free license** to use, modify, and distribute your contribution
   under the project’s license.
 
@@ -56,7 +56,7 @@ This ensures the project remains open and legally consistent for all contributor
 Consider better naming, 
 or extracting a method to make the intent of the code obvious.
 - Use type hints for all methods / functions.
-- Use docstrings for public methods / functions in [src/meshsee/api/](src/meshsee/api/).
+- Use docstrings for public methods / functions in [src/scadview/api/](src/scadview/api/).
     - Use the style from [Google Python Style Guide: Functions and Methods](https://google.github.io/styleguide/pyguide.html#383-functions-and-methods)
 - Keep dependencies minimal and cross-platform.
 - Write clear, descriptive commit messages.
@@ -70,4 +70,4 @@ or extracting a method to make the intent of the code obvious.
 If you’re planning a large feature or significant refactor, please open an issue first
 to discuss your approach before investing time in a PR.
 
-Thank you for helping improve MeshSee!
+Thank you for helping improve SCADview!

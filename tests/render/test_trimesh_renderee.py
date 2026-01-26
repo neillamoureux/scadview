@@ -5,8 +5,8 @@ import pytest
 from pyrr import matrix44
 from trimesh.creation import box, icosphere
 
-from meshsee.render.shader_program import ShaderVar
-from meshsee.render.trimesh_renderee import (
+from scadview.render.shader_program import ShaderVar
+from scadview.render.trimesh_renderee import (
     DEFAULT_COLOR,
     AlphaRenderee,
     TrimeshAlphaRenderee,
@@ -51,7 +51,7 @@ class DummyTrimesh:
         )
         self.triangles_cross = np.array([[0, 0, 1], [0, 0, 1]], dtype="f4")
         self.bounds = np.array([[0, 0, 0], [1, 1, 0]], dtype="f4")
-        self.metadata = {"meshsee": {"color": [0.2, 0.3, 0.4, 1.0]}}
+        self.metadata = {"scadview": {"color": [0.2, 0.3, 0.4, 1.0]}}
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def dummy_trimesh():
 @pytest.fixture
 def dummy_trimesh_alpha():
     dummy_trimesh = DummyTrimesh()
-    dummy_trimesh.metadata = {"meshsee": {"color": [0.2, 0.3, 0.4, 0.5]}}
+    dummy_trimesh.metadata = {"scadview": {"color": [0.2, 0.3, 0.4, 0.5]}}
     return dummy_trimesh
 
 
@@ -71,7 +71,7 @@ def alpha_renderee():
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     mesh = box()
-    mesh.metadata["meshsee"] = {"meshsee": {"color": [0.2, 0.3, 0.4, 0.5]}}
+    mesh.metadata["scadview"] = {"scadview": {"color": [0.2, 0.3, 0.4, 0.5]}}
     model_matrix = np.eye(4, dtype="f4")
     view_matrix = np.eye(4, dtype="f4")
     return AlphaRenderee(
@@ -116,7 +116,7 @@ def test_convert_color_to_uint8():
 def test_get_metadata_color(dummy_trimesh):
     metadata_color = [0.1, 0.2, 0.3, 0.4]
     expected_color = convert_color_to_uint8(metadata_color)
-    dummy_trimesh.metadata["meshsee"] = {"color": metadata_color}
+    dummy_trimesh.metadata["scadview"] = {"color": metadata_color}
     assert np.all(get_metadata_color(dummy_trimesh) == expected_color)
 
 
@@ -135,7 +135,7 @@ def test_get_metadata_color_none(dummy_trimesh):
 
 
 def test_get_metadata_color_missing(dummy_trimesh):
-    del dummy_trimesh.metadata["meshsee"]["color"]
+    del dummy_trimesh.metadata["scadview"]["color"]
     assert np.all(
         get_metadata_color(dummy_trimesh) == convert_color_to_uint8(DEFAULT_COLOR)
     )
@@ -154,9 +154,9 @@ def test_create_colors_array():
 
 def test_concat_colors():
     mesh1 = box()
-    mesh1.metadata["meshsee"] = {"color": [0.1, 0.2, 0.3, 0.4]}
+    mesh1.metadata["scadview"] = {"color": [0.1, 0.2, 0.3, 0.4]}
     mesh2 = box()
-    mesh2.metadata["meshsee"] = {"color": [0.5, 0.6, 0.7, 0.8]}
+    mesh2.metadata["scadview"] = {"color": [0.5, 0.6, 0.7, 0.8]}
     colors = concat_colors([mesh1, mesh2])
     assert colors.shape == (2 * 12, 3 * 4)
     for i, color in enumerate(colors):
@@ -212,7 +212,7 @@ def test_create_trimesh_renderee_opaque():
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     trimesh = box()
-    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 1.0]}
+    trimesh.metadata["scadview"] = {"color": [0.0, 0.0, 0.0, 1.0]}
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
@@ -223,19 +223,19 @@ def test_create_trimesh_renderee_alpha():
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     trimesh = box()
-    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 0.5]}
+    trimesh.metadata["scadview"] = {"color": [0.0, 0.0, 0.0, 0.5]}
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     renderee = create_trimesh_renderee(ctx, program, trimesh, model_matrix, view_matrix)
     assert isinstance(renderee, TrimeshAlphaRenderee)
 
 
-@mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")
+@mock.patch("scadview.render.trimesh_renderee.TrimeshListRenderee")
 def test_create_trimesh_renderee_list_opaque_only(TrimeshListRenderee):
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     trimesh = box()
-    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 1.0]}
+    trimesh.metadata["scadview"] = {"color": [0.0, 0.0, 0.0, 1.0]}
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     expected_opaques = [trimesh]
@@ -244,12 +244,12 @@ def test_create_trimesh_renderee_list_opaque_only(TrimeshListRenderee):
     assert TrimeshListRenderee.called_once_with(expected_opaques, expected_alphas)
 
 
-@mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")
+@mock.patch("scadview.render.trimesh_renderee.TrimeshListRenderee")
 def test_create_trimesh_renderee_list_alpha_only(TrimeshListRenderee):
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     trimesh = box()
-    trimesh.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 0.5]}
+    trimesh.metadata["scadview"] = {"color": [0.0, 0.0, 0.0, 0.5]}
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     expected_opaques = []
@@ -258,18 +258,18 @@ def test_create_trimesh_renderee_list_alpha_only(TrimeshListRenderee):
     assert TrimeshListRenderee.called_once_with(expected_opaques, expected_alphas)
 
 
-@mock.patch("meshsee.render.trimesh_renderee.TrimeshListRenderee")
+@mock.patch("scadview.render.trimesh_renderee.TrimeshListRenderee")
 def test_create_trimesh_renderee_list(TrimeshListRenderee):
     ctx = mock.MagicMock()
     program = mock.MagicMock()
     trimesh_op1 = box()
-    trimesh_op1.metadata["meshsee"] = {"color": [0.0, 0.0, 0.0, 1.0]}
+    trimesh_op1.metadata["scadview"] = {"color": [0.0, 0.0, 0.0, 1.0]}
     trimesh_op2 = box()
-    trimesh_op2.metadata["meshsee"] = {"color": [0.0, 0.0, 1.0, 1.0]}
+    trimesh_op2.metadata["scadview"] = {"color": [0.0, 0.0, 1.0, 1.0]}
     trimesh_al1 = box()
-    trimesh_al1.metadata["meshsee"] = {"color": [0.0, 0.0, 1.0, 0.99]}
+    trimesh_al1.metadata["scadview"] = {"color": [0.0, 0.0, 1.0, 0.99]}
     trimesh_al2 = box()
-    trimesh_al2.metadata["meshsee"] = {"color": [0.0, 1.0, 1.0, 0.9]}
+    trimesh_al2.metadata["scadview"] = {"color": [0.0, 1.0, 1.0, 0.9]}
     model_matrix = np.eye(4)
     view_matrix = np.eye(4)
     expected_opaques = [trimesh_op1, trimesh_op2]
@@ -428,7 +428,7 @@ def test_alpha_renderee_sort_buffers_calls_ctx_buffer(
     assert alpha_renderee._ctx.buffer.call_count >= 3  # vertices, normals, color_buff
 
 
-@mock.patch("meshsee.render.trimesh_renderee.create_vao")
+@mock.patch("scadview.render.trimesh_renderee.create_vao")
 def test_alpha_renderee_render_calls_sort_and_vao_render(
     create_vao,
     alpha_renderee,

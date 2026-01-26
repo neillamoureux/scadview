@@ -1,4 +1,4 @@
-site_name: Scadview Documentation
+site_name: SCADview Documentation
 watch: 
   - src
   - docs
@@ -8,9 +8,13 @@ docs_dir: docs
 nav:
   - Home: index.md
   - About: about.md
+  - Command-Line Options: cli_options.md
+  - Tutorial: tutorial.md
+  - User Interface: user_interface.md
+  - Creating a Mesh: create_mesh.md
   - Examples: examples.md
   - API Reference: api.md
-  - Tutorials: tutorials.md
+  - Command-Line Export: cli_export.md
   - Contributing: contributing.md
   - License: license.md
 theme: 
@@ -55,8 +59,5 @@ plugins:
               show_root_full_path: true
               show_root_heading: true
 extra:
-  project_name: Scadview
+  project_name: SCADview
   package_name: scadview
-
-
-

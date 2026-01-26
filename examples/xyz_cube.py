@@ -3,7 +3,7 @@ from pyrr.matrix44 import create_from_axis_rotation
 from trimesh import Trimesh
 from trimesh.creation import box
 
-from meshsee import text
+from scadview import text
 
 SIZE = 50
 TEXT_FRACTION = 0.8

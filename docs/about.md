@@ -1,51 +1,33 @@
-# Viri ubi qui ova constitit est Iovis
+# About {{ project_name }}
 
-## Ereptaque fures canitiem quem
+{{ project_name }} exists to make scripted CAD iteration fast and pleasant in
+Python. You write `create_mesh` functions using Trimesh or Manifold3D, then
+reload to see results immediately.
 
-Lorem markdownum cladem descenderat iussa: utque nec solantia occurrunt, humum.
-Est stipite fossae revertitur didicit.
+It is inspired by the excellent OpenSCAD, but uses a more common language and
+(IMHO) a simpler, more flexible programming model than OpenSCAD's functional
+style. The goal is the same: quick, repeatable, parametric modeling.
 
-Luco contigerant dolor caelum. Terrena *ipse poscenti esto*, quod fata facit
-impatiens profecto qui credere veneni. In et et Quid; qua vir dominus placere
-potuit in ipsi rituque vulneret obstet certaminis manifesta fisa huic. Echion
-qui oscula agrestes quater fama!
+## What's Included
 
-Hoc est poplite [templa](http://ille-erat.org/) non; neque adfata: fetus: est o,
-**arte**. Piscem quas illa **quoque** moventem recludi, Hecate quoque nunc
-dolores non, repugnat, est gemini carcere prodere faciem! Sit dea ipse effugies,
-tuta saevis, thracius, sic ne honorum aetatis tactosque. Foliis diu donis
-promissi inque proceres huic Iole; iuncta nube; dum victi legar. Simul genus
-inanes, capillis columnis, *diffamatamque nisi* sic, ferro die pugnae matura et,
-mandata ementitus.
+- A fast reload-and-preview UI for Python-based mesh scripts.
+- A small API in {{ package_name }} with OpenSCAD-like helpers.
+- Support for meshes built with [Trimesh](https://trimesh.org){target="_blank"}
+  or [Manifold3D](https://pypi.org/project/manifold3d/){target="_blank"}.
 
-## Nympharum partes ora trahens greges Tereo repetens
+## Why a separate UI
 
-Aequora terris. Tamen vidit venit, nec amores cornibus demissior rogando; spes
-Sole prius flores fulmen annis tutela excidit. Soporem mirantur!
+{{ project_name }} does not ship an editor because there are already many great
+ones. This project focuses on the iteration loop and visualization.
 
-Vero deus ore hinc clipeumque serpens geminaque, victis nympham lunam effugit:
-fecerat *recepta*. Nostraque breviter; et et lupi cacuminat visa utinamque, sine
-pro velut? *Serior redeuntque fata*: hunc innocuae licet, [vertigine in
-monstroque](http://www.non.org/illuc-atlas.aspx) dederant. Et descenderat miseri
-tuae, sit **amans** vestibus volucrem, vestibus illi aquarum.
+Trimesh already offers notebooks and a pyglet viewer, but neither matched the
+UI or feedback loop needed for rapid scripted CAD. {{ project_name }} was built
+to close that gap.
 
-1. Quo vulnera exhorruit non regalis hostem foret
-2. Ramos palmis habet ultima
-3. Lanas in umeros dextro neve
+## Why it is different
 
-## Eiecit tabe ille
-
-Inmissa **dumque** est lucis cum vitamque perimet eram. Inmensos hiatu si
-moveres oscula nec, in altos; *parientem*.
-
-Stygii inamoenaque ulli, ille ergo prima stat tyranni **aures**, et Cilix et
-quoque. Posita tenebat Phorbas iactu, iuvenemque duobus, spatio: Auroram qua.
-Nimiis inops formarat Aeacus temporis nec et vidit obvertit Idaeumque modo;
-corpus, sex modo Thracius venit haeret, loquenti. Esse ficti in humanum illos
-tantum, altera sed **insisto**, quod?
-
-Serpente ego prior radio Pyrrham magno irata. Nec Ixion inhibere; da colla verba
-iacent sanguine enim, non fuit inperfossus posse, ubi? Ego odiis versus quid
-ramis [quod sumptis iuvenem](http://victum.net/) distantes lumina. In pectore
-ingentia, spectat; lintea si imagine saevitiam invenio. Currus **cumque**
-positique somnoque suo omnis concavat grata: veniat linguae vasta quaeque.
+- Faster preview and reload than OpenSCAD for many workflows.
+- No "fudge factor" needed to ensure boolean subtractions punch through.
+- Inspect meshes quickly for size, bounding box, and face layout.
+- A small API surface in {{ package_name }} that includes OpenSCAD-like
+  functions for familiar workflows.
