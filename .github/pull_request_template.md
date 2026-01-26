@@ -46,6 +46,8 @@ Related to
 <!-- Please describe the main changes in this PR  -->
 
 -  
+-  
+-
 
 
 <!--
@@ -100,23 +102,20 @@ Does this PR introduce any breaking changes?
 If **yes**, describe exactly what breaks and why:
 
 -  
+-
 
-## Breaking changes
-- 
+---
 
 <!-- Optional section; delete if not neede -->
 
 ## 🧠 Additional Notes
 
--  
+Anything else reviewers should know? For example:
 
-### Type
-- [ ] Feature
-- [ ] Bug fix
-- [ ] Performance
-- [ ] Docs
-- [ ] Refactor
-- [ ] Other
+- Performance benchmarks  
+- Design considerations  
+- Alternative approaches considered  
+- Screenshots or videos (if UI/visualization related)  
 
 ---
 
