@@ -22,6 +22,8 @@ def yield_if_return(result: Any) -> Generator[Any, None, None]:
 
 
 class ModuleLoader:
+    last_loaded_module_path: str = ""
+
     def __init__(self, function_name: str):
         self._function_name = function_name
 
@@ -33,6 +35,11 @@ class ModuleLoader:
         # Ensure the module path is at the front of sys.path
         # so that if a previously loaded module from a different location,
         # it doesn't interfere.
+        # First, remove the last loaded module path if it exists
+        if self.last_loaded_module_path and self.last_loaded_module_path in sys.path:
+            sys.path.remove(self.last_loaded_module_path)
+
+        self.last_loaded_module_path = module_path
         if module_path in sys.path:
             sys.path.remove(module_path)
         sys.path.insert(0, module_path)
