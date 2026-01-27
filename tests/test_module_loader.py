@@ -80,3 +80,24 @@ def func_that_is_spelled_wrong():
     loader = ModuleLoader("func_that_returns")
     with pytest.raises(AttributeError):
         list(loader.run_function(file_path))
+
+
+def test_load_two_files_with_same_module_name(tmp_path):
+    file_path1 = tmp_path / "module.py"
+    file_path1.write_text(
+        """
+def func_that_returns():
+    return 10
+"""
+    )
+    file_path2 = tmp_path / "subdir" / "module.py"
+    file_path2.parent.mkdir()
+    file_path2.write_text(
+        """
+def func_that_returns():
+    return 20
+"""
+    )
+    loader = ModuleLoader("func_that_returns")
+    assert list(loader.run_function(file_path1)) == [10]
+    assert list(loader.run_function(file_path2)) == [20]

@@ -29,8 +29,14 @@ class ModuleLoader:
         # Reload or import the module
         module_name = os.path.splitext(os.path.basename(file_path))[0]
         module_path = os.path.dirname(file_path)
-        if module_path not in sys.path:
-            sys.path.append(module_path)
+
+        # Ensure the module path is at the front of sys.path
+        # so that if a previously loaded module from a different location,
+        # it doesn't interfere.
+        if module_path in sys.path:
+            sys.path.remove(module_path)
+        sys.path.insert(0, module_path)
+
         module = sys.modules.get(module_name)
         if module:
             importlib.reload(module)
