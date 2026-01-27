@@ -17,7 +17,8 @@ Each PR must have an associated issue.
 If this one does not, create one.
 -->
 
-**Issue # (__required__):** #__
+**Issue # (__required__):**  
+Resolves #__
 
 <!--
 What does this PR do?
