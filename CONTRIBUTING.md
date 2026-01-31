@@ -24,6 +24,58 @@ There are `make` commands to help with this.  Also, run `make preflight` before 
 
 ---
 
+## Commit Messages
+
+As noted above, 
+commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
+
+Commit messages are automatically added by [Release Please](https://github.com/googleapis/release-please) to [CHANGELOG.md](./CHANGELOG.md),
+in a release PR, and so having well-written properly-type commit messages is important.
+
+When you have multiple commits in a PR, via a squash merge,
+github creates one line per commit, formatted as bullets with blank lines in between:
+
+DO NOT LEAVE IT LIKE THIS!
+```
+feat: Add foo_bar function to API.
+
+* docs: Add foo_bar function entry to docs
+
+* test: Add foo_bar test
+```
+
+Edit the commit message:
+- Optionally add a blank line and a main body to the commit message.
+- Add is a blank line after the main body of the commit message
+- Reformat the following lines are formatted like git trailers. For example:
+```
+feat: Add foo_bar function to API.
+
+The foo_bar() function automagically creates both a foo and a bar.
+The foo size is based on the current temperature.
+
+docs: Add foo_bar function entry to docs
+test: Add foo_bar test
+```
+
+The commit types supported in this repo are: 
+
+Commit type | Example | Version impact
+-- | -- | --
+build: | Build changes | Patch
+fix: | Bug fixes | Patch
+feat: | New user-visible functionality | Minor
+feat!: or BREAKING CHANGE: | Breaking API changes | Major
+docs: | Documentation only | Patch
+chore: | Tooling, CI, maintenance | Patch
+perf: | Performance optimization | Patch
+refactor: | Internal changes | Patch
+revert: | Revert a change | Patch?
+test: | Tests only | Patch
+ci: | GitHub Actions / CI | Patch
+
+---
+
 ## 📜 Contributor License Notice
 
 By submitting a contribution (code, documentation, or other content) to this repository,
