@@ -129,3 +129,4 @@ Before requesting review, confirm the following:
 - [ ] My changes include or update tests where appropriate.  
 - [ ] I have updated documentation where needed.  
 - [ ] I agree that my contributions are licensed under the **Apache-2.0 License**.
+- [ ] If merging, I will properly format the commit message for this PR to be compatible with [Release Please](https://github.com/googleapis/release-please), as documented in [CONTRIBUTING.md](./CONTRIBUTING.md).
