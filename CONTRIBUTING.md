@@ -5,6 +5,12 @@ All contributions are made via pull requests (PRs) from a fork to ensure a clean
 
 ---
 
+## Requirements:
+- Python
+- uv
+- make
+
+
 ## TL;DR (Quick Start)
 
 ```
@@ -90,7 +96,32 @@ Examples:
 
 ---
 
-### 4. Make Your Changes
+### 4. Set Up the Development Environment
+
+This project uses `make` for commmon tasks. 
+
+**Window Development**: Use Git Bash (included with Git for Windows) for these commands.
+
+- Most of the make commands require that you run `make shell` first.
+- To get a list of available commands:
+```
+make help
+```
+- To get into the shell:
+```
+make shell
+```
+- This will create a virtual python environment if it does not already exist.
+
+- To run:
+
+```
+make run
+```
+
+
+
+### 5. Make Your Changes
 
 - Keep changes focused and scoped to the issue
 - **Follow coding standards**, as noted below.
@@ -100,7 +131,7 @@ Examples:
 
 ---
 
-### 5. Commit Your Changes
+### 6. Commit Your Changes
 
 This project uses **[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)**.
 
@@ -139,7 +170,7 @@ ci: | GitHub Actions / CI | Patch
 
 ---
 
-### 6. Run Preflight Checks
+### 7. Run Preflight Checks
 
 Before submitting your PR, ensure your changes pass all local checks:
 
@@ -153,7 +184,7 @@ CI failures will block merging.
 
 ---
 
-### 7. Push to Your Fork
+### 8. Push to Your Fork
 
 ```bash
 git push origin <your-branch-name>
@@ -161,7 +192,7 @@ git push origin <your-branch-name>
 
 ---
 
-### 8. Open a Pull Request
+### 9. Open a Pull Request
 
 Open a PR from your fork to the `main` branch of the upstream repository.
 
