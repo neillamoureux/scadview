@@ -58,7 +58,7 @@ Read its docs to determine which ones will help you most.
 
 To install, {{ project_name }} run 
 
-`pip install git+https://github.com/neillamoureux/{{ package_name }}.git@main`
+`pip install {{ package_name }}`
 
 If you already have a project using Trimesh set up, install {{ package_name }} into that project instead and install there.
 
