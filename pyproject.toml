@@ -1,6 +1,6 @@
 [project]
 name = "scadview"
-version = "0.2.0" # x-release-please-version
+version = "0.2.1" # x-release-please-version
 description = "A viewer for 3D meshes and constructive solid geometry (CSG) models."
 readme = "README.md"
 authors = [{ name = "Neil Lamoureux", email = "neil.lamoureux@gmail.com" }]
