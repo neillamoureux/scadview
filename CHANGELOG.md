@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/neillamoureux/scadview/compare/v0.2.1...v0.2.2) (2026-02-01)
+
+
+### Documentation
+
+* Replace development instructions with install and getting started in README ([#100](https://github.com/neillamoureux/scadview/issues/100)) ([2d487a5](https://github.com/neillamoureux/scadview/commit/2d487a596c41f3c197dc8f1f4a24563406a87769))
+
 ## [0.2.1](https://github.com/neillamoureux/scadview/compare/v0.2.0...v0.2.1) (2026-02-01)
 
 
