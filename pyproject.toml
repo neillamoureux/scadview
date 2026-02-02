@@ -22,6 +22,13 @@ dependencies = [
 [project.scripts]
 scadview = "scadview:main"
 
+[project.urls]
+Homepage = "https://scadview.org"
+Documentation = "https://scadview.org"
+Repository = "https://github.com/neillamoureux/scadview"
+Issues = "https://github.com/neillamoureux/scadview/issues"
+Changelog = "https://github.com/neillamoureux/scadview/blob/main/CHANGELOG.md"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
