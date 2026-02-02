@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3](https://github.com/neillamoureux/scadview/compare/v0.2.2...v0.2.3) (2026-02-02)
+
+
+### Documentation
+
+* Add project.urls in pyproject.toml ([#106](https://github.com/neillamoureux/scadview/issues/106)) ([72c1269](https://github.com/neillamoureux/scadview/commit/72c1269942428f68088a6678f4f7884c9ccd9327))
+
+
+### CI
+
+* Add github action to publish to github pages ([#103](https://github.com/neillamoureux/scadview/issues/103)) ([cc47ac9](https://github.com/neillamoureux/scadview/commit/cc47ac9ab6f35a3cb17a9516a714bfc30295e406))
+
 ## [0.2.2](https://github.com/neillamoureux/scadview/compare/v0.2.1...v0.2.2) (2026-02-01)
 
 
