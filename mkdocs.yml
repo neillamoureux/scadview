@@ -1,4 +1,5 @@
 site_name: SCADview Documentation
+site_url: https://scadview.org/
 watch: 
   - src
   - docs
@@ -61,4 +62,3 @@ plugins:
 extra:
   project_name: SCADview
   package_name: scadview
-
