@@ -1,6 +1,12 @@
 # SCADview
 An application to view 3D meshes created from Python.
 
+## Python versions supported
+
+SCADview supports Python versions 3.11 - 3.13,
+since some packages it depends on do not supply wheels for versions > 3.13.
+Attempting to install in 3.14 or higher may result in an error.
+
 ## How it works
 
 SCADview enables a iterative work flow to build Trimesh objects.
