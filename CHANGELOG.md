@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.4](https://github.com/neillamoureux/scadview/compare/v0.2.3...v0.2.4) (2026-02-06)
+
+
+### Bug Fixes
+
+* Set upper limit for python &lt;3.14 ([#108](https://github.com/neillamoureux/scadview/issues/108)) ([d290e70](https://github.com/neillamoureux/scadview/commit/d290e70256704da375931e81a6b963d5d3e52f06))
+
+
+### Documentation
+
+* Add Python limit to other docs ([#110](https://github.com/neillamoureux/scadview/issues/110)) ([e8cd6c5](https://github.com/neillamoureux/scadview/commit/e8cd6c5f8f1626aaa486bb4a93d306b1af802fa7))
+
 ## [0.2.3](https://github.com/neillamoureux/scadview/compare/v0.2.2...v0.2.3) (2026-02-02)
 
 
