@@ -28,7 +28,7 @@ Open your terminal application
 for example `cmd` in Windows
 or `Terminal.app` under Applications > Utilties > Terminal.app in macOS.
 
-In the terminal, check that you have Python 3.11 or greater via
+In the terminal, check that you have Python 3.11 through 3.13 or greater via
 
 `python --version`
 
@@ -36,7 +36,7 @@ or, if the `python` command cannot be found:
 
 `python3 --version`
 
-If Python 3.11 or greater is installed on your system, 
+If Python 3.11 through 3.13 is installed on your system, 
 you can install SCADview directly into your system.
 
 #### Virtual venv option
