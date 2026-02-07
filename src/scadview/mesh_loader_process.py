@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import colorsys
 import logging
 import queue
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from typing import Any, Generator, Generic, Type, TypeVar
 from manifold3d import Manifold
 from trimesh import Trimesh
 
+from scadview.api.colors import set_mesh_color
 from scadview.api.utils import manifold_to_trimesh
 from scadview.load_status import LoadStatus
 from scadview.logging_worker import configure_worker_logging
@@ -107,6 +109,17 @@ MpLoadQueue = MpQueue[LoadResult]
 MpCommandQueue = MpQueue[Command]
 
 
+def debug_color() -> Generator[tuple[float, float, float], None, None]:
+    """
+    Generate a random color for debugging purposes
+    """
+    hue = 0.0
+    hue_delta = 0.381966  # "golden angle"/360 to ensure good distribution of colors
+    while True:
+        hue = (hue + hue_delta) % 1.0
+        yield colorsys.hsv_to_rgb(hue, 1.0, 1.0)
+
+
 class LoadWorker(Thread):
     PUT_QUEUE_TIMEOUT = 0.1
     load_number = 0
@@ -145,11 +158,14 @@ class LoadWorker(Thread):
         final: bool = False,
         error: Exception | None = None,
     ):
+        tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
+        self._color_if_debug(tmesh)
+
         self.put_in_queue(
             LoadResult(
                 self.load_number,
                 sequence_number,
-                self._ensure_trimesh(mesh),
+                tmesh,
                 error=error,
                 complete=final,
             )
@@ -177,6 +193,12 @@ class LoadWorker(Thread):
         raise TypeError(
             f"Expected mesh to be of type Trimesh, list[Trimesh], Manifold, or list[Manifold], got {type(mesh)}"
         )
+
+    def _color_if_debug(self, tmesh: MeshType | None):
+        if isinstance(tmesh, list):
+            for tm, color in zip(tmesh, debug_color()):
+                if "scadview" not in tm.metadata:
+                    set_mesh_color(tm, color, alpha=0.5)
 
     def put_in_queue(self, result: LoadResult):
         result_put = False
