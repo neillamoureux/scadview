@@ -196,6 +196,24 @@ def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_work
     assert result.complete
 
 
+def test_load_worker_colors_mesh_list(load_queue):
+    mesh_list = [box(), icosphere()]
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+        ml_instance.run_function.return_value = iter([mesh_list])
+        worker = LoadWorker("test/path", load_queue)
+        LoadWorker.load_number = 0  # reset
+        worker.start()
+        worker.join(timeout=1.0)
+        assert not worker.is_alive()
+
+    result = load_queue.get(timeout=1.0)
+    assert isinstance(result.mesh, list)
+    for tm in result.mesh:
+        assert "scadview" in tm.metadata
+        assert tm.metadata["scadview"]["color"][3] == 0.5
+
+
 @pytest.mark.skip  # Flakey
 def test_load_worker_cancel(started_load_worker):
     assert started_load_worker.is_alive()
