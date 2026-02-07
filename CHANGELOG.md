@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.5](https://github.com/neillamoureux/scadview/compare/v0.2.4...v0.2.5) (2026-02-07)
+
+
+### Features
+
+* Automatically set color and alpha in debug mode ([6a5470c](https://github.com/neillamoureux/scadview/commit/6a5470cb37597d0d44f9b40c858af09815b09a61))
+
+
+### Documentation
+
+* Remove color setting in examples/cube_minus_sphere.py; update image for docs, and fix text in docs. ([6a5470c](https://github.com/neillamoureux/scadview/commit/6a5470cb37597d0d44f9b40c858af09815b09a61))
+* Update tutorial for change in debug mode feature. ([6a5470c](https://github.com/neillamoureux/scadview/commit/6a5470cb37597d0d44f9b40c858af09815b09a61))
+
+
+### Tests
+
+* Add test for automated setting of colors in debug mode. ([6a5470c](https://github.com/neillamoureux/scadview/commit/6a5470cb37597d0d44f9b40c858af09815b09a61))
+
 ## [0.2.4](https://github.com/neillamoureux/scadview/compare/v0.2.3...v0.2.4) (2026-02-06)
 
 
