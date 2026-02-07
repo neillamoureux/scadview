@@ -35,7 +35,8 @@ Builds a list of colored text meshes, one per `Color` enum value. This shows how
 
 ## cube_minus_sphere.py
 
-Creates boxes and spheres with translucent colors and returns a list of intermediate shapes. It demonstrates boolean experimentation (difference is commented) and using colors to inspect overlaps.
+Creates boxes and spheres and by returning a list of shapes, 
+it enters debug mode. It demonstrates colors and transparency in debug mode.
 
 <details>
 <summary>Source</summary>

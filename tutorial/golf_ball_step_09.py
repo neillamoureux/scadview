@@ -1,5 +1,4 @@
 import numpy as np
-from scadview import set_mesh_color
 from trimesh.creation import icosphere
 
 
@@ -13,7 +12,6 @@ def create_mesh():
     print(
         f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
     )
-    set_mesh_color(ball, [1, 0, 0], alpha=0.5)
     dimples = []
     for face in ball.faces:
         verts = ball.vertices[face]

@@ -175,7 +175,10 @@ so its radius is about 40.
 
 Let's see what you can do with the {{ project_name }} UI.
 We've already used a couple of buttons, 
-but lets read about the [user interface](./user_interface.md)
+but now please go to the [user interface](./user_interface.md)
+and learn about all of the buttons.
+Once you are done exploring,
+return here to continue the tutorial.
 
 ## Step 4: Add Dimples
 
@@ -246,18 +249,17 @@ but let's suppose you don't know what is wrong.
 
 ## Step 5 Debug
 
-We are going to try out some of {{ project_name }}'s unique debugging tools:
+We are going to try out {{ project_name }}'s unique debugging tool:
 
-- Enabling viewing multiple meshes at the same time
-- Setting colors and transparency of the meshes.
+- "Debug mode" enabling viewing multiple meshes at the same time, with transparency and colors.
 
-So let's try them out.
+So let's try it out.
 
-### Debug Mode - Return an Array of Meshes
+### Debug Mode - Return a List of Meshes
 
 To enable seeing multiple meshes, 
 for example, before we combine them,
-we return them in an array.
+we return them in a list.
 
 So let's:
 
@@ -268,71 +270,38 @@ So let's:
     # return ball.difference(dimple)
     return [ball, dimple]
 ```
-- Press "Reload" and we see two balls - 
-the smaller one a distance away from the main ball.
+- Press "Reload" and we see two balls - in glorious, semi-transparent colors.
+    - By returning a list of meshes, {{ project_name }} goes into "debug mode".
+    - Debug mode makes each mesh semi-transparent, so you can see meshes inside of other meshes.
+    - It also colors the meshes, so you can distinguish them more easily.
+
+Why didn't we see the smaller ball (the dimple) above?
+What happens is if we subtract ("difference") the smaller ball from the larger ball 
+and they don't intersect, 
+all that happens is that the dimple disappears,
+and the large ball remains unchanged.
+
 ![Golf Ball Debug](images/golf_ball_step_05_debug.png)
-- Of course! - we moved it the full diameter instead of the radius.
+
+- Of course! - we moved the dimple the full diameter instead of the radius
 - We need to halve the diameter - that is 11.335.
 ```python
     dimple = icosphere(subdivisions=2, radius=10).apply_translation([0, 11.335, 0])
 ```
 - Press "Reload".
-- Now the large dimple has completely disappeared! What!?!
+- Now we can see that the large dimple is completely inside the golf ball! What!?!
+    - Through the magic of debug mode, we can see through the golf ball and see the dimple inside.
 ![Golf Ball Debug Again](images/golf_ball_step_05_debug_b.png)
 
-### Using Color and Transparency for Debugging
-
-Again, you probably saw how I messed up, but let's debug anyway.
-Once a mesh is complete, 
-and you don't intend to perform any more operations on it,
-you can assign it a color and an opaqueness (alpha).
-
-- A color is defined by a list or tuple of 3 floats from 0.0 - 1.0,
-representing the red, green and blue values.
-- `alpha` is a value betweeh 0.0 and 1.0 as well.
-    - 0.0 is completely transparent
-    - 1.0 is completely opaque
-
-So let's:
-
--  Make the `ball` red (`color=[1, 0, 0]`)
-and semi-transparent (`alpha=0.5`)
-- Make the `dimple` blue (`color=[0, 0, 1]`)
-with the same alpha.
-- To set the color, we import `set_mesh_color` from {{ package_name }}
-```python
-from {{ package_name }} import set_mesh_color
-```
-```python
-    set_mesh_color(ball, [1.0, 0, 0], alpha=0.5)
-    set_mesh_color(dimple, [0, 0, 1.0], alpha=0.5)
-```
-- Put this all together:
-```python
-from {{ package_name }} import set_mesh_color
-from trimesh.creation import icosphere
-
-
-def create_mesh():
-    ball = icosphere(subdivisions=2, radius=42.67 / 2)
-    print(
-        f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
-    )
-    dimple = icosphere(subdivisions=2, radius=10).apply_translation([0, 11.335, 0])
-    set_mesh_color(ball, [1.0, 0, 0], alpha=0.5)
-    set_mesh_color(dimple, [0, 0, 1.0], alpha=0.5)
-    # return ball.difference(dimple)
-    return [ball, dimple]
-```
-
-Press "Reload". Now we can see that our dimple is inside the main ball.
+Again, you probably saw how I messed up.
 I shouldn't have done the math in my head!
-![Golf Ball Transparent](images/golf_ball_step_05_debug_c.png)
+I should have moved the dimple to the radius of the golf ball.
 
+All of these numbers are getting confusing.
 Let's clean up the script a bit by giving names to some of our values.
 This makes the script easier to read, 
 and easier to modify.
-We will add before `create_mesh` some "constants":
+We will add some "constants" before `create_mesh` :
 ```python
 ...
 GOLF_BALL_RADIUS = 42.67 / 2
@@ -344,7 +313,6 @@ def create_mesh():
 ```
 Replacing the values in the script, we get:
 ```python
-from {{ package_name }} import set_mesh_color
 from trimesh.creation import icosphere
 
 
@@ -361,8 +329,6 @@ def create_mesh():
     dimple = icosphere(
         subdivisions=SUBDIVISIONS, radius=DIMPLE_RADIUS
     ).apply_translation([0, GOLF_BALL_RADIUS, 0])
-    set_mesh_color(ball, [1, 0, 0], alpha=0.5)
-    set_mesh_color(dimple, [0, 0, 1], alpha=0.5)
     # return ball.difference(dimple)
     return [ball, dimple]
 ```
@@ -409,10 +375,9 @@ We use the numpy `norm` function:
 ```
 - Put this all together, plus:
     - Replace `DIMPLE_RADIUS` with `DIMPLE_RADIUS_FRACTION`
-    - Keep the dimples in an array
+    - Keep the dimples in a list
 ```python
 import numpy as np
-from {{ package_name }} import set_mesh_color
 from trimesh.creation import icosphere
 
 
@@ -426,7 +391,6 @@ def create_mesh():
     print(
         f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
     )
-    set_mesh_color(ball, [1, 0, 0], alpha=0.5)
     dimples = []
     for face in ball.faces:
         verts = ball.vertices[face]
@@ -457,14 +421,14 @@ DIMPLE_RADIUS_FRACTION = 1 / 4
 Now all that remains is:
 
 - Carve out each dimple (`difference`)
-- Return a final mesh (not an array) so that "Export" is available.
+- Return a final mesh (not a list) so that "Export" is available.
     - You may have noticed that in "debug" mode, "Export" is unavailable.
 
 Let's carve out each dimple.  
 
 - We add a line to remove each dimple after we create it.
 - And we just want to return the final ball, 
-not an array of meshes.
+not a list of meshes.
 ```python
         dimple_mesh.apply_translation(face_center)
         ball = ball.difference(dimple_mesh) # <- Added this line
@@ -495,30 +459,28 @@ You might have some questions.
     Each dimple has 162 vertices, 320 faces and 480 edges, 
     as does the original ball.  
     That is a lot of intersections to calculate!
-1. Q: Why is the ball gray?  We are still calling `set_mesh_color(ball, [1, 0, 0], alpha=0.5)`
-    - A: Color does not survive a boolean operation, so it reverts to gray.
-    You can set the color after all of the boolean operations are complete.
-    Although color is used for debugging, 
-    a single color + alpha can be assigned to the final mesh
-    even when not debugging.
+1. Q: Why is the ball gray? 
+    - A: Since we are not returning a list anymore, 
+    we are no longer in debug mode, 
+    which has been setting the colors.
+        - If you want, you can set the color of a final mesh - see [set_mesh_color](../api/#scadview.set_mesh_color)
 1. Q: Where are the dimples?
     - A: If you look closely, there are 1 or 2.
 ![Golf Ball One Dimple](images/golf_ball_step_07.png)
+
 1.  Q: Where are the rest of them?
     - A: Let's find out.
 
 ## Step 8: Debug (Again)
 
 To see what is going on, 
-let's return the ball and dimples as an array again,
-making the ball transparent red.
+let's return the ball and dimples as a list again.
 This is a little different than before,
 because the ball we are returning this time
 should have had dimples removed.
 
 ```python
         dimples.append(dimple_mesh)
-    set_mesh_color(ball, [1, 0, 0], alpha=0.1) # <- Add 
     return [ball] + dimples # <- Uncommented
     # return ball # <- Commented 
 ```
@@ -529,21 +491,15 @@ Whoa!
 That looks cool -
 like a small solar system in the ball.
 ![Golf Ball Solar System](images/golf_ball_step_08.png)
+
 It is worth noting 
-that in addition to setting the ball to transparent red,
-we could have just written:
-```python
-    return ball
-```
-The transparency would have shown us voids in the ball,
-without returning an array for "debug" mode.
-We could have also written:
+that we could have also written:
 ```python
     return [ball]
 ```
-We'd see the same result, 
-but since `ball` is in an array,
-we'd be in debug mode.
+We'd see the voids inside the ball, 
+since `ball` is in a list,
+and we'd be in debug mode.
 
 Feel free to try these out to see the difference.
 
@@ -571,7 +527,6 @@ we will:
         dimples.append(dimple_mesh)
     for dimple_mesh in dimples: # <- Added
         ball = ball.difference(dimple_mesh) # <- Added 
-    # set_mesh_color(ball, [1, 0, 0], alpha=0.1) # <- Commented
     # return [ball] + dimples # <- Commented
     return ball # <- Uncommented
 ```
@@ -584,7 +539,6 @@ Let's removed the commented code,
 and so we have our final code:
 ```python
 import numpy as np
-from {{package_name}} import set_mesh_color
 from trimesh.creation import icosphere
 
 
@@ -598,7 +552,6 @@ def create_mesh():
     print(
         f"Created ball with {len(ball.vertices)} vertices and {len(ball.faces)} faces"
     )
-    set_mesh_color(ball, [1, 0, 0], alpha=0.5)
     dimples = []
     for face in ball.faces:
         verts = ball.vertices[face]
@@ -631,7 +584,7 @@ and create the necessary gcode file for printing.
 
 ### Creating Multiple Meshes for Export
 
-The `create_mesh()` allows you to return multiple meshes in an array,
+The `create_mesh()` allows you to return multiple meshes in a list,
 but this is "debug" mode, 
 and so you cannot export them.
 
@@ -683,7 +636,7 @@ Let's try this with the golf ball:
 You will see the ball, 
 and then the dimples progressively appear.
 
-You can also yield arrays for debug mode.
+You can also yield lists for debug mode.
 
 ### Animation
 
