@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 CREATE_MESH_FUNCTION_NAME = "create_mesh"
+COLOR_GOLDEN_ANGLE = (
+    0.381966  # "golden angle"/360 to ensure good distribution of colors
+)
+DEBUG_COLOR_ALPHA = 0.5
 
 T = TypeVar("T")
 
@@ -114,9 +118,8 @@ def debug_color() -> Generator[tuple[float, float, float], None, None]:
     Generate a random color for debugging purposes
     """
     hue = 0.0
-    hue_delta = 0.381966  # "golden angle"/360 to ensure good distribution of colors
     while True:
-        hue = (hue + hue_delta) % 1.0
+        hue = (hue + COLOR_GOLDEN_ANGLE) % 1.0
         yield colorsys.hsv_to_rgb(hue, 1.0, 1.0)
 
 
@@ -198,7 +201,7 @@ class LoadWorker(Thread):
         if isinstance(tmesh, list):
             for tm, color in zip(tmesh, debug_color()):
                 if "scadview" not in tm.metadata:
-                    set_mesh_color(tm, color, alpha=0.5)
+                    set_mesh_color(tm, color, alpha=DEBUG_COLOR_ALPHA)
 
     def put_in_queue(self, result: LoadResult):
         result_put = False
