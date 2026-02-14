@@ -49,6 +49,20 @@ it enters debug mode. It demonstrates colors and transparency in debug mode.
 </details>
 ![Cube Minus Sphere](images/cube_minus_sphere.png)
 
+## heart_vase.py
+
+Creates a lovely red heart vase.
+<details>
+<summary>Source</summary>
+
+```python
+
+{% include "../examples/heart_vase.py" %}
+
+```
+</details>
+![Heart Vase](images/heart_vase.png)
+
 ## invalid_code.py
 
 Imports a non-existent module to force an import error. Useful for verifying error handling.
@@ -93,6 +107,7 @@ Generates a Koch-snowflake outline, then uses `linear_extrude` with twist, slice
 ```
 </details>
 ![Koch Snowflake Vase](images/koch_snowflake_vase.png)
+
 ## lego.py
 
 Procedurally builds a Lego-style brick with pegs and under-cylinders, yielding intermediate steps as it unions geometry. Demonstrates a complex parametric build with incremental yields.
@@ -107,6 +122,7 @@ Procedurally builds a Lego-style brick with pegs and under-cylinders, yielding i
 ```
 </details>
 ![Lego](images/lego.png)
+
 ## messner_mani.py
 
 Uses `manifold3d` to carve a cube into a Menger-sponge-like structure by repeatedly subtracting smaller cubes. Yields intermediate meshes as a list to visualize each step in debug mode.
@@ -121,6 +137,7 @@ Uses `manifold3d` to carve a cube into a Menger-sponge-like structure by repeate
 ```
 </details>
 ![Messner Manifold](images/messner_mani.png)
+
 ## mobius.py
 
 Sweeps a thin rectangle along a circular path with a half twist to form a Mobius strip. Shows `sweep_polygon` with twist and slice control.
@@ -135,6 +152,7 @@ Sweeps a thin rectangle along a circular path with a half twist to form a Mobius
 ```
 </details>
 ![Mobius](images/mobius.png)
+
 ## mushroom.py
 
 Builds a mushroom-like shape using icospheres, annuli, and booleans. It sets logging to DEBUG and includes metadata-based coloring notes.
@@ -149,6 +167,7 @@ Builds a mushroom-like shape using icospheres, annuli, and booleans. It sets log
 ```
 </details>
 ![Mushroom](images/mushroom.png)
+
 ## simple_animation.py
 
 A generator that yields a moving box with `sleep(...)` between frames. This is the minimal animation example.
@@ -163,6 +182,7 @@ A generator that yields a moving box with `sleep(...)` between frames. This is t
 ```
 </details>
 ![Simple Animation](images/simple_animation.png)
+
 ## sphere.py
 
 Returns a single icosphere. This is the simplest possible `create_mesh`.
@@ -177,6 +197,23 @@ Returns a single icosphere. This is the simplest possible `create_mesh`.
 ```
 </details>
 ![Sphere](images/sphere.png)
+
+## spice_rack.py
+
+Creates a honeycomb spice rack, with constants at the top of the file
+to set the row and column counts.
+
+<details>
+<summary>Source</summary>
+
+```python
+
+{% include "../examples/spice_rack.py" %}
+
+```
+</details>
+![Sphere](images/spice_rack.png)
+
 ## star_linear_extrude.py
 
 Constructs a 2D star polygon with an inner hole and extrudes it with twist and taper. Demonstrates `linear_extrude` parameters like `twist`, `slices`, and `scale`.
