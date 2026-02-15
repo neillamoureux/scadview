@@ -28,6 +28,12 @@ If applicable, add screenshots to help explain your problem.
 If not, this section may be deleted.
 -->
 
+### Additional context
+<!-- 
+Add any other context about the problem here
+If none, this section may be deleted
+-->
+
 ### Diagnostic Info 
 
 <!--
@@ -46,9 +52,3 @@ At a minimum, please provide
 ```json
 {}
 ```
-
-### Additional context
-<!-- 
-Add any other context about the problem here
-If none, this section may be deleted
--->
