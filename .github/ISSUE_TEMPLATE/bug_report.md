@@ -28,14 +28,27 @@ If applicable, add screenshots to help explain your problem.
 If not, this section may be deleted.
 -->
 
-### Desktop 
-
-- OS: [e.g. macOS]
-- Version [e.g. Sonoma 14.7]
-- OpenGL version: [e.g. 21.0.19]
-
 ### Additional context
 <!-- 
 Add any other context about the problem here
 If none, this section may be deleted
 -->
+
+### Diagnostic Info 
+
+<!--
+Paste in `.scadview/debug_info.json` from the directory where you ran SCADview.
+If that run crashed very early, check `.scadview/debug_info.1.json`.
+
+At a minimum, please provide
+
+- OS: [e.g. macOS]
+- Version [e.g. Sonoma 14.7]
+- OpenGL version: [e.g. 21.0.19]
+
+-->
+
+** Paste .scadview/debug_info.json from your working directory over `{}` below: **
+```json
+{}
+```

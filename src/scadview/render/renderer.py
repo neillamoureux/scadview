@@ -10,6 +10,7 @@ from trimesh.creation import (
     box,  # pyright: ignore[reportUnknownVariableType] can't resolve
 )
 
+from scadview.debug_info import DebugInfoService
 from scadview.load_status import LoadStatus
 from scadview.observable import Observable
 from scadview.render.camera import Camera, copy_camera_state
@@ -360,9 +361,14 @@ class Renderer:
 
 
 class RendererFactory:
-    def __init__(self, camera: Camera):
+    def __init__(
+        self, camera: Camera, debug_info_service: DebugInfoService | None = None
+    ):
         self._camera = camera
+        self._debug_info_service = debug_info_service
 
     def make(self, window_size: tuple[int, int]) -> Renderer:
         ctx = moderngl.create_context()
+        if self._debug_info_service is not None:
+            self._debug_info_service.capture_gpu_opengl_stack(ctx)
         return Renderer(ctx, self._camera, window_size)
