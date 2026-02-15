@@ -88,9 +88,10 @@ class GlWidget(GLCanvas):
         size: wx.Size = (  # pyright: ignore[reportUnknownVariableType]
             self.GetClientSize()
         )
+        scale = self.GetContentScaleFactor()  # pyright: ignore[reportUnknownVariableType]
         self._gl_widget_adapter.resize(
-            size.width,  # pyright: ignore[reportUnknownArgumentType]
-            size.height,  # pyright: ignore[reportUnknownArgumentType]
+            int(scale * size.width),  # pyright: ignore[reportUnknownArgumentType]
+            int(scale * size.height),  # pyright: ignore[reportUnknownArgumentType]
         )
         self.Refresh(False)
 
