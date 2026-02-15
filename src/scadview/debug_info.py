@@ -7,8 +7,7 @@ import platform
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from importlib import metadata
-from importlib import import_module
+from importlib import import_module, metadata
 from pathlib import Path
 from threading import Lock
 from typing import Any, cast
