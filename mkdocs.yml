@@ -62,3 +62,6 @@ plugins:
 extra:
   project_name: SCADview
   package_name: scadview
+  version:
+    provider: mike
+    default: latest
