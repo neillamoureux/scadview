@@ -36,7 +36,7 @@ def configure_logging(log_level: int) -> logging.handlers.QueueListener:
     return listener
 
 
-def parse_logging_level():
+def parse_logging_level() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v",
@@ -49,6 +49,23 @@ def parse_logging_level():
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level directly",
+    )
+    parser.add_argument(
+        "--debug-info-file",
+        help="Write debug information JSON to this file path",
+    )
+    parser.add_argument(
+        "--debug-info-redact-sensitive",
+        dest="debug_info_redact_sensitive",
+        action="store_true",
+        default=True,
+        help="Redact sensitive values in debug information output (default: enabled)",
+    )
+    parser.add_argument(
+        "--no-debug-info-redact-sensitive",
+        dest="debug_info_redact_sensitive",
+        action="store_false",
+        help="Disable sensitive value redaction in debug information output",
     )
 
     args = parser.parse_args()
@@ -67,3 +84,5 @@ def parse_logging_level():
     logger.setLevel(level=level)
     for handler in logger.handlers:
         handler.setLevel(level=level)
+
+    return args

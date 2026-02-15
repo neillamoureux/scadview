@@ -12,6 +12,7 @@ from trimesh.creation import (
 
 from scadview.load_status import LoadStatus
 from scadview.observable import Observable
+from scadview.debug_info import capture_gpu_opengl_stack
 from scadview.render.camera import Camera, copy_camera_state
 from scadview.render.label_atlas import LabelAtlas
 from scadview.render.label_renderee import LabelSetRenderee
@@ -365,4 +366,5 @@ class RendererFactory:
 
     def make(self, window_size: tuple[int, int]) -> Renderer:
         ctx = moderngl.create_context()
+        capture_gpu_opengl_stack(ctx)
         return Renderer(ctx, self._camera, window_size)

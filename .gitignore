@@ -32,3 +32,6 @@ site/
 
 # temp files
 tmp/
+
+# diagnositic
+.scadview/

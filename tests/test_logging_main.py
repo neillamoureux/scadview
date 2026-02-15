@@ -23,7 +23,7 @@ def root_logger():
 def parse_with_args(monkeypatch):
     def _parse(args):
         monkeypatch.setattr(sys, "argv", ["prog"] + args)
-        parse_logging_level()
+        return parse_logging_level()
 
     return _parse
 
@@ -78,3 +78,25 @@ def test_parse_logging_level_explicit_overrides_verbose(root_logger, parse_with_
     parse_with_args(["-v", "--log-level", "ERROR"])
     assert root_logger.level == logging.ERROR
     assert handler.level == logging.ERROR
+
+
+def test_parse_logging_level_accepts_debug_info_file(root_logger, parse_with_args):
+    _configure_root_with_handler(root_logger)
+    args = parse_with_args(["--debug-info-file", "/tmp/scadview-debug.json"])
+    assert args.debug_info_file == "/tmp/scadview-debug.json"
+
+
+def test_parse_logging_level_redact_sensitive_default_true(
+    root_logger, parse_with_args
+):
+    _configure_root_with_handler(root_logger)
+    args = parse_with_args([])
+    assert args.debug_info_redact_sensitive is True
+
+
+def test_parse_logging_level_allows_disabling_redact_sensitive(
+    root_logger, parse_with_args
+):
+    _configure_root_with_handler(root_logger)
+    args = parse_with_args(["--no-debug-info-redact-sensitive"])
+    assert args.debug_info_redact_sensitive is False
