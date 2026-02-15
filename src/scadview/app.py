@@ -19,5 +19,5 @@ def main(splash_conn: Connection, debug_info_service: DebugInfoService):
     controller = Controller()
     logger.warning("*** SCADview has initialized ***")
     stop_splash_process(splash_conn)
-    GlUi(controller, gl_widget_adapter).run()
+    GlUi(controller, gl_widget_adapter, debug_info_service).run()
     logger.info("SCADview app stopping")

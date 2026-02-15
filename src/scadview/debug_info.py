@@ -68,7 +68,9 @@ class DebugInfoService:
         self._recorder.update_section(
             "user_configuration", _capture_user_configuration(settings)
         )
-        self._recorder.update_section("gui_toolkit", _capture_gui_toolkit())
+        self._recorder.update_section(
+            "gui_toolkit", _capture_gui_toolkit(include_screens=False)
+        )
 
     @property
     def output_path(self) -> Path:
@@ -98,6 +100,10 @@ class DebugInfoService:
                 "glsl_version": glsl,
             }
             self._recorder.update_section("gpu_opengl_stack", payload)
+
+    def capture_gui_toolkit(self):
+        with self._lock:
+            self._recorder.update_section("gui_toolkit", _capture_gui_toolkit())
 
 
 def _default_output_path() -> Path:
@@ -252,17 +258,53 @@ def _capture_user_configuration(settings: _RedactionSettings) -> dict[str, Any]:
     }
 
 
-def _capture_gui_toolkit() -> dict[str, Any]:
+def _capture_gui_toolkit(include_screens: bool = True) -> dict[str, Any]:
     try:
         import wx
 
-        return {
+        payload: dict[str, Any] = {
             "toolkit": "wxPython",
             "version": wx.version(),
             "platform_info": list(wx.PlatformInfo),  # pyright: ignore[reportUnknownArgumentType]
         }
+        if include_screens:
+            screens, screen_capture_error, app_initialized = _capture_screens(wx)
+            payload["screens"] = screens
+            payload["wx_app_initialized"] = app_initialized
+            if screen_capture_error is not None:
+                payload["screen_capture_error"] = screen_capture_error
+        return payload
     except Exception as e:
         return {"toolkit": "wxPython", "error": str(e)}
+
+
+def _capture_screens(wx: Any) -> tuple[list[dict[str, Any]], str | None, bool]:
+    app = wx.App.Get()
+    if app is None:
+        return [], "wx.App is not initialized yet", False
+
+    screens: list[dict[str, Any]] = []
+    try:
+        display_count = int(wx.Display.GetCount())
+        for idx in range(display_count):
+            display = wx.Display(idx)
+            geometry = display.GetGeometry()
+            entry: dict[str, Any] = {
+                "index": idx,
+                "x": int(geometry.x),
+                "y": int(geometry.y),
+                "width": int(geometry.width),
+                "height": int(geometry.height),
+            }
+            try:
+                entry["scale_factor"] = float(display.GetScaleFactor())
+            except Exception:
+                # Not all wx backends expose this; keep capture best-effort.
+                entry["scale_factor"] = None
+            screens.append(entry)
+        return screens, None, True
+    except Exception as e:
+        return [], str(e), True
 
 
 def _to_jsonable(value: Any) -> Any:

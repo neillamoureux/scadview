@@ -6,6 +6,7 @@ from scadview.debug_info import (
     DEFAULT_DEBUG_FILE_NAME,
     REDACTED,
     REDACTED_PATH,
+    _capture_screens,
     create_debug_info_service,
 )
 
@@ -151,3 +152,65 @@ def test_initialize_debug_info_capture_redacts_paths_by_default(tmp_path, monkey
     assert payload["python_runtime"]["executable"] == REDACTED_PATH
     assert payload["user_configuration"]["pythonpath"] in (None, REDACTED_PATH)
     assert payload["user_configuration"]["virtual_env"] in (None, REDACTED_PATH)
+
+
+def test_capture_screens_returns_soft_error_when_no_wx_app():
+    class _FakeApp:
+        @staticmethod
+        def Get():
+            return None
+
+    class _FakeWx:
+        App = _FakeApp
+
+    screens, error, app_initialized = _capture_screens(_FakeWx)
+
+    assert screens == []
+    assert error == "wx.App is not initialized yet"
+    assert app_initialized is False
+
+
+def test_capture_screens_returns_dimensions_and_scale():
+    class _Geometry:
+        x = 10
+        y = 20
+        width = 1920
+        height = 1080
+
+    class _Display:
+        @staticmethod
+        def GetCount():
+            return 1
+
+        def __init__(self, idx):
+            assert idx == 0
+
+        def GetGeometry(self):
+            return _Geometry()
+
+        def GetScaleFactor(self):
+            return 2.0
+
+    class _FakeApp:
+        @staticmethod
+        def Get():
+            return object()
+
+    class _FakeWx:
+        App = _FakeApp
+        Display = _Display
+
+    screens, error, app_initialized = _capture_screens(_FakeWx)
+
+    assert app_initialized is True
+    assert error is None
+    assert screens == [
+        {
+            "index": 0,
+            "x": 10,
+            "y": 20,
+            "width": 1920,
+            "height": 1080,
+            "scale_factor": 2.0,
+        }
+    ]
