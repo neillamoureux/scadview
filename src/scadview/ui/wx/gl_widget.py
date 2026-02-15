@@ -69,6 +69,7 @@ class GlWidget(GLCanvas):
         self.on_gnomon_change = self._gl_widget_adapter.on_gnomon_change
 
         self._mouse_captured = False
+        self._last_pixel_size: tuple[int, int] | None = None
 
     @property
     def show_grid(self):
@@ -84,15 +85,7 @@ class GlWidget(GLCanvas):
         self.Refresh()
 
     def on_size(self, _evt: wx.SizeEvent):
-        # Just schedule a repaint; set viewport during paint when context is current.
-        size: wx.Size = (  # pyright: ignore[reportUnknownVariableType]
-            self.GetClientSize()
-        )
-        scale = self.GetContentScaleFactor()  # pyright: ignore[reportUnknownVariableType]
-        self._gl_widget_adapter.resize(
-            int(scale * size.width),  # pyright: ignore[reportUnknownArgumentType]
-            int(scale * size.height),  # pyright: ignore[reportUnknownArgumentType]
-        )
+        self._sync_pixel_size()
         self.Refresh(False)
 
     def on_paint(self, _evt: wx.PaintEvent):
@@ -105,6 +98,7 @@ class GlWidget(GLCanvas):
         dc = wx.PaintDC(self)
         del dc
         self.SetCurrent(self.ctx_wx)
+        self._sync_pixel_size()
         size = self.GetClientSize()  # pyright: ignore[reportUnknownVariableType]
         scale = (  # pyright: ignore[reportUnknownVariableType]
             self.GetContentScaleFactor()
@@ -130,6 +124,7 @@ class GlWidget(GLCanvas):
         self._gl_widget_adapter.end_orbit()
 
     def on_mouse_wheel(self, event: wx.MouseEvent):
+        self._sync_pixel_size()
         if event.GetWheelAxis() == wx.MOUSE_WHEEL_VERTICAL:
             distance = event.GetWheelRotation()
             position = self._get_scaled_position(event)
@@ -139,6 +134,17 @@ class GlWidget(GLCanvas):
                 distance,
             )
         self.Refresh(False)
+
+    def _sync_pixel_size(self, force: bool = False):
+        size: wx.Size = self.GetClientSize()  # pyright: ignore[reportUnknownVariableType]
+        scale = self.GetContentScaleFactor()  # pyright: ignore[reportUnknownVariableType]
+        pixel_size = (
+            int(scale * size.width),  # pyright: ignore[reportUnknownArgumentType]
+            int(scale * size.height),  # pyright: ignore[reportUnknownArgumentType]
+        )
+        if force or self._last_pixel_size != pixel_size:
+            self._gl_widget_adapter.resize(pixel_size[0], pixel_size[1])
+            self._last_pixel_size = pixel_size
 
     def _get_scaled_position(self, event: wx.MouseEvent) -> wx.Point:
         pos = event.GetPosition()
