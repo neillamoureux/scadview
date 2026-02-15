@@ -3,7 +3,7 @@ def main():
 
     import sys
 
-    from scadview.debug_info import initialize_debug_info_capture
+    from scadview.debug_info import create_debug_info_service
     from scadview.logging_main import (
         DEFAULT_LOG_LEVEL,
         configure_logging,
@@ -12,7 +12,7 @@ def main():
 
     configure_logging(DEFAULT_LOG_LEVEL)
     args = parse_logging_level()
-    initialize_debug_info_capture(
+    debug_info_service = create_debug_info_service(
         sys.argv[1:],
         args.debug_info_file,
         args.debug_info_redact_sensitive,
@@ -23,7 +23,7 @@ def main():
     splash_conn = start_splash_process()
     from scadview.app import main
 
-    main(splash_conn)
+    main(splash_conn, debug_info_service)
 
 
 if __name__ == "__main__":

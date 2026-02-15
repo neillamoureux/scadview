@@ -4,9 +4,9 @@ import logging
 from scadview.debug_info import (
     DEFAULT_DEBUG_DIR_NAME,
     DEFAULT_DEBUG_FILE_NAME,
+    REDACTED,
     REDACTED_PATH,
-    capture_gpu_opengl_stack,
-    initialize_debug_info_capture,
+    create_debug_info_service,
 )
 
 
@@ -18,7 +18,8 @@ def test_initialize_debug_info_capture_writes_expected_sections(
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
     caplog.set_level(logging.INFO)
 
-    path = initialize_debug_info_capture(["-v", "--foo=bar"])
+    service = create_debug_info_service(["-v", "--foo=bar"], redact_sensitive=False)
+    path = service.output_path
 
     assert path == output_file
     assert output_file.exists()
@@ -40,6 +41,8 @@ def test_initialize_debug_info_capture_writes_expected_sections(
 
     assert payload["execution_context"]["scadview_cli_arguments"] == ["-v", "--foo=bar"]
     assert payload["execution_context"]["debug_info_file"] == str(output_file)
+    assert isinstance(payload["execution_context"]["pid"], int)
+    assert isinstance(payload["execution_context"]["ppid"], int)
     assert "Captured debug info section 'python_runtime'" in caplog.text
     assert f"Debug info file: {output_file}" in caplog.text
 
@@ -48,7 +51,7 @@ def test_capture_gpu_opengl_stack_adds_section(tmp_path, monkeypatch):
     output_file = tmp_path / "debug_info.json"
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
-    initialize_debug_info_capture([])
+    service = create_debug_info_service([])
 
     class _FakeContext:
         version_code = 460
@@ -62,7 +65,7 @@ def test_capture_gpu_opengl_stack_adds_section(tmp_path, monkeypatch):
             "GL_SHADING_LANGUAGE_VERSION": "4.60",
         }
 
-    capture_gpu_opengl_stack(_FakeContext())
+    service.capture_gpu_opengl_stack(_FakeContext())
 
     with output_file.open("r", encoding="utf-8") as f:
         payload = json.load(f)
@@ -75,7 +78,7 @@ def test_capture_gpu_opengl_stack_uses_alternate_info_keys(tmp_path, monkeypatch
     output_file = tmp_path / "debug_info.json"
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
-    initialize_debug_info_capture([])
+    service = create_debug_info_service([])
 
     class _FakeContext:
         version_code = 410
@@ -89,7 +92,7 @@ def test_capture_gpu_opengl_stack_uses_alternate_info_keys(tmp_path, monkeypatch
             "shading_language_version": "4.10",
         }
 
-    capture_gpu_opengl_stack(_FakeContext())
+    service.capture_gpu_opengl_stack(_FakeContext())
 
     with output_file.open("r", encoding="utf-8") as f:
         payload = json.load(f)
@@ -109,7 +112,7 @@ def test_initialize_debug_info_capture_defaults_to_dot_scadview_dir(
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
     monkeypatch.chdir(tmp_path)
 
-    path = initialize_debug_info_capture([])
+    path = create_debug_info_service([]).output_path
 
     assert path == tmp_path / DEFAULT_DEBUG_DIR_NAME / DEFAULT_DEBUG_FILE_NAME
     assert path.exists()
@@ -124,7 +127,7 @@ def test_initialize_debug_info_capture_rotates_previous_file(tmp_path, monkeypat
     current = debug_dir / DEFAULT_DEBUG_FILE_NAME
     current.write_text('{"old": true}\n', encoding="utf-8")
 
-    path = initialize_debug_info_capture([])
+    path = create_debug_info_service([]).output_path
     archive_1 = debug_dir / "debug_info.1.json"
 
     assert path == current
@@ -137,12 +140,14 @@ def test_initialize_debug_info_capture_redacts_paths_by_default(tmp_path, monkey
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
     monkeypatch.delenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", raising=False)
 
-    initialize_debug_info_capture([])
+    create_debug_info_service([])
     with output_file.open("r", encoding="utf-8") as f:
         payload = json.load(f)
 
     assert payload["execution_context"]["debug_info_file"] == REDACTED_PATH
     assert payload["execution_context"]["cwd"] == REDACTED_PATH
+    assert payload["execution_context"]["pid"] == REDACTED
+    assert payload["execution_context"]["ppid"] == REDACTED
     assert payload["python_runtime"]["executable"] == REDACTED_PATH
     assert payload["user_configuration"]["pythonpath"] in (None, REDACTED_PATH)
     assert payload["user_configuration"]["virtual_env"] in (None, REDACTED_PATH)

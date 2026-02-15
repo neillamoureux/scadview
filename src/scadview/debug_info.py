@@ -13,8 +13,6 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_recorder_lock = Lock()
-_recorder: DebugInfoRecorder | None = None
 DEFAULT_DEBUG_DIR_NAME = ".scadview"
 DEFAULT_DEBUG_FILE_NAME = "debug_info.json"
 DEFAULT_MAX_ARCHIVES = 5
@@ -24,69 +22,82 @@ ENV_DEBUG_INFO_FILE = "SCADVIEW_DEBUG_INFO_FILE"
 ENV_DEBUG_INFO_REDACT_SENSITIVE = "SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE"
 
 
-def initialize_debug_info_capture(
+def create_debug_info_service(
     cli_args: list[str],
     output_file: str | None = None,
     redact_sensitive: bool = True,
-) -> Path:
-    output_env = os.environ.get(ENV_DEBUG_INFO_FILE)
-    output_path = (
-        Path(output_file)
-        if output_file
-        else (Path(output_env) if output_env else _default_output_path())
-    )
-    redact_paths = _env_bool(ENV_DEBUG_INFO_REDACT_SENSITIVE, True)
-    settings = _RedactionSettings(
+) -> DebugInfoService:
+    return DebugInfoService(
+        cli_args=cli_args,
+        output_file=output_file,
         redact_sensitive=redact_sensitive,
-        redact_paths=redact_paths,
     )
 
-    global _recorder
-    with _recorder_lock:
-        _rotate_debug_info_files(output_path, DEFAULT_MAX_ARCHIVES)
-        _recorder = DebugInfoRecorder(output_path)
-        _recorder.update_section("python_runtime", _capture_python_runtime(settings))
-        _recorder.update_section("os_hardware", _capture_os_hardware())
-        _recorder.update_section(
+
+class DebugInfoService:
+    def __init__(
+        self,
+        cli_args: list[str],
+        output_file: str | None = None,
+        redact_sensitive: bool = True,
+    ):
+        output_env = os.environ.get(ENV_DEBUG_INFO_FILE)
+        self._output_path = (
+            Path(output_file)
+            if output_file
+            else (Path(output_env) if output_env else _default_output_path())
+        )
+        redact_paths = _env_bool(ENV_DEBUG_INFO_REDACT_SENSITIVE, True)
+        settings = _RedactionSettings(
+            redact_sensitive=redact_sensitive,
+            redact_paths=redact_paths,
+        )
+        self._lock = Lock()
+
+        _rotate_debug_info_files(self._output_path, DEFAULT_MAX_ARCHIVES)
+        self._recorder = DebugInfoRecorder(self._output_path)
+        self._recorder.update_section("python_runtime", _capture_python_runtime(settings))
+        self._recorder.update_section("os_hardware", _capture_os_hardware())
+        self._recorder.update_section(
             "critical_library_versions", _capture_critical_library_versions()
         )
-        _recorder.update_section(
+        self._recorder.update_section(
             "execution_context",
-            _capture_execution_context(cli_args, output_path, settings),
+            _capture_execution_context(cli_args, self._output_path, settings),
         )
-        _recorder.update_section(
+        self._recorder.update_section(
             "user_configuration", _capture_user_configuration(settings)
         )
-        _recorder.update_section("gui_toolkit", _capture_gui_toolkit())
-    return output_path
+        self._recorder.update_section("gui_toolkit", _capture_gui_toolkit())
 
+    @property
+    def output_path(self) -> Path:
+        return self._output_path
 
-def capture_gpu_opengl_stack(context: Any):
-    with _recorder_lock:
-        if _recorder is None:
-            return
-        info = getattr(context, "info", {})
-        vendor = _info_lookup(info, "GL_VENDOR", "VENDOR")
-        renderer = _info_lookup(info, "GL_RENDERER", "RENDERER")
-        version = _info_lookup(info, "GL_VERSION", "VERSION")
-        glsl = _info_lookup(
-            info,
-            "GL_SHADING_LANGUAGE_VERSION",
-            "SHADING_LANGUAGE_VERSION",
-            "GLSL_VERSION",
-        )
-        payload = {
-            "context_version_code": getattr(context, "version_code", None),
-            "context_vendor": getattr(context, "vendor", None) or vendor,
-            "context_renderer": getattr(context, "renderer", None) or renderer,
-            "context_version": getattr(context, "version", None) or version,
-            "context_info": info,
-            "opengl_vendor": vendor,
-            "opengl_renderer": renderer,
-            "opengl_version": version,
-            "glsl_version": glsl,
-        }
-        _recorder.update_section("gpu_opengl_stack", payload)
+    def capture_gpu_opengl_stack(self, context: Any):
+        with self._lock:
+            info = getattr(context, "info", {})
+            vendor = _info_lookup(info, "GL_VENDOR", "VENDOR")
+            renderer = _info_lookup(info, "GL_RENDERER", "RENDERER")
+            version = _info_lookup(info, "GL_VERSION", "VERSION")
+            glsl = _info_lookup(
+                info,
+                "GL_SHADING_LANGUAGE_VERSION",
+                "SHADING_LANGUAGE_VERSION",
+                "GLSL_VERSION",
+            )
+            payload = {
+                "context_version_code": getattr(context, "version_code", None),
+                "context_vendor": getattr(context, "vendor", None) or vendor,
+                "context_renderer": getattr(context, "renderer", None) or renderer,
+                "context_version": getattr(context, "version", None) or version,
+                "context_info": info,
+                "opengl_vendor": vendor,
+                "opengl_renderer": renderer,
+                "opengl_version": version,
+                "glsl_version": glsl,
+            }
+            self._recorder.update_section("gpu_opengl_stack", payload)
 
 
 def _default_output_path() -> Path:
@@ -209,14 +220,16 @@ def _safe_version(package_name: str) -> str | None:
 def _capture_execution_context(
     cli_args: list[str], output_path: Path, settings: _RedactionSettings
 ) -> dict[str, Any]:
+    pid = REDACTED if settings.redact_sensitive else os.getpid()
+    ppid = REDACTED if settings.redact_sensitive else os.getppid()
     return {
         "utc_now": datetime.now(timezone.utc).isoformat(),
         "argv": _redact_args(sys.argv, settings),
         "scadview_cli_arguments": _redact_args(cli_args, settings),
         "debug_info_file": _redact_path(str(output_path), settings.redact_paths),
         "cwd": _redact_path(os.getcwd(), settings.redact_paths),
-        "pid": os.getpid(),
-        "ppid": os.getppid(),
+        "pid": pid,
+        "ppid": ppid,
     }
 
 
