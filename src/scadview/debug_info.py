@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
+from importlib import import_module
 from pathlib import Path
 from threading import Lock
 from typing import Any, cast
@@ -276,12 +277,14 @@ def _capture_user_configuration(settings: _RedactionSettings) -> dict[str, Any]:
 
 def _capture_gui_toolkit(include_screens: bool = True) -> dict[str, Any]:
     try:
-        import wx
+        wx = cast(
+            Any, import_module("wx")
+        )  # Avoids errors in the CI which does not install wx
 
         payload: dict[str, Any] = {
             "toolkit": "wxPython",
             "version": wx.version(),
-            "platform_info": list(wx.PlatformInfo),  # pyright: ignore[reportUnknownArgumentType]
+            "platform_info": list(wx.PlatformInfo),
         }
         if include_screens:
             screens, screen_capture_error, app_initialized = _capture_screens(wx)
