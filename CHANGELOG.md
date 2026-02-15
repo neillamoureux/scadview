@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.2.6](https://github.com/neillamoureux/scadview/compare/v0.2.5...v0.2.6) (2026-02-15)
+
+
+### Features
+
+* Diagnostic information is logged to the subdirectory of where scadview is run from, ./.scadview/debug_info.json. ([1addc98](https://github.com/neillamoureux/scadview/commit/1addc98e7ddacdd9a1665172ea8f440ac3398213))
+
+
+### Bug Fixes
+
+* Update pixel scale factor to correct cam moves when scale changes ([#126](https://github.com/neillamoureux/scadview/issues/126)) ([13215d6](https://github.com/neillamoureux/scadview/commit/13215d657a29444bf57ee0b990b1bd575e882f9e))
+* When resizing the gl viewport, use scaled device coordinates to set the logical viewport size ([#121](https://github.com/neillamoureux/scadview/issues/121)) ([1590902](https://github.com/neillamoureux/scadview/commit/1590902bad6346a507f374c12b802df76768e5fe))
+
+
+### Documentation
+
+* Add heart vase and spice rack examples ([#116](https://github.com/neillamoureux/scadview/issues/116)) ([b0cf656](https://github.com/neillamoureux/scadview/commit/b0cf656a7ecdf184779368cd25c27a37ea6133f8))
+
+
+### Chores
+
+* Enable versioned docs using mike ([#123](https://github.com/neillamoureux/scadview/issues/123)) ([23e6969](https://github.com/neillamoureux/scadview/commit/23e69698507ecdfafb9b59a8cd8b6861f398e78f))
+
 ## [0.2.5](https://github.com/neillamoureux/scadview/compare/v0.2.4...v0.2.5) (2026-02-07)
 
 
