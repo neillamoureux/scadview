@@ -1,0 +1,1840 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://scadview.org/main/tutorial/">
+      
+      
+        <link rel="prev" href="../cli_options/">
+      
+      
+        <link rel="next" href="../user_interface/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Tutorial - SCADview Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#creating-a-golf-ball" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SCADview Documentation" class="md-header__button md-logo" aria-label="SCADview Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SCADview Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Tutorial
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../about/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  About
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli_options/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Command-Line Options
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Tutorial
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user_interface/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Interface
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../create_mesh/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Creating a Mesh
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Command-Line Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../license/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  License
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SCADview Documentation" class="md-nav__button md-logo" aria-label="SCADview Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SCADview Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    About
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli_options/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command-Line Options
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Tutorial
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tutorial
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Scenario
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-set-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Set Up
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-create-a-ball" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Create a Ball
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-experiment-with-icosphere" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Experiment with icosphere
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Experiment with icosphere">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subdivisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Subdivisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#radius" class="md-nav__link">
+    <span class="md-ellipsis">
+      Radius
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interlude-play-with-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      Interlude: Play with the UI.
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-add-dimples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Add Dimples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Add Dimples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#red-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      Red Screen
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-debug" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5 Debug
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5 Debug">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#debug-mode-return-a-list-of-meshes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Mode - Return a List of Meshes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-make-all-the-dimples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Make all the dimples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-carve-out-the-dimples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Carve out the dimples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-8-debug-again" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Debug (Again)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 8: Debug (Again)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-subtle-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      A Subtle Bug
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-9-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 9: Fix
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-10-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 10: Export
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional Topics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Additional Topics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-multiple-meshes-for-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating Multiple Meshes for Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incremental-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      Incremental Builds
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#animation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Animation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user_interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../create_mesh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Creating a Mesh
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command-Line Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    License
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Scenario
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-set-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Set Up
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-create-a-ball" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Create a Ball
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-experiment-with-icosphere" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Experiment with icosphere
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Experiment with icosphere">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subdivisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Subdivisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#radius" class="md-nav__link">
+    <span class="md-ellipsis">
+      Radius
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interlude-play-with-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      Interlude: Play with the UI.
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-add-dimples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Add Dimples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 4: Add Dimples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#red-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      Red Screen
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-debug" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5 Debug
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5 Debug">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#debug-mode-return-a-list-of-meshes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Mode - Return a List of Meshes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-make-all-the-dimples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Make all the dimples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-carve-out-the-dimples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Carve out the dimples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-8-debug-again" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Debug (Again)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 8: Debug (Again)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-subtle-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      A Subtle Bug
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-9-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 9: Fix
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-10-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 10: Export
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-topics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Additional Topics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Additional Topics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-multiple-meshes-for-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating Multiple Meshes for Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incremental-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      Incremental Builds
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#animation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Animation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="creating-a-golf-ball">Creating a Golf Ball</h1>
+<p>This tutorial will go through the process of creating a non-trivial 3D model.
+We will explore:</p>
+<ul>
+<li>The basic structure of the Python script.</li>
+<li>Some of the capabilities of <a href="https://trimesh.org" target="_blank">Trimesh</a>.</li>
+<li>Basic debugging</li>
+<li>Exporting the created 3D mesh for use by other programs.</li>
+</ul>
+<p>Let's get started!</p>
+<h2 id="the-scenario">The Scenario</h2>
+<p>You have a golf date, 
+but have misplaced all of your golf balls.
+You decide to 3D print some.</p>
+<h2 id="step-1-set-up">Step 1: Set Up</h2>
+<p>Follow the instructions in <a href="../#getting-started">Getting Started</a></p>
+<h2 id="step-2-create-a-ball">Step 2: Create a Ball</h2>
+<p>The first task is to create a ball.</p>
+<ol>
+<li>Create a python file, and call it <code>golf_ball.py</code>. <ul>
+<li>This must be in a location that has access to wherever you installed <a href="https://trimesh.org" target="_blank">Trimesh</a>
+and SCADview in the set up.</li>
+<li>If you installed system wide, then anywhere on your system is fine.</li>
+<li>If you've installed in a virtual environment, then place this file in the same environment.</li>
+</ul>
+</li>
+<li>We want to use Trimesh to create a ball, 
+so we look at Trimesh's creation api 
+and see <a href="https://trimesh.org/trimesh.creation.html#trimesh.creation.icosphere" target="_blank">icosphere</a> 
+which seems appropriate.</li>
+<li>Edit <code>golf_ball.py</code> in your favourite code editor and write:
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">icosphere</span><span class="p">()</span>
+</code></pre></div></li>
+<li>Let's see what it looks like. 
+If you haven't already, run from the command line:
+<div class="highlight"><pre><span></span><code>scadview
+</code></pre></div>
+The SCADview UI should appear. </li>
+</ol>
+<p><img alt="SCADview UI" src="../images/startup_window.png" /></p>
+<p>The first time you run SCADview, 
+it can take longer to appear, 
+but subsequent starts should be almost instant.</p>
+<ol>
+<li>Click the "Load py..." button.
+<img alt="Load Dialog" src="../images/load_dialog.png" /><ul>
+<li>This opens a file dialog.
+Choose the file you've just created, 
+<code>golf_ball.py</code>.</li>
+<li>This should load the file
+and show you a sphere.</li>
+<li>If you don't see a sphere,
+check the output from the command line for any error messages
+and edit <code>golf_ball.py</code> to fix them.</li>
+<li>Click the "Reload" button to reload the file; 
+if all errors are corrected,
+you should see the sphere.</li>
+</ul>
+</li>
+</ol>
+<p><img alt="Golf Ball Step 2" src="../images/golf_ball_step_02.png" /></p>
+<h2 id="step-3-experiment-with-icosphere">Step 3: Experiment with <code>icosphere</code></h2>
+<p>Let's take a look at what options <code>icosphere</code> has to offer.
+The api docs show 3 parameters:</p>
+<ul>
+<li><code>subdivisions</code></li>
+<li><code>radius</code></li>
+<li><code>kwargs</code></li>
+</ul>
+<p>Let's see what <code>subdivisions</code> does, 
+and then choose a good <code>radius</code> for our golf ball.
+We are going to ignore <code>kwargs</code>.</p>
+<h3 id="subdivisions">Subdivisions</h3>
+<p>Our plan is to put one dimple in each subdivision, 
+so let's see what 1 subdivision looks like.</p>
+<ul>
+<li>
+<p>Change the code to set <code>subdivisions=1</code> and press "Reload":
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<img alt="Golf Ball subdivisions=1" src="../images/golf_ball_step_03_sub_1.png" />
+Hmmm... looks like it could be smoother.
+Let's get some information about the ball.
+<code>icosphere</code> is a <a href="https://trimesh.org/trimesh.base.html" target="_blank">Trimesh</a>,
+which has a wealth of attributes and methods you can use on meshes you create.
+Let's add a print statement to show the number of vertices and faces:
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Created ball with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span><span class="si">}</span><span class="s2"> vertices and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span><span class="si">}</span><span class="s2"> faces&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ball</span>
+</code></pre></div>
+Note that we have now created variable, <code>ball</code>,
+so we can get some information about it
+before we return it as the output of the <code>create_mesh</code> function.</p>
+</li>
+<li>
+<p>Hit "Reload" and check the output in the command line:
+<div class="highlight"><pre><span></span><code>Created ball with 42 vertices and 80 faces
+</code></pre></div></p>
+</li>
+</ul>
+<p>80 faces means 80 dimples with our 1-dimple-per-face-plan.
+We read the <a href="https://en.wikipedia.org/wiki/Golf_ball" target="&quot;_blank">"Golf ball" Wikipedia article</a> and discover:</p>
+<ul>
+<li>There is no limit to the number of dimples.</li>
+<li>Most golf balls have 300-500 dimples.</li>
+<li>The record is 1070 dimples.</li>
+</ul>
+<p>So we'd like to be in the 300-500 range,
+let's up <code>sudivisions=2</code> by editing one line:
+<div class="highlight"><pre><span></span><code>    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+Then press "Reload".
+<img alt="Golf Ball subdivisions=2" src="../images/golf_ball_step_02.png" />
+Great, that looks smoother,
+and it is just what we started with in Step 2.
+The command line output is:
+<div class="highlight"><pre><span></span><code>Created ball with 162 vertices and 320 faces
+</code></pre></div>
+320 faces!
+We are in the 300 - 500 range already.
+If you like, you can also try <code>subdivisions=3</code></p>
+<h3 id="radius">Radius</h3>
+<p>If you look at the golf ball, 
+you can see that it is intersecting the axes at +50 and -50,
+so its default radius must be about 50.</p>
+<p>Let's check that Wikipedia article for information about the size of a golf ball.
+It says a golf ball must have a diameter of not less than 42.67 mm.
+(We will use metric measurements - 
+but SCADview itself does not assign inches, millimeters, 
+or any other size to the units).</p>
+<p>Let modify that one line again and press "Reload":
+<div class="highlight"><pre><span></span><code>    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">42.67</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+You should now see a resized ball.
+<img alt="Golf Ball Resized" src="../images/golf_ball_step_03_sized.png" /></p>
+<p>But it looks like the same size!
+This is because SCADview reframes the model
+when it is reloaded.
+If you look at the axes,
+you can now see that the golf ball intersects at about 20,
+so its radius is about 40.</p>
+<h2 id="interlude-play-with-the-ui">Interlude: Play with the UI.</h2>
+<p>Let's see what you can do with the SCADview UI.
+We've already used a couple of buttons, 
+but now please go to the <a href="../user_interface/">user interface</a>
+and learn about all of the buttons.
+Once you are done exploring,
+return here to continue the tutorial.</p>
+<h2 id="step-4-add-dimples">Step 4: Add Dimples</h2>
+<p>Now we want to add dimples.
+We will add a dimple at the center of each face,
+sizing them somewhat smaller than the face.</p>
+<p>Let's start by adding one dimple. </p>
+<ul>
+<li>We don't know the right size yet, 
+so let's start with 1 mm diameter</li>
+<li>We create a <code>icosphere</code> of 1 mm diameter,
+and "subtract" (remove it) from the ball.</li>
+<li>We add a line to create a dimple,
+and return <code>ball.subtract(dimple)</code></li>
+<li>Notice that we <code>apply_translation</code> 
+to move the dimple to the edge of the ball,
+in this case to the top (the z direction is up).</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">42.67</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Created ball with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span><span class="si">}</span><span class="s2"> vertices and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span><span class="si">}</span><span class="s2"> faces&quot;</span>
+    <span class="p">)</span>
+    <span class="n">dimple</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">42.67</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">ball</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">dimple</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="red-screen">Red Screen</h3>
+<p>After pressing "Reload", something bad happens - 
+no ball, and the screen turns red.
+Something when wrong!</p>
+<p><img alt="Red Screen" src="../images/red.png" /></p>
+<p>The screen turning red indicates a problem with your code.
+Check the command line output. 
+In this case we see:</p>
+<div class="highlight"><pre><span></span><code>[MainProcess 44881] ERROR scadview.ui.wx.main_frame: 
+&#39;Trimesh&#39; object has no attribute &#39;subtract&#39;
+</code></pre></div>
+<p>Oh - right, my fault, 
+we used the incorrect name for "subtracting" a mesh from another.
+The correct name is <code>difference</code>, so let change the <code>return</code> line to:
+<div class="highlight"><pre><span></span><code>    <span class="k">return</span> <span class="n">ball</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">dimple</span><span class="p">)</span>
+</code></pre></div>
+and press "Reload".</p>
+<p>Great!  Now the ball is showing again, 
+the background is green (which is good).</p>
+<p><img alt="Golf Ball No Dimple" src="../images/golf_ball_step_03_sized.png" /></p>
+<p>But no dimple. 
+You can move the camera all around 
+but the dimple does not show anywhere.
+Something else is wrong.
+You probably saw it in the script,
+but let's suppose you don't know what is wrong.</p>
+<h2 id="step-5-debug">Step 5 Debug</h2>
+<p>We are going to try out SCADview's unique debugging tool:</p>
+<ul>
+<li>"Debug mode" enabling viewing multiple meshes at the same time, with transparency and colors.</li>
+</ul>
+<p>So let's try it out.</p>
+<h3 id="debug-mode-return-a-list-of-meshes">Debug Mode - Return a List of Meshes</h3>
+<p>To enable seeing multiple meshes, 
+for example, before we combine them,
+we return them in a list.</p>
+<p>So let's:</p>
+<ul>
+<li>Make the dimple bigger so that it is easier to see (say <code>radius=10</code>)</li>
+<li>Comment out our <code>return</code> line and instead have:
+<div class="highlight"><pre><span></span><code>    <span class="n">dimple</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mf">42.67</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="c1"># return ball.difference(dimple)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ball</span><span class="p">,</span> <span class="n">dimple</span><span class="p">]</span>
+</code></pre></div></li>
+<li>Press "Reload" and we see two balls - in glorious, semi-transparent colors.<ul>
+<li>By returning a list of meshes, SCADview goes into "debug mode".</li>
+<li>Debug mode makes each mesh semi-transparent, so you can see meshes inside of other meshes.</li>
+<li>It also colors the meshes, so you can distinguish them more easily.</li>
+</ul>
+</li>
+</ul>
+<p>Why didn't we see the smaller ball (the dimple) above?
+What happens is if we subtract ("difference") the smaller ball from the larger ball 
+and they don't intersect, 
+all that happens is that the dimple disappears,
+and the large ball remains unchanged.</p>
+<p><img alt="Golf Ball Debug" src="../images/golf_ball_step_05_debug.png" /></p>
+<ul>
+<li>Of course! - we moved the dimple the full diameter instead of the radius</li>
+<li>We need to halve the diameter - that is 11.335.
+<div class="highlight"><pre><span></span><code>    <span class="n">dimple</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mf">11.335</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+</code></pre></div></li>
+<li>Press "Reload".</li>
+<li>Now we can see that the large dimple is completely inside the golf ball! What!?!<ul>
+<li>Through the magic of debug mode, we can see through the golf ball and see the dimple inside.
+<img alt="Golf Ball Debug Again" src="../images/golf_ball_step_05_debug_b.png" /></li>
+</ul>
+</li>
+</ul>
+<p>Again, you probably saw how I messed up.
+I shouldn't have done the math in my head!
+I should have moved the dimple to the radius of the golf ball.</p>
+<p>All of these numbers are getting confusing.
+Let's clean up the script a bit by giving names to some of our values.
+This makes the script easier to read, 
+and easier to modify.
+We will add some "constants" before <code>create_mesh</code> :
+<div class="highlight"><pre><span></span><code><span class="o">...</span>
+<span class="n">GOLF_BALL_RADIUS</span> <span class="o">=</span> <span class="mf">42.67</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">DIMPLE_RADIUS</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">SUBDIVISIONS</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="o">...</span>
+</code></pre></div>
+Replacing the values in the script, we get:
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="n">GOLF_BALL_RADIUS</span> <span class="o">=</span> <span class="mf">42.67</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">DIMPLE_RADIUS</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">SUBDIVISIONS</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="n">SUBDIVISIONS</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">GOLF_BALL_RADIUS</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Created ball with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span><span class="si">}</span><span class="s2"> vertices and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span><span class="si">}</span><span class="s2"> faces&quot;</span>
+    <span class="p">)</span>
+    <span class="n">dimple</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span>
+        <span class="n">subdivisions</span><span class="o">=</span><span class="n">SUBDIVISIONS</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">DIMPLE_RADIUS</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">GOLF_BALL_RADIUS</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="c1"># return ball.difference(dimple)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ball</span><span class="p">,</span> <span class="n">dimple</span><span class="p">]</span>
+</code></pre></div>
+- Press "Reload" to make sure this works (it should).
+<img alt="Golf Ball Transparent OK" src="../images/golf_ball_step_05_debug_d.png" /></p>
+<h2 id="step-6-make-all-the-dimples">Step 6: Make all the dimples</h2>
+<p>Now it is time to make all of the dimples.</p>
+<ul>
+<li>Make a dimple for each face.</li>
+<li>Translate (move) it to the center of the face.</li>
+</ul>
+<p><code>Trimesh</code>es store vertices and faces as <a href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html" target="_blank">numpy ndarrays</a>.<br />
+<code>numpy</code> is a very fast package for preforming calculations on large arrays.
+We will take advantage of some of this,
+but it can get confusing if we go too deep.
+So we will just scratch the surface of what <code>numpy</code> can do.</p>
+<p>Our strategy:</p>
+<ul>
+<li>Iterate through each face
+<div class="highlight"><pre><span></span><code>    <span class="k">for</span> <span class="n">face</span> <span class="ow">in</span> <span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">:</span>
+</code></pre></div></li>
+<li>Get the vertices for each face.
+<div class="highlight"><pre><span></span><code>        <span class="n">verts</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">[</span><span class="n">face</span><span class="p">]</span>
+</code></pre></div></li>
+<li>Find the center of each face. We use the numpy <code>mean</code> function.
+<div class="highlight"><pre><span></span><code>        <span class="n">face_center</span> <span class="o">=</span> <span class="n">verts</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div></li>
+<li>Find the distance from the first vertex in the face to the center.
+We use the numpy <code>norm</code> function:
+<div class="highlight"><pre><span></span><code>        <span class="n">dist_to_center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">face_center</span><span class="p">)</span>
+</code></pre></div></li>
+<li>Make a dimple radius some fraction of this (say 1/6), and place at the center.
+<div class="highlight"><pre><span></span><code>        <span class="n">dimple_r</span> <span class="o">=</span> <span class="n">dist_to_center</span> <span class="o">/</span> <span class="mf">6.0</span>
+        <span class="n">dimple_mesh</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">dimple_r</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">face_center</span><span class="p">)</span>
+        <span class="n">dimple_mesh</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">(</span><span class="n">face_center</span><span class="p">)</span>
+</code></pre></div></li>
+<li>Put this all together, plus:<ul>
+<li>Replace <code>DIMPLE_RADIUS</code> with <code>DIMPLE_RADIUS_FRACTION</code></li>
+<li>Keep the dimples in a list
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="n">GOLF_BALL_RADIUS</span> <span class="o">=</span> <span class="mf">42.67</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">DIMPLE_RADIUS_FRACTION</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">6</span>
+<span class="n">SUBDIVISIONS</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="n">SUBDIVISIONS</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">GOLF_BALL_RADIUS</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Created ball with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span><span class="si">}</span><span class="s2"> vertices and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span><span class="si">}</span><span class="s2"> faces&quot;</span>
+    <span class="p">)</span>
+    <span class="n">dimples</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">face</span> <span class="ow">in</span> <span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">:</span>
+        <span class="n">verts</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">[</span><span class="n">face</span><span class="p">]</span>
+        <span class="n">face_center</span> <span class="o">=</span> <span class="n">verts</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">dist_to_center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">face_center</span><span class="p">)</span>
+        <span class="n">dimple_r</span> <span class="o">=</span> <span class="n">dist_to_center</span> <span class="o">*</span> <span class="n">DIMPLE_RADIUS_FRACTION</span>
+        <span class="n">dimple_mesh</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span>
+            <span class="n">subdivisions</span><span class="o">=</span><span class="n">SUBDIVISIONS</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">dimple_r</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">face_center</span>
+        <span class="p">)</span>
+        <span class="n">dimple_mesh</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">(</span><span class="n">face_center</span><span class="p">)</span>
+        <span class="n">dimples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ball</span><span class="p">]</span> <span class="o">+</span> <span class="n">dimples</span>
+</code></pre></div></li>
+</ul>
+</li>
+</ul>
+<p>This shows a transparent ball with a lot of small balls distributed around its surface.
+Not quite a golf ball, 
+but it shows where the dimples will be
+and their size.
+<img alt="Golf Ball Dimples" src="../images/golf_ball_step_06.png" />
+It looks good, but I want them bigger,
+so we set
+<div class="highlight"><pre><span></span><code><span class="n">DIMPLE_RADIUS_FRACTION</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">4</span>
+</code></pre></div></p>
+<h2 id="step-7-carve-out-the-dimples">Step 7: Carve out the dimples</h2>
+<p>Now all that remains is:</p>
+<ul>
+<li>Carve out each dimple (<code>difference</code>)</li>
+<li>Return a final mesh (not a list) so that "Export" is available.<ul>
+<li>You may have noticed that in "debug" mode, "Export" is unavailable.</li>
+</ul>
+</li>
+</ul>
+<p>Let's carve out each dimple.  </p>
+<ul>
+<li>We add a line to remove each dimple after we create it.</li>
+<li>And we just want to return the final ball, 
+not a list of meshes.
+<div class="highlight"><pre><span></span><code>        <span class="n">dimple_mesh</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">(</span><span class="n">face_center</span><span class="p">)</span>
+        <span class="n">ball</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span> <span class="c1"># &lt;- Added this line</span>
+        <span class="n">dimples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+    <span class="c1"># return [ball] + dimples # &lt;- Commented</span>
+    <span class="k">return</span> <span class="n">ball</span>
+</code></pre></div>
+We don't need to keep the <code>dimples</code> list 
+and add each dimple to it via <code>dimples.append(dimple_mesh)</code>, 
+but I have a premonition we may want it again later.</li>
+</ul>
+<p>Press "Reload".</p>
+<p>Hmm. 
+That took longer to load.
+You might have some questions.</p>
+<ol>
+<li>Q: Why did the screen turn a light purple during the load.<ul>
+<li>A: It always does that, to show that it is loading a script.
+It is not noticeable for a fast load.</li>
+</ul>
+</li>
+<li>Q: What is that bar above the "Load .py..." button and what was it doing during the load.<ul>
+<li>A: That is an "indeterminant progress bar" meant to show there is progress,
+but we don't know how much more to go. 
+It also always shows progress during any load, 
+but it is also not noticeable for a fast load.</li>
+</ul>
+</li>
+<li>Q: Why so slow?<ul>
+<li>A: The slowness is due to the complexity of boolean geometric operations. 
+Each dimple has 162 vertices, 320 faces and 480 edges, 
+as does the original ball.<br />
+That is a lot of intersections to calculate!</li>
+</ul>
+</li>
+<li>Q: Why is the ball gray? <ul>
+<li>A: Since we are not returning a list anymore, 
+we are no longer in debug mode, 
+which has been setting the colors.<ul>
+<li>If you want, you can set the color of a final mesh - see <a href="../api/#scadview.set_mesh_color">set_mesh_color</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>Q: Where are the dimples?</p>
+<ul>
+<li>A: If you look closely, there are 1 or 2.
+<img alt="Golf Ball One Dimple" src="../images/golf_ball_step_07.png" /></li>
+</ul>
+</li>
+<li>
+<p>Q: Where are the rest of them?</p>
+<ul>
+<li>A: Let's find out.</li>
+</ul>
+</li>
+</ol>
+<h2 id="step-8-debug-again">Step 8: Debug (Again)</h2>
+<p>To see what is going on, 
+let's return the ball and dimples as a list again.
+This is a little different than before,
+because the ball we are returning this time
+should have had dimples removed.</p>
+<div class="highlight"><pre><span></span><code>        <span class="n">dimples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ball</span><span class="p">]</span> <span class="o">+</span> <span class="n">dimples</span> <span class="c1"># &lt;- Uncommented</span>
+    <span class="c1"># return ball # &lt;- Commented </span>
+</code></pre></div>
+<ul>
+<li>Press "Reload".</li>
+</ul>
+<p>Whoa!
+That looks cool -
+like a small solar system in the ball.
+<img alt="Golf Ball Solar System" src="../images/golf_ball_step_08.png" /></p>
+<p>It is worth noting 
+that we could have also written:
+<div class="highlight"><pre><span></span><code>    <span class="k">return</span> <span class="p">[</span><span class="n">ball</span><span class="p">]</span>
+</code></pre></div>
+We'd see the voids inside the ball, 
+since <code>ball</code> is in a list,
+and we'd be in debug mode.</p>
+<p>Feel free to try these out to see the difference.</p>
+<h3 id="a-subtle-bug">A Subtle Bug</h3>
+<p>But why the "planets"?</p>
+<p>This bug is more subtle than our previous ones.
+The problem is:</p>
+<ul>
+<li>We are iterating through the faces of the ball.</li>
+<li>But we are also modifying the ball as we do this.</li>
+<li>So the faces are being actively changed as we interate through them - 
+and we are just getting weird results.</li>
+</ul>
+<h2 id="step-9-fix">Step 9: Fix</h2>
+<p>To fix this, 
+we will:</p>
+<ul>
+<li>Collect all of the dimples first without modifying <code>ball</code></li>
+<li>
+<p>Then remove each dimple.
+<div class="highlight"><pre><span></span><code><span class="err">`</span>        <span class="c1"># ball = ball.difference(dimple_mesh) # &lt;- Commented</span>
+        <span class="n">dimples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">dimple_mesh</span> <span class="ow">in</span> <span class="n">dimples</span><span class="p">:</span> <span class="c1"># &lt;- Added</span>
+        <span class="n">ball</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span> <span class="c1"># &lt;- Added </span>
+    <span class="c1"># return [ball] + dimples # &lt;- Commented</span>
+    <span class="k">return</span> <span class="n">ball</span> <span class="c1"># &lt;- Uncommented</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Press "Reload" and wait while it loads.</p>
+</li>
+</ul>
+<p>This looks good!
+<img alt="Golf Ball Good" src="../images/golf_ball_step_09.png" />
+Let's removed the commented code, 
+and so we have our final code:
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trimesh.creation</span><span class="w"> </span><span class="kn">import</span> <span class="n">icosphere</span>
+
+
+<span class="n">GOLF_BALL_RADIUS</span> <span class="o">=</span> <span class="mf">42.67</span> <span class="o">/</span> <span class="mi">2</span>
+<span class="n">DIMPLE_RADIUS_FRACTION</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">6</span>
+<span class="n">SUBDIVISIONS</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_mesh</span><span class="p">():</span>
+    <span class="n">ball</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span><span class="n">subdivisions</span><span class="o">=</span><span class="n">SUBDIVISIONS</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">GOLF_BALL_RADIUS</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Created ball with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">)</span><span class="si">}</span><span class="s2"> vertices and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">)</span><span class="si">}</span><span class="s2"> faces&quot;</span>
+    <span class="p">)</span>
+    <span class="n">dimples</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">face</span> <span class="ow">in</span> <span class="n">ball</span><span class="o">.</span><span class="n">faces</span><span class="p">:</span>
+        <span class="n">verts</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">vertices</span><span class="p">[</span><span class="n">face</span><span class="p">]</span>
+        <span class="n">face_center</span> <span class="o">=</span> <span class="n">verts</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">dist_to_center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">face_center</span><span class="p">)</span>
+        <span class="n">dimple_r</span> <span class="o">=</span> <span class="n">dist_to_center</span> <span class="o">*</span> <span class="n">DIMPLE_RADIUS_FRACTION</span>
+        <span class="n">dimple_mesh</span> <span class="o">=</span> <span class="n">icosphere</span><span class="p">(</span>
+            <span class="n">subdivisions</span><span class="o">=</span><span class="n">SUBDIVISIONS</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">dimple_r</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="n">face_center</span>
+        <span class="p">)</span>
+        <span class="n">dimple_mesh</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">(</span><span class="n">face_center</span><span class="p">)</span>
+        <span class="n">dimples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">dimple_mesh</span> <span class="ow">in</span> <span class="n">dimples</span><span class="p">:</span>
+        <span class="n">ball</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ball</span>
+</code></pre></div></p>
+<h2 id="step-10-export">Step 10: Export</h2>
+<p>All that is left is to export the mesh for printing!</p>
+<ul>
+<li>Press "Export..."</li>
+<li>Select "File Type" as "OBJ (.obj)" (or whatever you need)</li>
+<li>Select what folder you want to save to.</li>
+<li>Press "Save".<br />
+<img alt="Export" src="../images/export.png" /></li>
+</ul>
+<p>You should now be able to import into your 3D slicer,
+and create the necessary gcode file for printing.</p>
+<h2 id="additional-topics">Additional Topics</h2>
+<h3 id="creating-multiple-meshes-for-export">Creating Multiple Meshes for Export</h3>
+<p>The <code>create_mesh()</code> allows you to return multiple meshes in a list,
+but this is "debug" mode, 
+and so you cannot export them.</p>
+<p>To resolve this, <code>union</code> your meshes into a final mesh,
+even if they are disjoint. 
+For example, for 3 meshes:
+<div class="highlight"><pre><span></span><code>    <span class="k">return</span> <span class="n">mesh1</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">mesh2</span><span class="p">)</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">mesh3</span><span class="p">)</span>
+</code></pre></div></p>
+<h3 id="incremental-builds">Incremental Builds</h3>
+<p>If you have a complex build that takes many seconds, 
+minutes, hours or more,
+you don't want to wait that long while debugging.</p>
+<p>A couple of options are:</p>
+<ul>
+<li>Build a smaller, faster version.
+For example, with the golf ball,
+we could have use fewer subdivisions in the ball and dimples,
+and that would have revealed our bugs.
+Once fixed, we could revert to the lengthier build.</li>
+<li>Only build the problematic parts, hopefully quickly.
+Fix and iterate.
+Once the problems are fixed,
+add back in the rest of the build.</li>
+</ul>
+<p>But SCADview also has an "incremental" build option.
+In this option, instead of using the <code>return ...</code> statement,
+you use the <code>yield ...</code> statement as you build your mesh.
+This will send whatever you have built so far to SCADview,
+and it will display it.</p>
+<p>If you see a problem early on, 
+you can make a change and reload before the previous load or reload completes.</p>
+<p>Let's try this with the golf ball:</p>
+<ul>
+<li>Lets <code>yield ball</code> each time we remove a dimple.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>    <span class="k">for</span> <span class="n">dimple_mesh</span> <span class="ow">in</span> <span class="n">dimples</span><span class="p">:</span>
+        <span class="n">ball</span> <span class="o">=</span> <span class="n">ball</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">dimple_mesh</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">ball</span> <span class="c1"># &lt;- Added </span>
+    <span class="c1"># return ball # &lt;- Commented </span>
+</code></pre></div>
+<p>You will see the ball, 
+and then the dimples progressively appear.</p>
+<p>You can also yield lists for debug mode.</p>
+<h3 id="animation">Animation</h3>
+<p>An incremental build is an animation,
+and you can do other animations,
+like move objects around the scene,
+and then yield the new scene.</p>
+<p>To add a little shake to the incremental build golf ball when it is done:
+<div class="highlight"><pre><span></span><code>    <span class="kn">from</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="kn">import</span> <span class="n">sleep</span> <span class="c1"># &lt;- Add at top</span>
+<span class="o">...</span>
+<span class="c1"># After last for loop, add:</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+        <span class="n">ball</span><span class="o">.</span><span class="n">apply_translation</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)])</span>
+        <span class="k">yield</span> <span class="n">ball</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mf">0.03</span><span class="p">)</span>
+</code></pre></div></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.top", "search.suggestions", "search.highlight", "toc.integrated", "content.code.annotate", "content.code.copy", "content.code.foldable", "content.code.tabbed", "content.tabs.linked", "header.autohide", "footer.social", "palette.toggle", "palette.switcher", "announcement.bar"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
