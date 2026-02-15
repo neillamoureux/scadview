@@ -2,13 +2,13 @@
   {
     "version": "main",
     "title": "main",
-    "aliases": [
-      "latest"
-    ]
+    "aliases": []
   },
   {
     "version": "0.2.6",
     "title": "0.2.6",
-    "aliases": []
+    "aliases": [
+      "latest"
+    ]
   }
 ]
