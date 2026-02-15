@@ -51,6 +51,22 @@ type: check-venv ## Type check the code.
 preflight: format lint test type ## Format, lint, test, and type check the code.
 	@echo "Preflight checks complete."
 
-serve_docs: check-venv ## Generate and serve the documentation.
-	@echo "Generating server documentation..."
+serve_docs: check-venv ## Serve docs with live reload (mkdocs).
+	@echo "Serving docs with live reload..."
 	@"$(SCRIPTS_DIR)/serve_docs.sh"
+
+serve_docs_sync: check-venv ## Sync versioned docs state locally (mike). Optional: SERVE=1 (to start the server after syncing).
+	@echo "Syncing local versioned docs state..."
+	@if [ "$(SERVE)" = "1" ]; then \
+		"$(SCRIPTS_DIR)/sync_docs_versions.sh" --serve; \
+	else \
+		"$(SCRIPTS_DIR)/sync_docs_versions.sh"; \
+	fi
+
+docs_release_preview: check-venv ## Preview a release docs version locally. Requires DOCS_VERSION (e.g. 0.2.6)
+	@if [ -z "$(DOCS_VERSION)" ]; then \
+		echo "DOCS_VERSION is required. Example: make docs_release_preview DOCS_VERSION=0.2.6"; \
+		exit 1; \
+	fi
+	@echo "Previewing release docs version $(DOCS_VERSION)..."
+	@DOCS_VERSION="$(DOCS_VERSION)" "$(SCRIPTS_DIR)/sync_docs_versions.sh" --serve

@@ -119,8 +119,6 @@ make shell
 make run
 ```
 
-
-
 ### 5. Make Your Changes
 
 - Keep changes focused and scoped to the issue
@@ -128,6 +126,51 @@ make run
 - Follow existing code style and patterns
 - Add or update tests where appropriate
 - Update documentation if public behavior or APIs change
+
+#### Documentation Workflow (Versioned Docs)
+
+Use two commands depending on what you need:
+
+1. Live edit loop (recommended while writing docs):
+```
+make serve_docs
+```
+This uses `mkdocs serve` and hot-reloads on file changes.
+
+2. Sync versioned docs state (mike):
+```
+make serve_docs_sync
+```
+This updates local branch `gh-pages` docs versions and `latest` alias.
+
+Version selection behavior for `make serve_docs_sync`:
+
+- If `DOCS_VERSION` is set, that value is used.
+- Else if `HEAD` has a release tag like `v0.2.5`, it uses `0.2.5`.
+- Else it uses `dev`.
+
+Examples:
+```
+make serve_docs
+make serve_docs_sync
+DOCS_VERSION=0.2.6 make serve_docs_sync
+make serve_docs_sync SERVE=1
+make docs_release_preview DOCS_VERSION=0.2.6
+```
+
+After a release, the common local refresh flow is:
+
+```
+git checkout main
+git pull
+make serve_docs_sync
+make serve_docs
+```
+
+`make serve_docs_sync` only updates local docs state by default. CI handles published docs on release.
+
+
+
 
 ---
 
@@ -243,7 +286,7 @@ This ensures the project remains open and legally consistent for all contributor
 Consider better naming, 
 or extracting a method to make the intent of the code obvious.
 - Use type hints for all methods / functions (code in tests and examples are exceptions)
-- Use docstrings for public methods / functions in [src/scadview/api/](src/scadview/api/).
+- Use docstrings for public methods / functions in `src/scadview/api/`.
     - Use the style from [Google Python Style Guide: Functions and Methods](https://google.github.io/styleguide/pyguide.html#383-functions-and-methods)
 - Keep dependencies minimal and cross-platform.
 - Write clear, descriptive commit messages.

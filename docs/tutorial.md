@@ -463,7 +463,7 @@ You might have some questions.
     - A: Since we are not returning a list anymore, 
     we are no longer in debug mode, 
     which has been setting the colors.
-        - If you want, you can set the color of a final mesh - see [set_mesh_color](../api/#scadview.set_mesh_color)
+        - If you want, you can set the color of a final mesh - see [set_mesh_color](api.md#scadview.set_mesh_color)
 1. Q: Where are the dimples?
     - A: If you look closely, there are 1 or 2.
 ![Golf Ball One Dimple](images/golf_ball_step_07.png)
@@ -655,4 +655,3 @@ To add a little shake to the incremental build golf ball when it is done:
         yield ball
         sleep(0.03)
 ```
-
