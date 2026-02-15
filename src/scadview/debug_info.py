@@ -5,6 +5,7 @@ import logging
 import os
 import platform
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
@@ -23,45 +24,52 @@ ENV_DEBUG_INFO_REDACT_SENSITIVE = "SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE"
 
 
 def create_debug_info_service(
-    cli_args: list[str],
+    scadview_args: list[str],
     output_file: str | None = None,
     redact_sensitive: bool | None = None,
 ) -> DebugInfoService:
-    return DebugInfoService(
-        cli_args=cli_args,
-        output_file=output_file,
-        redact_sensitive=redact_sensitive,
+    output_env = os.environ.get(ENV_DEBUG_INFO_FILE)
+    output_path = (
+        Path(output_file)
+        if output_file
+        else (Path(output_env) if output_env else _default_output_path())
     )
+    effective_redact_sensitive = (
+        _env_bool(ENV_DEBUG_INFO_REDACT_SENSITIVE, True)
+        if redact_sensitive is None
+        else redact_sensitive
+    )
+    settings = DebugInfoSettings(
+        scadview_args=scadview_args,
+        output_path=output_path,
+        redact_sensitive=effective_redact_sensitive,
+        redact_paths=effective_redact_sensitive,
+    )
+    return DebugInfoService(settings)
+
+
+@dataclass(frozen=True)
+class DebugInfoSettings:
+    scadview_args: list[str]
+    output_path: Path
+    redact_sensitive: bool = True
+    redact_paths: bool = True
 
 
 class DebugInfoService:
-    def __init__(
-        self,
-        cli_args: list[str],
-        output_file: str | None = None,
-        redact_sensitive: bool | None = None,
-    ):
-        output_env = os.environ.get(ENV_DEBUG_INFO_FILE)
-        self._output_path = (
-            Path(output_file)
-            if output_file
-            else (Path(output_env) if output_env else _default_output_path())
-        )
-        effective_redact_sensitive = (
-            _env_bool(ENV_DEBUG_INFO_REDACT_SENSITIVE, True)
-            if redact_sensitive is None
-            else redact_sensitive
-        )
-        settings = _RedactionSettings(
-            redact_sensitive=effective_redact_sensitive,
-            redact_paths=effective_redact_sensitive,
+    def __init__(self, settings: DebugInfoSettings):
+        self._settings = settings
+        self._output_path = settings.output_path
+        redaction_settings = _RedactionSettings(
+            redact_sensitive=settings.redact_sensitive,
+            redact_paths=settings.redact_paths,
         )
         self._lock = Lock()
 
         _rotate_debug_info_files(self._output_path, DEFAULT_MAX_ARCHIVES)
         self._recorder = DebugInfoRecorder(self._output_path)
         self._recorder.update_section(
-            "python_runtime", _capture_python_runtime(settings)
+            "python_runtime", _capture_python_runtime(redaction_settings)
         )
         self._recorder.update_section("os_hardware", _capture_os_hardware())
         self._recorder.update_section(
@@ -69,10 +77,12 @@ class DebugInfoService:
         )
         self._recorder.update_section(
             "execution_context",
-            _capture_execution_context(cli_args, self._output_path, settings),
+            _capture_execution_context(
+                settings.scadview_args, self._output_path, redaction_settings
+            ),
         )
         self._recorder.update_section(
-            "user_configuration", _capture_user_configuration(settings)
+            "user_configuration", _capture_user_configuration(redaction_settings)
         )
         self._recorder.update_section(
             "gui_toolkit", _capture_gui_toolkit(include_screens=False)

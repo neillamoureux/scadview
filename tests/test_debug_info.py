@@ -1,26 +1,45 @@
 import json
 import logging
 import os
+from pathlib import Path
 
 from scadview.debug_info import (
     DEFAULT_DEBUG_DIR_NAME,
     DEFAULT_DEBUG_FILE_NAME,
     REDACTED,
     REDACTED_PATH,
+    DebugInfoService,
+    DebugInfoSettings,
     _capture_screens,
     create_debug_info_service,
 )
 
 
-def test_initialize_debug_info_capture_writes_expected_sections(
-    tmp_path, monkeypatch, caplog
-):
+def _make_service(
+    tmp_path,
+    *,
+    scadview_args: list[str] | None = None,
+    redact_sensitive: bool = False,
+    redact_paths: bool = False,
+) -> tuple[DebugInfoService, Path]:
     output_file = tmp_path / "debug_info.json"
-    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
-    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
-    caplog.set_level(logging.INFO)
+    settings = DebugInfoSettings(
+        scadview_args=scadview_args or [],
+        output_path=output_file,
+        redact_sensitive=redact_sensitive,
+        redact_paths=redact_paths,
+    )
+    return DebugInfoService(settings), output_file
 
-    service = create_debug_info_service(["-v", "--foo=bar"], redact_sensitive=False)
+
+def test_debug_info_service_writes_expected_sections(tmp_path, caplog):
+    caplog.set_level(logging.INFO)
+    service, output_file = _make_service(
+        tmp_path,
+        scadview_args=["-v", "--foo=bar"],
+        redact_sensitive=False,
+        redact_paths=False,
+    )
     path = service.output_path
 
     assert path == output_file
@@ -49,11 +68,8 @@ def test_initialize_debug_info_capture_writes_expected_sections(
     assert f"Debug info file: {output_file}" in caplog.text
 
 
-def test_capture_gpu_opengl_stack_adds_section(tmp_path, monkeypatch):
-    output_file = tmp_path / "debug_info.json"
-    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
-    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
-    service = create_debug_info_service([])
+def test_capture_gpu_opengl_stack_adds_section(tmp_path):
+    service, output_file = _make_service(tmp_path)
 
     class _FakeContext:
         version_code = 460
@@ -76,11 +92,8 @@ def test_capture_gpu_opengl_stack_adds_section(tmp_path, monkeypatch):
     assert payload["gpu_opengl_stack"]["opengl_vendor"] == "Fake Vendor"
 
 
-def test_capture_gpu_opengl_stack_uses_alternate_info_keys(tmp_path, monkeypatch):
-    output_file = tmp_path / "debug_info.json"
-    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
-    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
-    service = create_debug_info_service([])
+def test_capture_gpu_opengl_stack_uses_alternate_info_keys(tmp_path):
+    service, output_file = _make_service(tmp_path)
 
     class _FakeContext:
         version_code = 410
@@ -107,9 +120,7 @@ def test_capture_gpu_opengl_stack_uses_alternate_info_keys(tmp_path, monkeypatch
     assert gpu["glsl_version"] == "4.10"
 
 
-def test_initialize_debug_info_capture_defaults_to_dot_scadview_dir(
-    tmp_path, monkeypatch
-):
+def test_create_debug_info_service_defaults_to_dot_scadview_dir(tmp_path, monkeypatch):
     monkeypatch.delenv("SCADVIEW_DEBUG_INFO_FILE", raising=False)
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
     monkeypatch.chdir(tmp_path)
@@ -120,7 +131,7 @@ def test_initialize_debug_info_capture_defaults_to_dot_scadview_dir(
     assert path.exists()
 
 
-def test_initialize_debug_info_capture_rotates_previous_file(tmp_path, monkeypatch):
+def test_create_debug_info_service_rotates_previous_file(tmp_path, monkeypatch):
     monkeypatch.delenv("SCADVIEW_DEBUG_INFO_FILE", raising=False)
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
     monkeypatch.chdir(tmp_path)
@@ -137,7 +148,7 @@ def test_initialize_debug_info_capture_rotates_previous_file(tmp_path, monkeypat
     assert json.loads(archive_1.read_text(encoding="utf-8")) == {"old": True}
 
 
-def test_initialize_debug_info_capture_redacts_paths_by_default(tmp_path, monkeypatch):
+def test_create_debug_info_service_redacts_paths_by_default(tmp_path, monkeypatch):
     output_file = tmp_path / "debug_info.json"
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
     monkeypatch.delenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", raising=False)
@@ -155,9 +166,7 @@ def test_initialize_debug_info_capture_redacts_paths_by_default(tmp_path, monkey
     assert payload["user_configuration"]["virtual_env"] in (None, REDACTED_PATH)
 
 
-def test_initialize_debug_info_capture_uses_env_to_disable_redaction(
-    tmp_path, monkeypatch
-):
+def test_create_debug_info_service_uses_env_to_disable_redaction(tmp_path, monkeypatch):
     output_file = tmp_path / "debug_info.json"
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
     monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
