@@ -1,8 +1,8 @@
 import logging
 from multiprocessing.connection import Connection
 
-from scadview.debug_info import DebugInfoService
 from scadview.controller import Controller
+from scadview.debug_info import DebugInfoService
 from scadview.render.camera import CameraPerspective
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.render.renderer import RendererFactory

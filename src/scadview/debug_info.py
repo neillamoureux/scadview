@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,9 @@ class DebugInfoService:
 
         _rotate_debug_info_files(self._output_path, DEFAULT_MAX_ARCHIVES)
         self._recorder = DebugInfoRecorder(self._output_path)
-        self._recorder.update_section("python_runtime", _capture_python_runtime(settings))
+        self._recorder.update_section(
+            "python_runtime", _capture_python_runtime(settings)
+        )
         self._recorder.update_section("os_hardware", _capture_os_hardware())
         self._recorder.update_section(
             "critical_library_versions", _capture_critical_library_versions()
@@ -309,9 +311,11 @@ def _capture_screens(wx: Any) -> tuple[list[dict[str, Any]], str | None, bool]:
 
 def _to_jsonable(value: Any) -> Any:
     if isinstance(value, dict):
-        return {str(k): _to_jsonable(v) for k, v in value.items()}
+        obj = cast(dict[object, Any], value)
+        return {str(k): _to_jsonable(v) for k, v in obj.items()}
     if isinstance(value, (list, tuple)):
-        return [_to_jsonable(v) for v in value]
+        seq = cast(list[Any] | tuple[Any, ...], value)
+        return [_to_jsonable(v) for v in seq]
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
     return str(value)
@@ -320,14 +324,19 @@ def _to_jsonable(value: Any) -> Any:
 def _info_lookup(info: Any, *keys: str) -> Any:
     if not isinstance(info, dict):
         return None
+
+    info_dict = cast(dict[object, Any], info)
+    string_keyed: dict[str, Any] = {str(k): v for k, v in info_dict.items()}
+
     for key in keys:
-        if key in info:
-            return info[key]
-    upper_keys = {str(k).upper(): k for k in info.keys()}
+        if key in string_keyed:
+            return string_keyed[key]
+
+    upper_keys: dict[str, str] = {k.upper(): k for k in string_keyed.keys()}
     for key in keys:
         mapped = upper_keys.get(key.upper())
         if mapped is not None:
-            return info[mapped]
+            return string_keyed[mapped]
     return None
 
 

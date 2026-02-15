@@ -42,8 +42,10 @@ At a minimum, please provide
 
 -->
 
-** Paste .scadview/debug_info.json from your working directory here: **
-
+** Paste .scadview/debug_info.json from your working directory over `{}` below: **
+```json
+{}
+```
 
 ### Additional context
 <!-- 

@@ -10,9 +10,9 @@ from trimesh.creation import (
     box,  # pyright: ignore[reportUnknownVariableType] can't resolve
 )
 
+from scadview.debug_info import DebugInfoService
 from scadview.load_status import LoadStatus
 from scadview.observable import Observable
-from scadview.debug_info import DebugInfoService
 from scadview.render.camera import Camera, copy_camera_state
 from scadview.render.label_atlas import LabelAtlas
 from scadview.render.label_renderee import LabelSetRenderee
@@ -361,7 +361,9 @@ class Renderer:
 
 
 class RendererFactory:
-    def __init__(self, camera: Camera, debug_info_service: DebugInfoService | None = None):
+    def __init__(
+        self, camera: Camera, debug_info_service: DebugInfoService | None = None
+    ):
         self._camera = camera
         self._debug_info_service = debug_info_service
 
