@@ -25,7 +25,7 @@ ENV_DEBUG_INFO_REDACT_SENSITIVE = "SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE"
 def create_debug_info_service(
     cli_args: list[str],
     output_file: str | None = None,
-    redact_sensitive: bool = True,
+    redact_sensitive: bool | None = None,
 ) -> DebugInfoService:
     return DebugInfoService(
         cli_args=cli_args,
@@ -39,7 +39,7 @@ class DebugInfoService:
         self,
         cli_args: list[str],
         output_file: str | None = None,
-        redact_sensitive: bool = True,
+        redact_sensitive: bool | None = None,
     ):
         output_env = os.environ.get(ENV_DEBUG_INFO_FILE)
         self._output_path = (
@@ -47,10 +47,14 @@ class DebugInfoService:
             if output_file
             else (Path(output_env) if output_env else _default_output_path())
         )
-        redact_paths = _env_bool(ENV_DEBUG_INFO_REDACT_SENSITIVE, True)
+        effective_redact_sensitive = (
+            _env_bool(ENV_DEBUG_INFO_REDACT_SENSITIVE, True)
+            if redact_sensitive is None
+            else redact_sensitive
+        )
         settings = _RedactionSettings(
-            redact_sensitive=redact_sensitive,
-            redact_paths=redact_paths,
+            redact_sensitive=effective_redact_sensitive,
+            redact_paths=effective_redact_sensitive,
         )
         self._lock = Lock()
 

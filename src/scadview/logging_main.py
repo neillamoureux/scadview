@@ -5,9 +5,11 @@ import logging
 import logging.handlers
 import multiprocessing as mp
 import multiprocessing.queues as mp_queues
+import os
 
 LOG_QUEUE_SIZE = 1000
 DEFAULT_LOG_LEVEL = logging.WARNING
+ENV_DEBUG_INFO_REDACT_SENSITIVE = "SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE"
 
 log_queue: mp_queues.Queue[logging.LogRecord] = mp.Queue(maxsize=LOG_QUEUE_SIZE)
 
@@ -58,7 +60,7 @@ def parse_logging_level() -> argparse.Namespace:
         "--debug-info-redact-sensitive",
         dest="debug_info_redact_sensitive",
         action="store_true",
-        default=True,
+        default=None,
         help="Redact sensitive values in debug information output (default: enabled)",
     )
     parser.add_argument(
@@ -69,6 +71,10 @@ def parse_logging_level() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
+    if args.debug_info_redact_sensitive is None:
+        args.debug_info_redact_sensitive = _env_bool(
+            ENV_DEBUG_INFO_REDACT_SENSITIVE, True
+        )
 
     if args.log_level:
         level = getattr(logging, args.log_level)
@@ -86,3 +92,15 @@ def parse_logging_level() -> argparse.Namespace:
         handler.setLevel(level=level)
 
     return args
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default

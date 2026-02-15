@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from scadview.debug_info import (
     DEFAULT_DEBUG_DIR_NAME,
@@ -152,6 +153,23 @@ def test_initialize_debug_info_capture_redacts_paths_by_default(tmp_path, monkey
     assert payload["python_runtime"]["executable"] == REDACTED_PATH
     assert payload["user_configuration"]["pythonpath"] in (None, REDACTED_PATH)
     assert payload["user_configuration"]["virtual_env"] in (None, REDACTED_PATH)
+
+
+def test_initialize_debug_info_capture_uses_env_to_disable_redaction(
+    tmp_path, monkeypatch
+):
+    output_file = tmp_path / "debug_info.json"
+    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_FILE", str(output_file))
+    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
+
+    create_debug_info_service([])
+    with output_file.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    assert payload["execution_context"]["debug_info_file"] == str(output_file)
+    assert payload["execution_context"]["cwd"] == os.getcwd()
+    assert isinstance(payload["execution_context"]["pid"], int)
+    assert isinstance(payload["execution_context"]["ppid"], int)
 
 
 def test_capture_screens_returns_soft_error_when_no_wx_app():

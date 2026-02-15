@@ -100,3 +100,12 @@ def test_parse_logging_level_allows_disabling_redact_sensitive(
     _configure_root_with_handler(root_logger)
     args = parse_with_args(["--no-debug-info-redact-sensitive"])
     assert args.debug_info_redact_sensitive is False
+
+
+def test_parse_logging_level_uses_env_for_redact_sensitive_default(
+    root_logger, parse_with_args, monkeypatch
+):
+    _configure_root_with_handler(root_logger)
+    monkeypatch.setenv("SCADVIEW_DEBUG_INFO_REDACT_SENSITIVE", "false")
+    args = parse_with_args([])
+    assert args.debug_info_redact_sensitive is False
