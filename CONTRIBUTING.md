@@ -7,8 +7,7 @@ All contributions are made via pull requests (PRs) from a fork to ensure a clean
 
 ## Requirements:
 - Python
-- uv
-- make
+- mise
 
 
 ## TL;DR (Quick Start)
@@ -98,26 +97,45 @@ Examples:
 
 ### 4. Set Up the Development Environment
 
-This project uses `make` for commmon tasks. 
+This project uses `mise` tasks for cross-platform development (macOS/Linux/Windows).
 
-**Window Development**: Use Git Bash (included with Git for Windows) for these commands.
+Install tools and dependencies:
 
-- Most of the make commands require that you run `make shell` first.
-- To get a list of available commands:
+```bash
+mise install
+mise run bootstrap
 ```
-make help
-```
-- To get into the shell:
-```
-make shell
-```
-- This will create a virtual python environment if it does not already exist.
 
-- To run:
+CI-only environments that cannot install GUI deps should use:
 
+```bash
+mise run bootstrap-ci
 ```
-make run
+
+List available tasks:
+
+```bash
+mise tasks
 ```
+
+Common commands:
+
+```bash
+mise run format
+mise run lint
+mise run type
+mise run test
+mise run preflight
+mise run actionlint
+```
+
+Optional stricter type check:
+
+```bash
+mise run type-ty
+```
+
+`make` and shell scripts are still available for maintainers, but `mise run ...` is the default contributor path.
 
 ### 5. Make Your Changes
 
@@ -133,29 +151,30 @@ Use two commands depending on what you need:
 
 1. Live edit loop (recommended while writing docs):
 ```
-make serve_docs
+mise run serve-docs
 ```
 This uses `mkdocs serve` and hot-reloads on file changes.
 
 2. Sync versioned docs state (mike):
 ```
-make serve_docs_sync
+mise run serve-docs-sync
 ```
 This updates local branch `gh-pages` docs versions and `latest` alias.
 
-Version selection behavior for `make serve_docs_sync`:
+Version selection behavior for `mise run serve-docs-sync`:
 
-- If `DOCS_VERSION` is set, that value is used.
+- If `--docs-version` is provided, that value is used.
+- Else if `DOCS_VERSION` is set, that value is used.
 - Else if `HEAD` has a release tag like `v0.2.5`, it uses `0.2.5`.
 - Else it uses `dev`.
 
 Examples:
 ```
-make serve_docs
-make serve_docs_sync
-DOCS_VERSION=0.2.6 make serve_docs_sync
-make serve_docs_sync SERVE=1
-make docs_release_preview DOCS_VERSION=0.2.6
+mise run serve-docs
+mise run serve-docs-sync
+mise run serve-docs-sync -- --docs-version 0.2.6
+mise run serve-docs-sync -- --serve
+mise run docs-release-preview -- --docs-version 0.2.6
 ```
 
 After a release, the common local refresh flow is:
@@ -163,11 +182,11 @@ After a release, the common local refresh flow is:
 ```
 git checkout main
 git pull
-make serve_docs_sync
-make serve_docs
+mise run serve-docs-sync
+mise run serve-docs
 ```
 
-`make serve_docs_sync` only updates local docs state by default. CI handles published docs on release.
+`mise run serve-docs-sync` only updates local docs state by default. CI handles published docs on release.
 
 
 
@@ -224,6 +243,12 @@ Before submitting your PR, ensure your changes pass all local checks:
 
 If a `make preflight`, script, or equivalent workflow exists, it must pass before opening a PR.
 CI failures will block merging.
+
+Recommended local gate:
+
+```bash
+mise run preflight
+```
 
 ---
 

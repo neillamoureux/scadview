@@ -1,0 +1,81 @@
+[tools]
+python = "3.11"
+uv = "0.8.15"
+"aqua:rhysd/actionlint" = "1.7.7"
+
+[env]
+UV_PROJECT_ENVIRONMENT = ".venv"
+
+[tasks.bootstrap]
+description = "Install Python dependencies into .venv"
+run = "uv sync --frozen --dev"
+
+[tasks.bootstrap-ci]
+description = "Install CI dependencies without wxpython"
+run = "uv sync --frozen --no-install-package wxpython"
+
+[tasks.format]
+description = "Format source, tests, and examples"
+run = [
+  "uv run --no-sync ruff check --select I --fix src tests examples",
+  "uv run --no-sync ruff format src tests examples",
+]
+
+[tasks.lint]
+description = "Run lint checks"
+run = [
+  "uv run --no-sync ruff check src tests examples",
+  "uv run --no-sync ruff check --select I src tests examples",
+]
+
+[tasks.type]
+description = "Run pyright type checks"
+run = "uv run --no-sync pyright"
+
+[tasks.type-ci]
+description = "Run CI pyright type checks"
+run = "uv run --no-sync pyright --project pyright.ci.json"
+
+[tasks.type-ty]
+description = "Optional: run Astral ty type checks"
+run = "uvx ty check src"
+
+[tasks.test]
+description = "Run test suite"
+run = "uv run --no-sync pytest"
+
+[tasks.run]
+description = "Run the application (pass args after --, e.g. mise run run -- -vv)"
+run = "uv run --no-sync python -m scadview"
+
+[tasks.serve-docs]
+description = "Serve docs with live reload (mkdocs)"
+run = "uv run --no-sync python scripts/docs_tasks.py serve"
+
+[tasks.serve-docs-sync]
+description = "Sync local versioned docs state (use -- --serve to start server)"
+run = "uv run --no-sync python scripts/docs_tasks.py sync"
+
+[tasks.docs-release-preview]
+description = "Preview release docs locally (pass --docs-version or set DOCS_VERSION)"
+run = "uv run --no-sync python scripts/docs_tasks.py preview"
+
+[tasks.shell-macos]
+description = "Start your macOS login shell in the project virtual environment"
+run = "uv run --no-sync ${SHELL:-/bin/sh} -l"
+
+[tasks.shell-linux]
+description = "Start your Linux login shell in the project virtual environment"
+run = "uv run --no-sync ${SHELL:-/bin/sh} -l"
+
+[tasks.shell-win]
+description = "Start a Windows PowerShell session in the project virtual environment"
+run = "uv run --no-sync powershell -NoExit"
+
+[tasks.actionlint]
+description = "Lint GitHub workflows"
+run = "actionlint -color"
+
+[tasks.preflight]
+description = "Run lint, types, and tests"
+depends = ["lint", "type", "test"]
