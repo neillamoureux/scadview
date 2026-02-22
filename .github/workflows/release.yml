@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without v prefix (e.g. 0.2.7). Optional for manual runs."
+        required: false
+        type: string
+      publish:
+        description: "Publish package to PyPI"
+        required: false
+        default: true
+        type: boolean
+      deploy_docs:
+        description: "Deploy docs to gh-pages with mike"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: "release-${{ github.event.release.tag_name || github.ref_name }}"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'release' || inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Guard manual publish context
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "Manual publish is only allowed from the main branch."
+            exit 1
+          fi
+          if [ -z "${{ inputs.version }}" ]; then
+            echo "Manual publish requires inputs.version (e.g. 0.2.7)."
+            exit 1
+          fi
+
+      - name: Resolve release version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package version matches release version
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          PYPROJECT_VERSION="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          if [ "$PYPROJECT_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "Version mismatch: pyproject.toml=$PYPROJECT_VERSION release=$RELEASE_VERSION"
+            exit 1
+          fi
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish package
+        run: uv publish --trusted-publishing=always
+
+  docs:
+    if: (github.event_name == 'release' || (inputs.deploy_docs && inputs.version != '')) && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    needs: publish
+    uses: ./.github/workflows/docs.yml
+    with:
+      version: ${{ inputs.version || github.event.release.tag_name }}
