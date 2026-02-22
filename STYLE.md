@@ -11,10 +11,6 @@ Please follow these guidelines when submitting code.
 
 # 1. Project Specific Overrides (HIGHEST PRIORITY)
 
-## Code separation:
-* **UI code should be kept separated from other code**
-* **Dependencei
-
 ## Naming Conventions (Strict)
 * **Initialisms & Acronyms:** Treat them as full words (CamelCase or snake_case).
     * *Good:* `HtmlRequest`, `html_request`, `NatoCountry`, `nato_country`
@@ -25,6 +21,8 @@ Please follow these guidelines when submitting code.
 * **Line Length:** **88 characters** (Overrides Google's 80).
 * **Linter:** Optimize code to pass `ruff`.
 * **No Formatting Exceptions:** Do not use `# fmt: off` unless absolutely critical.
+* **Final Empty Line:** Files should end with an empty blank line.
+
 
 ## Imports
 * **Allowed:** Importing individual classes or functions is **PERMITTED** (Overrides Google's "packages only" rule).
@@ -35,6 +33,8 @@ Please follow these guidelines when submitting code.
 * **Avoid:** Do not write comments for obvious code.
 * **Refactor First:** If a block needs a comment to explain *what* it does, rename variables/functions or extract the code into a well-named function instead.
 * **Extraction:** If you feel the need to comment a section, extract it.
+* **License:** License boilerplate is not required in every file.
+
 
 ## Function Length (Strict)
 * **Goal:** Short functions.
@@ -79,6 +79,7 @@ def _fn_h():
 ## Type Hints
 * **Mandatory:** Use type hints for all function signatures except in `examples/` and `tests/`
 
+
 ---
 
 # 2. Google Python Style Guide (Applied where not overridden)
@@ -113,7 +114,7 @@ def _fn_h():
 * **Asserts:** Do not use `assert` for control flow or validation; use it only for tests or internal invariants.
 
 ## Docstrings (API Documentation)
-* **Requirement:** Mandatory for all public modules, classes, and functions under src/scadview/api
+* **Requirement:** Mandatory for all public modules, classes, and functions under `src/scadview/api/`
 * **Format:** Three double quotes `"""`.
 * **Structure:**
     ```python

@@ -122,8 +122,7 @@ make run
 ### 5. Make Your Changes
 
 - Keep changes focused and scoped to the issue
-- **Follow coding standards**, as noted below.
-- Follow existing code style and patterns
+- **Follow coding standards**, as documented `STYLE.md`
 - Add or update tests where appropriate
 - Update documentation if public behavior or APIs change
 
@@ -168,9 +167,6 @@ make serve_docs
 ```
 
 `make serve_docs_sync` only updates local docs state by default. CI handles published docs on release.
-
-
-
 
 ---
 
@@ -267,32 +263,6 @@ you agree that:
   under the project’s license.
 
 This ensures the project remains open and legally consistent for all contributors.
-
----
-
-## Code Style and Standards
-
-- Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) except:
-    - Use `ruff` instead of pylint for linting.
-    - You may import classes, types, etc.
-    - Line length limited per `ruff`
-    - Sort imports per `ruff`
-    - Formatting per `ruff`
-    - License boilerplate is not required in every file.
-    - Files should end with an empty blank line.
-- Follow existing code patterns and structure where possible.
-- Prefer keeping functions and methods short.
-- Comment where necessary, but keep to a minimum.  
-Consider better naming, 
-or extracting a method to make the intent of the code obvious.
-- Use type hints for all methods / functions (code in tests and examples are exceptions)
-- Use docstrings for public methods / functions in `src/scadview/api/`.
-    - Use the style from [Google Python Style Guide: Functions and Methods](https://google.github.io/styleguide/pyguide.html#383-functions-and-methods)
-- Keep dependencies minimal and cross-platform.
-- Write clear, descriptive commit messages.
-- Where possible, add or update tests for new functionality.
-- For scripts, write for `bash` where possible and follow the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)
-
 
 ---
 
