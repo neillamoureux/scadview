@@ -1,13 +1,17 @@
 name: Deploy Docs
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      version:
+        description: "Docs version to publish (e.g. 0.2.5)"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       version:
         description: "Docs version to publish (e.g. 0.2.5)"
-        required: false
+        required: true
         type: string
 
 permissions:
@@ -45,11 +49,8 @@ jobs:
       - name: Resolve docs version
         id: version
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF_NAME#v}"
-          fi
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Configure git identity
