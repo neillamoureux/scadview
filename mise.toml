@@ -6,69 +6,93 @@ uv = "0.8.15"
 [env]
 UV_PROJECT_ENVIRONMENT = ".venv"
 
+[tasks.bootstrap_invoke]
+description = "Install invoke task runner from lockfile"
+run = [
+  "uv sync --frozen --only-group taskrunner --no-install-project",
+  "uv run --no-sync inv write_stamp --task-name bootstrap_invoke",
+]
+sources = ["pyproject.toml", "uv.lock", "tasks.py"]
+outputs = [".cache/mise_stamps/bootstrap_invoke.stamp"]
+
 [tasks.bootstrap]
 description = "Install Python dependencies into .venv"
-run = "uv sync --frozen --dev"
+depends = ["bootstrap_invoke"]
+sources = ["pyproject.toml", "uv.lock", "tasks.py"]
+run = [
+  "uv run --no-sync inv bootstrap",
+  "uv run --no-sync inv write_stamp --task-name bootstrap",
+]
+outputs = [".cache/mise_stamps/bootstrap.stamp"]
 
-[tasks.bootstrap-ci]
+[tasks.bootstrap_ci]
 description = "Install CI dependencies without wxpython"
-run = "uv sync --frozen --no-install-package wxpython"
+depends = ["bootstrap_invoke"]
+run = [
+  "uv run --no-sync inv bootstrap --ci",
+  "uv run --no-sync inv write_stamp --task-name bootstrap_ci",
+]
+sources = ["pyproject.toml", "uv.lock", "tasks.py"]
+outputs = [".cache/mise_stamps/bootstrap_ci.stamp"]
 
 [tasks.format]
 description = "Format source, tests, and examples"
-run = [
-  "uv run --no-sync ruff check --select I --fix src tests examples",
-  "uv run --no-sync ruff format src tests examples",
-]
+depends = ["bootstrap"]
+run = "uv run --no-sync inv format"
 
 [tasks.lint]
 description = "Run lint checks"
-run = [
-  "uv run --no-sync ruff check src tests examples",
-  "uv run --no-sync ruff check --select I src tests examples",
-]
+depends = ["bootstrap"]
+run = "uv run --no-sync inv lint"
 
 [tasks.type]
 description = "Run pyright type checks"
-run = "uv run --no-sync pyright"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv type"
 
-[tasks.type-ci]
+[tasks.type_ci]
 description = "Run CI pyright type checks"
-run = "uv run --no-sync pyright --project pyright.ci.json"
+depends = ["bootstrap_ci"]
+run = "uv run --no-sync inv type --ci"
 
-[tasks.type-ty]
+[tasks.type_ty]
 description = "Optional: run Astral ty type checks"
 run = "uvx ty check src"
 
 [tasks.test]
 description = "Run test suite"
-run = "uv run --no-sync pytest"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv test"
 
 [tasks.run]
-description = "Run the application (pass args after --, e.g. mise run run -- -vv)"
-run = "uv run --no-sync python -m scadview"
+description = "Run the application (pass args after --, e.g. mise run run -- --args='-vv')"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv run"
 
-[tasks.serve-docs]
+[tasks.serve_docs]
 description = "Serve docs with live reload (mkdocs)"
-run = "uv run --no-sync python scripts/docs_tasks.py serve"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv serve_docs"
 
-[tasks.serve-docs-sync]
-description = "Sync local versioned docs state (use -- --serve to start server)"
-run = "uv run --no-sync python scripts/docs_tasks.py sync"
+[tasks.serve_docs_sync]
+description = "Sync local versioned docs state (use -- --serve)"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv serve_docs_sync"
 
-[tasks.docs-release-preview]
-description = "Preview release docs locally (pass --docs-version or set DOCS_VERSION)"
-run = "uv run --no-sync python scripts/docs_tasks.py preview"
+[tasks.docs_release_preview]
+description = "Preview release docs locally (pass -- --docs-version=0.2.6)"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv docs_release_preview"
 
-[tasks.shell-macos]
+[tasks.shell_macos]
 description = "Start your macOS login shell in the project virtual environment"
 run = "uv run --no-sync ${SHELL:-/bin/sh} -l"
 
-[tasks.shell-linux]
+[tasks.shell_linux]
 description = "Start your Linux login shell in the project virtual environment"
 run = "uv run --no-sync ${SHELL:-/bin/sh} -l"
 
-[tasks.shell-win]
+[tasks.shell_win]
 description = "Start a Windows PowerShell session in the project virtual environment"
 run = "uv run --no-sync powershell -NoExit"
 
