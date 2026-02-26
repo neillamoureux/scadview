@@ -84,18 +84,6 @@ description = "Preview release docs locally (pass -- --docs-version=0.2.6)"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv docs_release_preview"
 
-[tasks.shell_macos]
-description = "Start your macOS login shell in the project virtual environment"
-run = "uv run --no-sync ${SHELL:-/bin/sh} -l"
-
-[tasks.shell_linux]
-description = "Start your Linux login shell in the project virtual environment"
-run = "uv run --no-sync ${SHELL:-/bin/sh} -l"
-
-[tasks.shell_win]
-description = "Start a Windows PowerShell session in the project virtual environment"
-run = "uv run --no-sync powershell -NoExit"
-
 [tasks.actionlint]
 description = "Lint GitHub workflows"
 run = "actionlint -color"
