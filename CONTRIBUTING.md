@@ -143,6 +143,7 @@ mise tasks
 Common commands:
 
 ```bash
+mise run scadview
 mise run format
 mise run lint
 mise run type

@@ -64,8 +64,8 @@ description = "Run test suite"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv test"
 
-[tasks.run]
-description = "Run the application (pass args after --, e.g. mise run run -- --args='-vv')"
+[tasks.scadview]
+description = "Run the SCADview application (pass args after --, e.g. mise run scadview -- --args='-vv')"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv run"
 
