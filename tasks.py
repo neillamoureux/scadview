@@ -150,14 +150,14 @@ def run(context: Context, args: str = "") -> None:
     _run_checked(context, f"python -m scadview{extra}")
 
 
-@task(name="serve_docs")  # type: ignore[reportUntypedFunctionDecorator]
-def serve_docs(context: Context) -> None:
+@task(name="docs_live_serve")  # type: ignore[reportUntypedFunctionDecorator]
+def docs_live_serve(context: Context) -> None:
     """Serve docs with live reload (mkdocs)."""
     _run_checked(context, "python -m mkdocs serve")
 
 
-@task(name="serve_docs_sync")  # type: ignore[reportUntypedFunctionDecorator]
-def serve_docs_sync(
+@task(name="docs_sync")  # type: ignore[reportUntypedFunctionDecorator]
+def docs_sync(
     context: Context,
     serve: bool = False,
     docs_version: str = "",
@@ -167,16 +167,18 @@ def serve_docs_sync(
     print(f"Deploying docs version {version} with alias latest (local gh-pages)...")
     _run_checked(
         context,
-        f"python -m mike deploy --update-aliases {shlex.quote(version)} latest",
+        f"mike deploy --update-aliases {shlex.quote(version)} latest",
     )
-    _run_checked(context, "python -m mike set-default latest")
+    _run_checked(context, "mike set-default latest")
     if serve:
-        print("Serving versioned docs from local gh-pages branch...")
-        _run_checked(context, "python -m mike serve")
+        print(
+            "Serving versioned docs on http://localhost:8000 from local gh-pages branch..."
+        )
+        _run_checked(context, "mike serve")
 
 
-@task(name="docs_release_preview")  # type: ignore[reportUntypedFunctionDecorator]
-def docs_release_preview(context: Context, docs_version: str = "") -> None:
+@task(name="docs_preview_serve")  # type: ignore[reportUntypedFunctionDecorator]
+def docs_preview_serve(context: Context, docs_version: str = "") -> None:
     """Preview release docs locally."""
     version = docs_version.strip() or os.environ.get("DOCS_VERSION", "").strip()
     if not version:
@@ -185,7 +187,7 @@ def docs_release_preview(context: Context, docs_version: str = "") -> None:
             + "mise run docs-release-preview -- --docs-version 0.2.6",
             code=2,
         )
-    serve_docs_sync(context, serve=True, docs_version=version)
+    docs_sync(context, serve=True, docs_version=version)
 
 
 @task

@@ -8,6 +8,7 @@ UV_PROJECT_ENVIRONMENT = ".venv"
 
 [tasks.bootstrap_invoke]
 description = "Install invoke task runner from lockfile"
+hide = true
 run = [
   "uv sync --frozen --only-group taskrunner --no-install-project",
   "uv run --no-sync inv write_stamp --task-name bootstrap_invoke",
@@ -26,6 +27,7 @@ run = [
 outputs = [".cache/mise_stamps/bootstrap.stamp"]
 
 [tasks.bootstrap_ci]
+hide = true
 description = "Install CI dependencies without wxpython"
 depends = ["bootstrap_invoke"]
 run = [
@@ -69,20 +71,20 @@ description = "Run the SCADview application (pass args after --, e.g. mise run s
 depends = ["bootstrap"]
 run = "uv run --no-sync inv run"
 
-[tasks.serve_docs]
+[tasks.docs_live_serve]
 description = "Serve docs with live reload (mkdocs)"
 depends = ["bootstrap"]
-run = "uv run --no-sync inv serve_docs"
+run = "uv run --no-sync inv docs_live_serve"
 
-[tasks.serve_docs_sync]
+[tasks.docs_sync]
 description = "Sync local versioned docs state (use -- --serve)"
 depends = ["bootstrap"]
-run = "uv run --no-sync inv serve_docs_sync"
+run = "uv run --no-sync inv docs_sync"
 
-[tasks.docs_release_preview]
+[tasks.docs_preview_serve]
 description = "Preview release docs locally (pass -- --docs-version=0.2.6)"
 depends = ["bootstrap"]
-run = "uv run --no-sync inv docs_release_preview"
+run = "uv run --no-sync inv docs_preview_serve"
 
 [tasks.actionlint]
 description = "Lint GitHub workflows"

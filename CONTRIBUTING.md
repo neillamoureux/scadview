@@ -152,7 +152,7 @@ mise run preflight
 mise run actionlint
 ```
 
-Optional stricter type check:
+Optional faster type check (does not need to pass):
 
 ```bash
 mise run type_ty
