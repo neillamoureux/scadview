@@ -98,8 +98,30 @@ Examples:
 ### 4. Set Up the Development Environment
 
 This project uses `mise` tasks for cross-platform development (macOS/Linux/Windows).
+Install mise using these [instructions](https://mise.jdx.dev/installing-mise.html) to get started.
 
-Install tools and dependencies:
+#### Activate mise in your shell (recommended)
+
+To make `mise` manage tools automatically in your current shell, run
+
+```bash
+mise activate <your shell type>
+```
+Then add the printed eval line to your shell profile (~/.zshrc, ~/.bashrc, etc.) and restart your shell.
+
+Common examples:
+
+zsh: eval "$(mise activate zsh)"
+bash: eval "$(mise activate bash)"
+fish: mise activate fish | source
+PowerShell: mise activate pwsh | Out-String | Invoke-Expression
+If you don’t want persistent activation, you can still run tasks directly with:
+
+```
+mise run <task>
+```
+
+Then install tools and dependencies:
 
 ```bash
 mise install
@@ -109,7 +131,7 @@ mise run bootstrap
 CI-only environments that cannot install GUI deps should use:
 
 ```bash
-mise run bootstrap-ci
+mise run bootstrap_ci
 ```
 
 List available tasks:
@@ -132,10 +154,8 @@ mise run actionlint
 Optional stricter type check:
 
 ```bash
-mise run type-ty
+mise run type_ty
 ```
-
-`make` and shell scripts are still available for maintainers, but `mise run ...` is the default contributor path.
 
 ### 5. Make Your Changes
 
@@ -241,7 +261,7 @@ Before submitting your PR, ensure your changes pass all local checks:
 - Type checks (if applicable)
 - Tests
 
-If a `make preflight`, script, or equivalent workflow exists, it must pass before opening a PR.
+If a `mise preflight`, script, or equivalent workflow exists, it must pass before opening a PR.
 CI failures will block merging.
 
 Recommended local gate:
