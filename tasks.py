@@ -5,7 +5,9 @@ import re
 import shlex
 from pathlib import Path
 
-from invoke import Context, Exit, task
+from invoke.context import Context
+from invoke.exceptions import Exit
+from invoke.tasks import task  # type: ignore[reportUnknownVariableType]
 
 REPO_ROOT: Path = Path(__file__).resolve().parent
 DEFAULT_TARGETS: tuple[str, ...] = ("src", "tests", "examples")
@@ -26,7 +28,7 @@ def _run_checked(
     env: dict[str, str] | None = None,
 ) -> None:
     result = context.run(command, warn=True, pty=pty, env=env)
-    if result.failed:
+    if result and result.failed:
         raise Exit(code=result.exited)
 
 
@@ -36,9 +38,11 @@ def _join_args(raw: str) -> str:
 
 def _run_capture(context: Context, command: str) -> str:
     result = context.run(command, warn=True, hide=True, pty=False)
-    if result.failed:
-        raise Exit(code=result.exited)
-    return result.stdout
+    if result:
+        if result.failed:
+            raise Exit(code=result.exited)
+        return result.stdout
+    return ""
 
 
 def _resolve_docs_version(context: Context, override: str = "") -> str:
@@ -55,7 +59,7 @@ def _resolve_docs_version(context: Context, override: str = "") -> str:
     return "dev"
 
 
-@task(name="write_stamp")
+@task(name="write_stamp")  # type: ignore[reportUntypedFunctionDecorator]
 def write_stamp(_context: Context, task_name: str) -> None:
     """Write a mise freshness stamp file for a task name."""
     MISE_STAMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -79,7 +83,7 @@ def bootstrap(context: Context, ci: bool = False, frozen: bool = True) -> None:
     _run_checked(context, " ".join(cmd_parts))
 
 
-@task(name="format")
+@task(name="format")  # type: ignore[reportUntypedFunctionDecorator]
 def format_(context: Context, args: str = "") -> None:
     """Format source, tests, and examples."""
     targets: list[str] = _existing_targets()
@@ -110,7 +114,7 @@ def lint(context: Context, args: str = "") -> None:
     _run_checked(context, f"ruff check --select I{extra} {target_str}")
 
 
-@task(name="type")
+@task(name="type")  # type: ignore[reportUntypedFunctionDecorator]
 def type_(context: Context, args: str = "", ci: bool = False) -> None:
     """Run pyright type checks."""
     extra: str = _join_args(args)
@@ -146,13 +150,13 @@ def run(context: Context, args: str = "") -> None:
     _run_checked(context, f"python -m scadview{extra}")
 
 
-@task(name="serve_docs")
+@task(name="serve_docs")  # type: ignore[reportUntypedFunctionDecorator]
 def serve_docs(context: Context) -> None:
     """Serve docs with live reload (mkdocs)."""
     _run_checked(context, "python -m mkdocs serve")
 
 
-@task(name="serve_docs_sync")
+@task(name="serve_docs_sync")  # type: ignore[reportUntypedFunctionDecorator]
 def serve_docs_sync(
     context: Context,
     serve: bool = False,
@@ -171,7 +175,7 @@ def serve_docs_sync(
         _run_checked(context, "python -m mike serve")
 
 
-@task(name="docs_release_preview")
+@task(name="docs_release_preview")  # type: ignore[reportUntypedFunctionDecorator]
 def docs_release_preview(context: Context, docs_version: str = "") -> None:
     """Preview release docs locally."""
     version = docs_version.strip() or os.environ.get("DOCS_VERSION", "").strip()

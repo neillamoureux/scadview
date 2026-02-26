@@ -66,7 +66,7 @@ dev = [
 scadview = { workspace = true }
 
 [tool.pyright]
-include = ["src/scadview", "scripts/f"]
+include = ["src/scadview", "tasks.py"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"
