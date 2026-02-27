@@ -10,7 +10,7 @@ UV_PROJECT_ENVIRONMENT = ".venv"
 description = "Install invoke task runner from lockfile"
 hide = true
 run = [
-  "uv sync --frozen --only-group taskrunner --no-install-project",
+  "uv sync --frozen --inexact --only-group taskrunner --no-install-project",
   "uv run --no-sync inv write_stamp --task-name bootstrap_invoke",
 ]
 sources = ["pyproject.toml", "uv.lock", "tasks.py"]
