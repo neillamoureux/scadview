@@ -12,6 +12,7 @@ dependencies = [
     "numpy==2.*",
     "pillow>=11.2.1",
     'pyobjc-framework-Cocoa; platform_system == "Darwin"',
+    "pyright>=1.1.408",
     "pyrr>=0.10.3",
     "scipy>=1.16.1",
     "shapely>=2.1.1",
