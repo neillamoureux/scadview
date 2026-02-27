@@ -6,28 +6,27 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11']
 
     steps:
 
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Make scripts executable
-        run: chmod +x ./scripts/*.sh; ls -l ./scripts
-      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
         
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}-${{ matrix.python-version }}
-
       - name: Install uv 
         uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
       
       - name: Install dependencies without wxpython
         run: |
@@ -35,13 +34,19 @@ jobs:
 
 
       - name: Run formatter check
-        run: uv run --no-sync ./scripts/format.sh
+        run: |
+          uv run --no-sync ruff check --select I src tests examples
+          uv run --no-sync ruff format --check src tests examples
 
       - name: Run linter
-        run: uv run --no-sync ./scripts/lint.sh
+        run: |
+          uv run --no-sync ruff check src tests examples
+          uv run --no-sync ruff check --select I src tests examples
 
       - name: Run type checker
-        run: uv run --no-sync ./scripts/type.sh --project pyright.ci.json
+        run: uv run --no-sync pyright --project pyright.ci.json
 
       - name: Run tests
-        run: uv run --no-sync ./scripts/test.sh 
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: uv run --no-sync pytest -p no:pytestqt -p pytest_cov

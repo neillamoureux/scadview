@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import multiprocessing.queues as mp_queues
 from multiprocessing import Pipe, Process
-from multiprocessing.connection import Connection
+from typing import Any, Protocol
 
 from scadview.logging_main import log_queue
 from scadview.logging_worker import configure_worker_logging
@@ -17,7 +17,17 @@ SPLASH_MIN_DISPLAY_TIME_MS = 1000
 CHECK_INTERVAL_MS = 100
 
 
-def start_splash_process() -> Connection:
+class SplashConnection(Protocol):
+    """Connection interface used by splash process coordination."""
+
+    def send(self, obj: Any) -> None: ...
+
+    def poll(self, timeout: float = 0.0) -> bool: ...
+
+    def recv(self) -> Any: ...
+
+
+def start_splash_process() -> SplashConnection:
     """Helper to start splash and return parent_conn."""
     parent_conn, child_conn = Pipe()
     p = Process(target=_splash_worker, args=(child_conn, log_queue))
@@ -25,7 +35,7 @@ def start_splash_process() -> Connection:
     return parent_conn
 
 
-def stop_splash_process(conn: Connection) -> None:
+def stop_splash_process(conn: SplashConnection) -> None:
     """Helper to stop splash process."""
     try:
         conn.send("CLOSE")
@@ -34,7 +44,9 @@ def stop_splash_process(conn: Connection) -> None:
         pass
 
 
-def _splash_worker(conn: Connection, log_q: mp_queues.Queue[logging.LogRecord]) -> None:
+def _splash_worker(
+    conn: SplashConnection, log_q: mp_queues.Queue[logging.LogRecord]
+) -> None:
     """Runs in a separate process: show Tk splash until told to close."""
     configure_worker_logging(log_q, logger.getEffectiveLevel())
     logger.debug("worker starting")

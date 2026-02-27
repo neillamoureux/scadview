@@ -1,0 +1,101 @@
+[tools]
+python = "3.11"
+uv = "0.8.15"
+"aqua:rhysd/actionlint" = "1.7.7"
+
+[env]
+UV_PROJECT_ENVIRONMENT = ".venv"
+
+[tasks.bootstrap_invoke]
+description = "Install invoke task runner from lockfile"
+hide = true
+run = [
+  "uv sync --frozen --inexact --only-group taskrunner --no-install-project",
+  "uv run --no-sync inv write_stamp --task-name bootstrap_invoke",
+]
+sources = ["pyproject.toml", "uv.lock", "tasks.py"]
+outputs = [".cache/mise_stamps/bootstrap_invoke.stamp"]
+
+[tasks.bootstrap]
+description = "Install Python dependencies into .venv"
+depends = ["bootstrap_invoke"]
+sources = ["pyproject.toml", "uv.lock", "tasks.py"]
+run = [
+  "uv run --no-sync inv bootstrap",
+  "uv run --no-sync inv write_stamp --task-name bootstrap",
+]
+outputs = [".cache/mise_stamps/bootstrap.stamp"]
+
+[tasks.bootstrap_ci]
+hide = true
+description = "Install CI dependencies without wxpython"
+depends = ["bootstrap_invoke"]
+run = [
+  "uv run --no-sync inv bootstrap --ci",
+  "uv run --no-sync inv write_stamp --task-name bootstrap_ci",
+]
+sources = ["pyproject.toml", "uv.lock", "tasks.py"]
+outputs = [".cache/mise_stamps/bootstrap_ci.stamp"]
+
+[tasks.format]
+description = "Format source, tests, and examples"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv format"
+
+[tasks.lint]
+description = "Run lint checks"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv lint"
+
+[tasks.type]
+description = "Run pyright type checks"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv type"
+
+[tasks.type_ci]
+description = "Run CI pyright type checks"
+depends = ["bootstrap_ci"]
+run = "uv run --no-sync inv type --ci"
+
+[tasks.type_ty]
+description = "Optional: run Astral ty type checks"
+run = "uvx ty check src"
+
+[tasks.test]
+description = "Run test suite"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv test"
+
+[tasks.scadview]
+description = "Run the SCADview application (pass args after --, e.g. mise run scadview -- --args='-vv')"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv run"
+
+[tasks.docs_live_serve]
+description = "Serve docs with live reload (mkdocs)"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv docs_live_serve"
+
+[tasks.docs_sync]
+description = "Sync local versioned docs state in local gh-pages branch"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv docs_sync"
+
+[tasks.docs_sync_serve]
+description = "Sync docs locally and serve (pass e.g. -- --docs-version=0.2.6)"
+depends = ["bootstrap"]
+run = "uv run --no-sync inv docs_sync_serve"
+
+[tasks.actionlint]
+description = "Lint GitHub workflows"
+run = "actionlint -color"
+
+[tasks.preflight]
+description = "Run lint, types, and tests"
+depends = ["lint", "type", "test"]
+
+[tasks.reset]
+description = "Reset the development environment"
+# Use an isolated invoke install so Windows is not asked to delete the
+# currently running .venv\Scripts\inv.exe.
+run = "uvx --from invoke inv reset"
