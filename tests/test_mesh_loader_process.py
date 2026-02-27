@@ -206,12 +206,15 @@ def test_load_worker_colors_mesh_list(load_queue):
         worker.start()
         worker.join(timeout=1.0)
         assert not worker.is_alive()
+        worker.cancel()
 
     result = load_queue.get(timeout=1.0)
     assert isinstance(result.mesh, list)
+    load_queue.get(timeout=1.0) # Otherwise hangs on windows.
     for tm in result.mesh:
         assert "scadview" in tm.metadata
         assert tm.metadata["scadview"]["color"][3] == 0.5
+    
 
 
 @pytest.mark.skip  # Flakey

@@ -36,6 +36,7 @@ class Controller:
         self.on_module_path_set = Observable()
         self.module_path = ""
         self._last_export_path = ""
+        self._closed = False
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(
@@ -127,6 +128,26 @@ class Controller:
             )
         raise ValueError("No module loaded")
 
+    def close(self, timeout: float = 2.0) -> None:
+        if self._closed:
+            return
+        self._closed = True
+
+        try:
+            self._command_queue.put(ShutDownCommand())
+        except (BrokenPipeError, EOFError, OSError, ValueError):
+            pass
+
+        self._loader_process.join(timeout=timeout)
+        if self._loader_process.is_alive():
+            self._loader_process.terminate()
+            self._loader_process.join(timeout=timeout)
+
+        self._command_queue.close()
+        self._load_queue.close()
+
     def __del__(self):
-        self._command_queue.put(ShutDownCommand())
-        self._loader_process.terminate()
+        try:
+            self.close(timeout=0.2)
+        except Exception:
+            pass

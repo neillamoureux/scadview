@@ -61,6 +61,7 @@ class MpQueue(Generic[T]):
 
     def close(self):
         self._queue.close()
+        self._queue.join_thread()
 
 
 class Command:

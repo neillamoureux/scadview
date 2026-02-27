@@ -134,6 +134,9 @@ def test(context: Context, args: str = "", ci: bool = False) -> None:
         env = {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
         plugin_flags = " -p pytest_cov"
         pty = False
+        
+    if os.name == "nt":
+        pty = False
 
     _run_checked(
         context,
