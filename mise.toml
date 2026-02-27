@@ -96,4 +96,6 @@ depends = ["lint", "type", "test"]
 
 [tasks.reset]
 description = "Reset the development environment"
-run = ["rm -rf .cache", "rm -rf .venv"]
+# Use an isolated invoke install so Windows is not asked to delete the
+# currently running .venv\Scripts\inv.exe.
+run = "uvx --from invoke inv reset"

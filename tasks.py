@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import shutil
 from pathlib import Path
 
 from invoke.context import Context
@@ -194,3 +195,11 @@ def preflight(context: Context) -> None:
     lint(context)
     type_(context)
     test(context)
+
+
+@task
+def reset(_context: Context) -> None:
+    """Reset the development environment."""
+    for path in (REPO_ROOT / ".cache", REPO_ROOT / ".venv"):
+        if path.exists():
+            shutil.rmtree(path)
