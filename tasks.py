@@ -130,17 +130,19 @@ def test(context: Context, args: str = "", ci: bool = False) -> None:
     plugin_flags: str = ""
     pty: bool = True
 
+    color_flag: str = " --color=yes"
     if ci or os.environ.get("CI"):
         env = {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
         plugin_flags = " -p pytest_cov"
         pty = False
-        
+        color_flag = ""
+
     if os.name == "nt":
         pty = False
 
     _run_checked(
         context,
-        f"pytest{plugin_flags}{extra}",
+        f"pytest {color_flag}{plugin_flags}{extra}",
         env=env,
         pty=pty,
     )
