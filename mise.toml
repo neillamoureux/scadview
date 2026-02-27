@@ -93,3 +93,7 @@ run = "actionlint -color"
 [tasks.preflight]
 description = "Run lint, types, and tests"
 depends = ["lint", "type", "test"]
+
+[tasks.reset]
+description = "Reset the development environment"
+run = ["rm -rf .cache", "rm -rf .venv"]
