@@ -177,17 +177,10 @@ def docs_sync(
         _run_checked(context, "mike serve")
 
 
-@task(name="docs_preview_serve")  # type: ignore[reportUntypedFunctionDecorator]
-def docs_preview_serve(context: Context, docs_version: str = "") -> None:
+@task(name="docs_sync_serve")  # type: ignore[reportUntypedFunctionDecorator]
+def docs_sync_serve(context: Context, docs_version: str = "") -> None:
     """Preview release docs locally."""
-    version = docs_version.strip() or os.environ.get("DOCS_VERSION", "").strip()
-    if not version:
-        raise Exit(
-            "DOCS_VERSION is required. Example: "
-            + "mise run docs-release-preview -- --docs-version 0.2.6",
-            code=2,
-        )
-    docs_sync(context, serve=True, docs_version=version)
+    docs_sync(context, serve=True, docs_version=docs_version)
 
 
 @task

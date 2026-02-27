@@ -6,7 +6,6 @@ All contributions are made via pull requests (PRs) from a fork to ensure a clean
 ---
 
 ## Requirements:
-- Python
 - mise
 
 
@@ -17,10 +16,10 @@ issue → fork → branch (conventional) → change → preflight → commit (co
 ```
 
 - Every PR must resolve an issue.
-- Branch names must be conventional with issue number after type/.
+- Branch names must be conventional with issue number after \<type\>/.
 - Follow code style and standards.
 - PRs will be squash merged by a maintainer.
-- Clear commit messages matter.
+- Clear commit messages matter.  Use conventional commits.
 - You contribute to conform with the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 ---
@@ -104,29 +103,34 @@ Install mise using these [instructions](https://mise.jdx.dev/installing-mise.htm
 
 To make `mise` manage tools automatically in your current shell, run
 
+You can [integrate mise with your shell](https://mise.jdx.dev/dev-tools/#environment-integration) using `mise activate`,
+which writes a script you can use in your particular shell.
+
 ```bash
 mise activate <your shell type>
 ```
-Then add the printed eval line to your shell profile (~/.zshrc, ~/.bashrc, etc.) and restart your shell.
 
 Common examples:
 
-zsh: eval "$(mise activate zsh)"
-bash: eval "$(mise activate bash)"
-fish: mise activate fish | source
-PowerShell: mise activate pwsh | Out-String | Invoke-Expression
-If you don’t want persistent activation, you can still run tasks directly with:
+- zsh: `eval "$(mise activate zsh)"`
+- bash: `eval "$(mise activate bash)"`
+- fish:,`mise activate fish | source`
+- PowerShell: `mise activate pwsh | Out-String | Invoke-Expression`
+
+If you don’t want persistent activation, you can still run commands directly with:
 
 ```
-mise run <task>
+mise exec -- command -with=parameters
 ```
 
-Then install tools and dependencies:
+To prepare your enviroment, run:
 
 ```bash
 mise install
 mise run bootstrap
 ```
+
+This is optional if you first run a task, which will run these automatically if needed.
 
 CI-only environments that cannot install GUI deps should use:
 
@@ -134,13 +138,19 @@ CI-only environments that cannot install GUI deps should use:
 mise run bootstrap_ci
 ```
 
-List available tasks:
+List available tasks with:
 
 ```bash
 mise tasks
 ```
 
-Common commands:
+To run a task:
+
+```bash
+mise run <task_name>
+```
+
+Common tasks:
 
 ```bash
 mise run scadview
@@ -150,13 +160,9 @@ mise run type
 mise run test
 mise run preflight
 mise run actionlint
+mise run reset
 ```
 
-Optional faster type check (does not need to pass):
-
-```bash
-mise run type_ty
-```
 
 ### 5. Make Your Changes
 
@@ -172,17 +178,18 @@ Use two commands depending on what you need:
 
 1. Live edit loop (recommended while writing docs):
 ```
-mise run serve-docs
+mise run docs_live_serve
 ```
 This uses `mkdocs serve` and hot-reloads on file changes.
 
 2. Sync versioned docs state (mike):
 ```
-mise run serve-docs-sync
+mise run docs_sync_serve
 ```
-This updates local branch `gh-pages` docs versions and `latest` alias.
+This updates local branch `gh-pages` docs versions and `latest` alias, 
+and serves the docs.
 
-Version selection behavior for `mise run serve-docs-sync`:
+Version selection behavior for `mise run docs_sync` and `mise run docs_sync_serve`:
 
 - If `--docs-version` is provided, that value is used.
 - Else if `DOCS_VERSION` is set, that value is used.
@@ -191,11 +198,9 @@ Version selection behavior for `mise run serve-docs-sync`:
 
 Examples:
 ```
-mise run serve-docs
-mise run serve-docs-sync
-mise run serve-docs-sync -- --docs-version 0.2.6
-mise run serve-docs-sync -- --serve
-mise run docs-release-preview -- --docs-version 0.2.6
+mise run docs_live_serve
+mise run docs_sync
+mise run docs_sync_serve -- --docs-version 0.3.1
 ```
 
 After a release, the common local refresh flow is:
@@ -203,11 +208,11 @@ After a release, the common local refresh flow is:
 ```
 git checkout main
 git pull
-mise run serve-docs-sync
-mise run serve-docs
+mise run docs_sync_serve -- --docs-version 0.3.1
 ```
 
-`mise run serve-docs-sync` only updates local docs state by default. CI handles published docs on release.
+`mise run docs_sync` and `mise run docs_sync_serve` only updates local docs state by default.
+CI handles published docs on release.
 
 
 

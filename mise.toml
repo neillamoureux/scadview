@@ -77,14 +77,14 @@ depends = ["bootstrap"]
 run = "uv run --no-sync inv docs_live_serve"
 
 [tasks.docs_sync]
-description = "Sync local versioned docs state (use -- --serve)"
+description = "Sync local versioned docs state in local gh-pages branch"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv docs_sync"
 
-[tasks.docs_preview_serve]
-description = "Preview release docs locally (pass -- --docs-version=0.2.6)"
+[tasks.docs_sync_serve]
+description = "Sync docs locally and serve (pass e.g. -- --docs-version=0.2.6)"
 depends = ["bootstrap"]
-run = "uv run --no-sync inv docs_preview_serve"
+run = "uv run --no-sync inv docs_sync_serve"
 
 [tasks.actionlint]
 description = "Lint GitHub workflows"
