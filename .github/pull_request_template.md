@@ -52,7 +52,7 @@ Related to
 
 
 <!--
-This is a reminder to run `make preflight` locally before submitting the review.
+This is a reminder to run `mise preflight` locally before submitting the review.
 
 This:
 - formats the code
