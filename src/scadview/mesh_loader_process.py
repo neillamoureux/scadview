@@ -10,6 +10,8 @@ from threading import Thread
 from time import time
 from typing import Any, Generator, Generic, Type, TypeVar
 
+import numpy as np
+from manifold3d import Error as ManifoldError
 from manifold3d import Manifold
 from trimesh import Trimesh
 
@@ -151,6 +153,7 @@ class LoadWorker(Thread):
                     return
                 self._update_mesh(sequence_number, mesh)
         except Exception as e:
+            logger.exception("Failed to load mesh from %s", self.module_path)
             self._update_mesh(sequence_number, last_mesh, final=True, error=e)
             return
         self._update_mesh(sequence_number, last_mesh, final=True)
@@ -231,11 +234,19 @@ class LoadWorker(Thread):
 
     def _check_mesh_type(self, mesh: Any):
         if isinstance(mesh, Trimesh):
+            self._check_trimesh_vertices(mesh)
             return
         if isinstance(mesh, Manifold):
+            self._check_manifold(mesh)
             return
         if isinstance(mesh, list):
             for i, m in enumerate(mesh):  # type: ignore[reportUnknowVariableType] - can't resolve
+                if isinstance(m, Trimesh):
+                    self._check_trimesh_vertices(m)
+                    continue
+                if isinstance(m, Manifold):
+                    self._check_manifold(m, i)
+                    continue
                 if not isinstance(m, Trimesh) and not isinstance(m, Manifold):
                     raise TypeError(
                         f"Expected mesh[{i}] to be of type Trimesh or Manifold, got {type(m)}"  # type: ignore[reportUnknowArgumentType] - can't resolve
@@ -244,6 +255,29 @@ class LoadWorker(Thread):
         raise TypeError(
             f"Expected mesh to be of type Trimesh, list[Trimesh], Manifold, or list[Manifold], got {type(mesh)}"
         )
+
+    def _check_trimesh_vertices(self, mesh: Trimesh):
+        if mesh.vertices.size == 0:
+            return
+        invalid_indices = np.argwhere(~np.isfinite(mesh.vertices))
+        if invalid_indices.size == 0:
+            return
+        first_invalid = invalid_indices[0]
+        vertex_index = int(first_invalid[0])
+        coord_index = int(first_invalid[1])
+        invalid_value = mesh.vertices[vertex_index, coord_index]
+        raise ValueError(
+            f"Mesh contains non-finite vertex coordinate {invalid_value} at vertices[{vertex_index}][{coord_index}]"
+        )
+
+    def _check_manifold(self, mesh: Manifold, list_index: int | None = None):
+        status = mesh.status()
+        if status == ManifoldError.NoError:
+            return
+        prefix = "Manifold mesh"
+        if list_index is not None:
+            prefix = f"Manifold mesh[{list_index}]"
+        raise ValueError(f"{prefix} has invalid status: {status.name}")
 
     def cancel(self):
         self.cancelled = True
