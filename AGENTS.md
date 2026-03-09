@@ -45,5 +45,5 @@ Before finishing substantial code changes:
 3. Run tests relevant to the changed area (or full test suite when appropriate).
 4. Update docs when behavior or interfaces change.
 
-Recommended commands are defined in `CONTRIBUTING.md` (for example, `uv run make preflight`).
+Recommended commands are defined in `CONTRIBUTING.md` (for example, `mise preflight`).
 
