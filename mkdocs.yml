@@ -16,7 +16,10 @@ nav:
   - Examples: examples.md
   - API Reference: api.md
   - Command-Line Export: cli_export.md
-  - Contributing: contributing.md
+  - Developers:
+    - Contributing: contributing.md
+    - Style Guide: style.md
+    - Architecture: architecture.md
   - License: license.md
 theme: 
   name: material
