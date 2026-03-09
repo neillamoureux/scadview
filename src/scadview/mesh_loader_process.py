@@ -11,6 +11,7 @@ from time import time
 from typing import Any, Generator, Generic, Type, TypeVar
 
 import numpy as np
+from manifold3d import Error as ManifoldError
 from manifold3d import Manifold
 from trimesh import Trimesh
 
@@ -236,6 +237,7 @@ class LoadWorker(Thread):
             self._check_trimesh_vertices(mesh)
             return
         if isinstance(mesh, Manifold):
+            self._check_manifold(mesh)
             return
         if isinstance(mesh, list):
             for i, m in enumerate(mesh):  # type: ignore[reportUnknowVariableType] - can't resolve
@@ -243,6 +245,7 @@ class LoadWorker(Thread):
                     self._check_trimesh_vertices(m)
                     continue
                 if isinstance(m, Manifold):
+                    self._check_manifold(m, i)
                     continue
                 if not isinstance(m, Trimesh) and not isinstance(m, Manifold):
                     raise TypeError(
@@ -266,6 +269,15 @@ class LoadWorker(Thread):
         raise ValueError(
             f"Mesh contains non-finite vertex coordinate {invalid_value} at vertices[{vertex_index}][{coord_index}]"
         )
+
+    def _check_manifold(self, mesh: Manifold, list_index: int | None = None):
+        status = mesh.status()
+        if status == ManifoldError.NoError:
+            return
+        prefix = "Manifold mesh"
+        if list_index is not None:
+            prefix = f"Manifold mesh[{list_index}]"
+        raise ValueError(f"{prefix} has invalid status: {status.name}")
 
     def cancel(self):
         self.cancelled = True

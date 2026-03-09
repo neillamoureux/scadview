@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import manifold3d
 import numpy.testing as npt
 import pytest
 from trimesh.creation import box, icosphere
@@ -222,6 +223,26 @@ def test_load_worker_errors_on_nan_vertices(load_queue):
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
         ml_instance = mock_module_loader.return_value
         ml_instance.run_function.return_value = iter([nan_mesh])
+        worker = LoadWorker("test/path", load_queue)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+    assert result.error is not None
+    assert isinstance(result.error, ValueError)
+    assert result.status == LoadStatus.ERROR
+
+
+def test_load_worker_errors_on_non_finite_manifold_vertices(load_queue):
+    base_mesh = manifold3d.Manifold.cube().to_mesh()
+    vertices = base_mesh.vert_properties.copy()
+    vertices[0, 0] = float("inf")
+    invalid_manifold = manifold3d.Manifold(
+        manifold3d.Mesh(vertices.astype("f4"), base_mesh.tri_verts.copy())
+    )
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+        ml_instance.run_function.return_value = iter([invalid_manifold])
         worker = LoadWorker("test/path", load_queue)
         LoadWorker.load_number = 0
         worker.load()
