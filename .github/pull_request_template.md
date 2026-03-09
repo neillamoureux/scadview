@@ -125,7 +125,7 @@ Anything else reviewers should know? For example:
 Before requesting review, confirm the following:
 
 - [ ] The code follows SCADview's coding standards (PEP 8, type hints, etc.).  
-- [ ] I have run `make preflight` and all stages pass
+- [ ] I have run `mise preflight` and all stages pass
 - [ ] My changes include or update tests where appropriate.  
 - [ ] I have updated documentation where needed.  
 - [ ] I agree that my contributions are licensed under the **Apache-2.0 License**.
