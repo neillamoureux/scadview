@@ -216,6 +216,22 @@ def test_load_worker_colors_mesh_list(load_queue):
         assert tm.metadata["scadview"]["color"][3] == 0.5
 
 
+def test_load_worker_errors_on_nan_vertices(load_queue):
+    nan_mesh = box()
+    nan_mesh.vertices[0] = [float("nan"), 0.0, 0.0]
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+        ml_instance.run_function.return_value = iter([nan_mesh])
+        worker = LoadWorker("test/path", load_queue)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+    assert result.error is not None
+    assert isinstance(result.error, ValueError)
+    assert result.status == LoadStatus.ERROR
+
+
 @pytest.mark.skip  # Flakey
 def test_load_worker_cancel(started_load_worker):
     assert started_load_worker.is_alive()
