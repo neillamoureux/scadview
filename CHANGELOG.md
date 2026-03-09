@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.7](https://github.com/neillamoureux/scadview/compare/v0.2.6...v0.2.7) (2026-03-09)
+
+
+### Bug Fixes
+
+* reject non-finite mesh inputs during load ([#138](https://github.com/neillamoureux/scadview/issues/138)) ([9918b1c](https://github.com/neillamoureux/scadview/commit/9918b1c210741e013e67efa56049cd66ae25abb2))
+
+
+### Chores
+
+* Update github actioms to build and publish on release ([#128](https://github.com/neillamoureux/scadview/issues/128)) ([f31998b](https://github.com/neillamoureux/scadview/commit/f31998b22b0e3710f5cae6c9ac6efe639f849a9d))
+
 ## [0.2.6](https://github.com/neillamoureux/scadview/compare/v0.2.5...v0.2.6) (2026-02-15)
 
 
