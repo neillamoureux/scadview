@@ -7,7 +7,11 @@ clean, testable, maintainable code and make changes that preserve existing
 architectural boundaries and project conventions.
 
 When making code changes, prefer small, focused diffs that keep behavior explicit
-and easy to verify with tests.
+and easy to verify.
+
+Favor incremental, inspectable changes over broad architectural rewrites.
+
+---
 
 ## Authoritative References
 
@@ -24,6 +28,8 @@ If guidance conflicts, follow this precedence:
 3. `STYLE.md` for code shape and implementation style.
 4. `CONTRIBUTING.md` for workflow and process expectations.
 
+---
+
 ## Working Rules
 
 - Keep dependency direction aligned with `ARCHITECTURE.md`.
@@ -35,6 +41,57 @@ If guidance conflicts, follow this precedence:
 - Keep functions small and focused; extract helpers instead of adding explanatory
   comments for complex blocks.
 - Prefer specific exceptions and explicit error paths.
+- Do not introduce new dependencies unless clearly justified.
+
+---
+
+## Change Strategy
+
+- Inspect first, then propose changes, then implement.
+- Prefer the smallest reviewable diff that solves the problem.
+- Avoid renames, file moves, or style-only changes unless required for correctness.
+- Preserve public behavior, CLI entry points, and documented workflows unless explicitly instructed otherwise.
+- When uncertain, add instrumentation or diagnostics before attempting a redesign.
+
+### GUI / Rendering Specific
+
+- For wxPython, ModernGL, or rendering issues:
+  1. Isolate the suspected code path first.
+  2. Add diagnostics (logging, counters, timestamps) before modifying logic.
+  3. Avoid speculative refactors of rendering or event-loop behavior.
+- Clearly distinguish between:
+  1. Code-level correctness
+  2. Visual correctness (which requires human validation)
+
+---
+
+## Validation
+
+- Run the smallest relevant validation first before broader checks.
+- Prefer targeted tests or commands over full-suite runs unless necessary.
+- Do not assume GUI tests are reliable or available in all environments.
+- After changes affecting rendering or UI behavior:
+  1. State what was changed
+  2. State what must be manually verified by a human
+
+---
+
+## Logging and Diagnostics
+
+- Prefer structured logging over ad hoc print statements.
+- Include useful context (process, thread, platform) when diagnosing issues.
+- Make diagnostic changes easy to remove after debugging.
+- Avoid leaving excessive debug noise in final code.
+
+---
+
+## Packaging, CI, and Docs
+
+- Treat `pyproject.toml`, GitHub Actions, and docs as user-facing interfaces.
+- Keep changes reproducible and minimal.
+- Do not modify release, publishing, or deployment behavior without explicitly stating it.
+
+---
 
 ## Validation Checklist
 
@@ -47,3 +104,10 @@ Before finishing substantial code changes:
 
 Recommended commands are defined in `CONTRIBUTING.md` (for example, `mise preflight`).
 
+---
+
+## Output Expectations
+
+- Summarize changes by file.
+- Call out assumptions when they affect correctness.
+- Prefer concise, technical explanations over verbose descriptions.
