@@ -62,7 +62,8 @@ class ShaderProgram:
         uniform = self.program[var_name]
         if not isinstance(uniform, Uniform):
             raise TypeError(f"{var_name!r} is not a uniform")
-        if uniform.gl_type == self.BOOLEAN:  # type: ignore[attr-defined]
+        # ModernGL exposes gl_type at runtime, but its stubs omit it.
+        if uniform.gl_type == self.BOOLEAN:  # ty: ignore[unresolved-attribute]
             uniform.value = value
         else:
             uniform.write(value)

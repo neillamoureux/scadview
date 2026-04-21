@@ -1,6 +1,0 @@
-{
-    "extends": "./pyproject.toml",
-    "ignore": [
-        "src/scadview/ui/wx"
-    ]
-}

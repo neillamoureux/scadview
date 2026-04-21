@@ -1,9 +1,9 @@
 import numpy as np
 from pyrr.matrix44 import (
-    create_from_axis_rotation,  # type: ignore[reportUnknownVariableType]
+    create_from_axis_rotation,
 )
 from trimesh import Trimesh
-from trimesh.creation import box  # type: ignore[reportUnknownVariableType]
+from trimesh.creation import box
 
 from scadview import text
 

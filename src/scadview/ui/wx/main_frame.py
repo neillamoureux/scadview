@@ -222,11 +222,9 @@ class MainFrame(wx.Frame):
             "Load a python file",
             wildcard="Python files (*.py)|*.py",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-        ) as dlg:  # pyright: ignore[reportUnknownVariableType]
+        ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
-                self._controller.load_mesh(
-                    dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
-                )
+                self._controller.load_mesh(dlg.GetPath())
                 self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
                 self._load_progress_gauge.Pulse()
 
@@ -276,12 +274,10 @@ class MainFrame(wx.Frame):
             defaultFile=default_export_file,
             wildcard=wildcard,
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
-        ) as dlg:  # pyright: ignore[reportUnknownVariableType]
+        ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 try:
-                    self._controller.export(
-                        dlg.GetPath()  # pyright: ignore[reportUnknownArgumentType]
-                    )
+                    self._controller.export(dlg.GetPath())
                 except Exception as e:
                     logger.error(f"Failure on export: {e}")
 

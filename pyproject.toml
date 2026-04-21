@@ -12,7 +12,6 @@ dependencies = [
     "numpy==2.*",
     "pillow>=11.2.1",
     'pyobjc-framework-Cocoa; platform_system == "Darwin"',
-    "pyright>=1.1.408",
     "pyrr>=0.10.3",
     "scipy>=1.16.1",
     "shapely>=2.1.1",
@@ -55,67 +54,23 @@ dev = [
     "mkdocs-material>=9.6.22",
     "mkdocstrings-python>=1.18.2",
     "pymdown-extensions>=10.16.1",
-    "pyright>=1.1.407",
     "pytest>=8.3.4",
     "pytest-cov>=6.1.1",
     "pytest-mock>=3.14.0",
     "ruff>=0.9.2",
+    "ty>=0.0.31",
     "watchdog>=6.0.0",
 ]
 
 [tool.uv.sources]
 scadview = { workspace = true }
 
-[tool.pyright]
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.rules]
+unused-ignore-comment = "error"
+unused-type-ignore-comment = "error"
+
+[tool.ty.src]
 include = ["src/scadview", "tasks.py"]
-venvPath = "."
-venv = ".venv"
-pythonVersion = "3.11"
-typeCheckingMode = "strict"
-useLibraryCodeForTypes = true
-
-# Treat "unknown"/"untyped" as errors
-reportUnknownParameterType = "error"
-reportUnknownArgumentType = "error"
-reportUnknownVariableType = "error"
-reportUnknownMemberType = "none"
-reportUntypedFunctionDecorator = "error"
-reportUntypedClassDecorator = "error"
-reportUntypedBaseClass = "error"
-reportUntypedNamedTuple = "error"
-
-# Everything correctness-related stays strict
-reportMissingImports = "error"
-reportMissingModuleSource = "error"
-reportPrivateUsage = "error"
-reportIncompatibleMethodOverride = "error"
-reportIncompatibleVariableOverride = "error"
-reportInvalidTypeVarUse = "error"
-reportMissingTypeArgument = "error"
-reportOptionalMemberAccess = "error"
-reportOptionalSubscript = "error"
-reportOptionalCall = "error"
-reportReturnType = "error"
-reportAssignmentType = "error"
-reportCallIssue = "error"
-reportGeneralTypeIssues = "error"
-reportMatchNotExhaustive = "error"
-reportUninitializedInstanceVariable = "none"
-reportUnboundVariable = "error"
-
-# Ignore missing type stubs
-reportMissingTypeStubs = "none"
-
-# Hygiene
-reportUnusedImport = "error"
-reportUnusedClass = "error"
-reportUnusedFunction = "error"
-reportUnusedVariable = "error"
-reportDuplicateImport = "error"
-reportUnnecessaryTypeIgnoreComment = "error"
-reportUnnecessaryCast = "error"
-reportImplicitStringConcatenation = "error"
-
-strictListInference = true
-strictDictionaryInference = true
-strictSetInference = true

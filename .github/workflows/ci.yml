@@ -44,7 +44,7 @@ jobs:
           uv run --no-sync ruff check --select I src tests examples
 
       - name: Run type checker
-        run: uv run --no-sync pyright --project pyright.ci.json
+        run: uv run --no-sync ty check --exclude src/scadview/ui/wx --force-exclude
 
       - name: Run tests
         env:

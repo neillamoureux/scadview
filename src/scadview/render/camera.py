@@ -96,11 +96,15 @@ class Camera:
         self.on_program_value_change.notify(ShaderVar.GNOMON_VIEW_MATRIX, gvm)
         return gvm
 
+    # Base Camera is intentionally instantiable; concrete subclasses override this.
     @property
-    def projection_matrix(self) -> NDArray[np.float32]: ...
+    def projection_matrix(self) -> NDArray[np.float32]: ...  # ty: ignore[empty-body]
 
+    # Base Camera is intentionally instantiable; concrete subclasses override this.
     @property
-    def gnomon_projection_matrix(self) -> NDArray[np.float32]: ...
+    def gnomon_projection_matrix(
+        self,
+    ) -> NDArray[np.float32]: ...  # ty: ignore[empty-body]
 
     @property
     def points(self) -> NDArray[np.float32]:
@@ -124,15 +128,13 @@ class Camera:
         """
         # perp_up = self.up
         perp_up = self.perpendicular_up
-        rotated_up_mat = matrix33.create_from_axis_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
+        rotated_up_mat = matrix33.create_from_axis_rotation(
             self.direction, angle_from_up, dtype="f4"
         )
         rotated_up = matrix33.apply_to_vector(rotated_up_mat, self.up)
-        rotation_axis = (  # pyright: ignore[reportUnknownVariableType] can't resolve
-            np.cross(self.direction, rotated_up)
-        )
-        rotation = matrix33.create_from_axis_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
-            rotation_axis,  # pyright: ignore[reportUnknownArgumentType] - Can't resolve
+        rotation_axis = np.cross(self.direction, rotated_up)
+        rotation = matrix33.create_from_axis_rotation(
+            rotation_axis,
             rotation_angle,
             dtype="f4",
         )

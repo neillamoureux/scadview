@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from shapely.geometry import Point, Polygon
 from trimesh import Trimesh
 from trimesh.creation import (
-    extrude_polygon,  # pyright: ignore[reportUnknownVariableType] - trimesh function
+    extrude_polygon,
 )
 
 from scadview.fonts import DEFAULT_FONT, DEFAULT_FONT_PATH, list_system_fonts
@@ -136,7 +136,7 @@ def text(
         text, size, font, halign, valign, spacing, direction, language, script
     )
     meshes = [extrude_polygon(poly, height=1.0) for poly in polys]
-    return trimesh.util.concatenate(meshes)  # pyright: ignore[reportUnknownVariableType] - trimesh function
+    return trimesh.util.concatenate(meshes)
 
 
 def _loops_from_text(
@@ -252,18 +252,13 @@ def _assemble_polys(
         if loops_cont[i]["exterior"]:
             for j in loops_cont[i]["contains"]:
                 # remove contained loops that are also contained in interior loops from the holes list
-                for k in loops_cont[  # pyright: ignore[reportUnknownVariableType] - is Any
-                    j
-                ]["contains"]:
+                for k in loops_cont[j]["contains"]:
                     if k in loops_cont[i]["holes"]:
                         loops_cont[i]["holes"].remove(k)
             polys.append(
                 Polygon(
                     loops[i],
-                    [
-                        loops[j]
-                        for j in loops_cont[i]["holes"]  # type: ignore[reportUnknownArgumentType] can't resolve
-                    ],
+                    [loops[j] for j in loops_cont[i]["holes"]],
                 )
             )
     return polys

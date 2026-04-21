@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 import moderngl
 import numpy as np
@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from pyrr import Matrix44
 from trimesh import Trimesh
 from trimesh.creation import (
-    box,  # pyright: ignore[reportUnknownVariableType] can't resolve
+    box,
 )
 
 from scadview.debug_info import DebugInfoService
@@ -301,7 +301,9 @@ class Renderer:
             name=name,
         )
         if isinstance(mesh, list):
-            self.scale = max([m.scale for m in mesh])
+            # Trimesh stubs are list-like, so make this branch's contract explicit.
+            meshes = cast(list[Trimesh], mesh)
+            self.scale = max([m.scale for m in meshes])
         else:
             self.scale = mesh.scale
         self._main_renderee.subscribe_to_updates(self.on_program_value_change)
