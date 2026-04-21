@@ -8,7 +8,7 @@ from pathlib import Path
 
 from invoke.context import Context
 from invoke.exceptions import Exit
-from invoke.tasks import task  # type: ignore[reportUnknownVariableType]
+from invoke.tasks import task
 
 REPO_ROOT: Path = Path(__file__).resolve().parent
 DEFAULT_TARGETS: tuple[str, ...] = ("src", "tests", "examples")
@@ -60,7 +60,7 @@ def _resolve_docs_version(context: Context, override: str = "") -> str:
     return "dev"
 
 
-@task(name="write_stamp")  # type: ignore[reportUntypedFunctionDecorator]
+@task(name="write_stamp")
 def write_stamp(_context: Context, task_name: str) -> None:
     """Write a mise freshness stamp file for a task name."""
     MISE_STAMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -84,7 +84,7 @@ def bootstrap(context: Context, ci: bool = False, frozen: bool = True) -> None:
     _run_checked(context, " ".join(cmd_parts))
 
 
-@task(name="format")  # type: ignore[reportUntypedFunctionDecorator]
+@task(name="format")
 def format_(context: Context, args: str = "") -> None:
     """Format source, tests, and examples."""
     targets: list[str] = _existing_targets()
@@ -115,12 +115,12 @@ def lint(context: Context, args: str = "") -> None:
     _run_checked(context, f"ruff check --select I{extra} {target_str}")
 
 
-@task(name="type")  # type: ignore[reportUntypedFunctionDecorator]
+@task(name="type")
 def type_(context: Context, args: str = "", ci: bool = False) -> None:
-    """Run pyright type checks."""
+    """Run ty type checks."""
     extra: str = _join_args(args)
-    project_flag: str = " --project pyright.ci.json" if ci else ""
-    _run_checked(context, f"pyright{project_flag}{extra}")
+    ci_flags: str = " --exclude src/scadview/ui/wx --force-exclude" if ci else ""
+    _run_checked(context, f"ty check{ci_flags}{extra}")
 
 
 @task
@@ -156,13 +156,13 @@ def run(context: Context, args: str = "") -> None:
     _run_checked(context, f"python -m scadview{extra}")
 
 
-@task(name="docs_live_serve")  # type: ignore[reportUntypedFunctionDecorator]
+@task(name="docs_live_serve")
 def docs_live_serve(context: Context) -> None:
     """Serve docs with live reload (mkdocs)."""
     _run_checked(context, "python -m mkdocs serve")
 
 
-@task(name="docs_sync")  # type: ignore[reportUntypedFunctionDecorator]
+@task(name="docs_sync")
 def docs_sync(
     context: Context,
     serve: bool = False,
@@ -183,7 +183,7 @@ def docs_sync(
         _run_checked(context, "mike serve")
 
 
-@task(name="docs_sync_serve")  # type: ignore[reportUntypedFunctionDecorator]
+@task(name="docs_sync_serve")
 def docs_sync_serve(context: Context, docs_version: str = "") -> None:
     """Preview release docs locally."""
     docs_sync(context, serve=True, docs_version=docs_version)

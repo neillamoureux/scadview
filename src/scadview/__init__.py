@@ -25,16 +25,16 @@ if False:
 
 # Things to expose at the top level
 __all__ = [
-    "Color",  # type: ignore[reportUnsupportedDunderAll]
-    "set_mesh_color",  # type: ignore[reportUnsupportedDunderAll]
-    "ProfileType",  # type: ignore[reportUnsupportedDunderAll]
-    "linear_extrude",  # type: ignore[reportUnsupportedDunderAll]
-    "mesh_from_heightmap",  # type: ignore[reportUnsupportedDunderAll]
-    "surface",  # type: ignore[reportUnsupportedDunderAll]
-    "SIZE_MULTIPLIER",  # type: ignore[reportUnsupportedDunderAll]
-    "text",  # type: ignore[reportUnsupportedDunderAll]
-    "text_polys",  # type: ignore[reportUnsupportedDunderAll]
-    "manifold_to_trimesh",  # type: ignore[reportUnsupportedDunderAll]
+    "Color",
+    "set_mesh_color",
+    "ProfileType",
+    "linear_extrude",
+    "mesh_from_heightmap",
+    "surface",
+    "SIZE_MULTIPLIER",
+    "text",
+    "text_polys",
+    "manifold_to_trimesh",
 ]
 
 # Map attribute names to (module, attribute) so we can lazy-load

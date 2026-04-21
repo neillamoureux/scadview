@@ -99,13 +99,11 @@ class GlWidget(GLCanvas):
         del dc
         self.SetCurrent(self.ctx_wx)
         self._sync_pixel_size()
-        size = self.GetClientSize()  # pyright: ignore[reportUnknownVariableType]
-        scale = (  # pyright: ignore[reportUnknownVariableType]
-            self.GetContentScaleFactor()
-        )
+        size = self.GetClientSize()
+        scale = self.GetContentScaleFactor()
         self._gl_widget_adapter.render(
-            scale * size.width,  # pyright: ignore[reportUnknownArgumentType]
-            scale * size.height,  # pyright: ignore[reportUnknownArgumentType]
+            scale * size.width,
+            scale * size.height,
         )
         self.SwapBuffers()
         logger.debug("on_paint end")
@@ -136,11 +134,11 @@ class GlWidget(GLCanvas):
         self.Refresh(False)
 
     def _sync_pixel_size(self, force: bool = False):
-        size: wx.Size = self.GetClientSize()  # pyright: ignore[reportUnknownVariableType]
-        scale = self.GetContentScaleFactor()  # pyright: ignore[reportUnknownVariableType]
+        size: wx.Size = self.GetClientSize()
+        scale = self.GetContentScaleFactor()
         pixel_size = (
-            int(scale * size.width),  # pyright: ignore[reportUnknownArgumentType]
-            int(scale * size.height),  # pyright: ignore[reportUnknownArgumentType]
+            int(scale * size.width),
+            int(scale * size.height),
         )
         if force or self._last_pixel_size != pixel_size:
             self._gl_widget_adapter.resize(pixel_size[0], pixel_size[1])
@@ -148,12 +146,10 @@ class GlWidget(GLCanvas):
 
     def _get_scaled_position(self, event: wx.MouseEvent) -> wx.Point:
         pos = event.GetPosition()
-        device_scale = (  # pyright: ignore[reportUnknownVariableType]
-            self.GetContentScaleFactor()
-        )
+        device_scale = self.GetContentScaleFactor()
         return wx.Point(
-            int(pos.x * device_scale),  # pyright: ignore[reportUnknownArgumentType]
-            int(pos.y * device_scale),  # pyright: ignore[reportUnknownArgumentType]
+            int(pos.x * device_scale),
+            int(pos.y * device_scale),
         )
 
     def on_mouse_move(self, event: wx.MouseEvent):

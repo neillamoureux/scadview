@@ -53,7 +53,7 @@ class MpQueue(Generic[T]):
         return self._queue.put(item, block=block, timeout=timeout)
 
     def get(self, block: bool = True, timeout: float | None = None) -> T:
-        item = self._queue.get(block=block, timeout=timeout)  # type: ignore[reportUnknowVariableType] - can't resolve
+        item = self._queue.get(block=block, timeout=timeout)
         return self._check_type(item)
 
     def _check_type(self, item: Any) -> T:
@@ -187,14 +187,14 @@ class LoadWorker(Thread):
             return manifold_to_trimesh(mesh)
         if isinstance(mesh, list):
             result: list[Trimesh] = []
-            for m in mesh:  # type: ignore[reportUnknowVariableType] - can't resolve
+            for m in mesh:
                 if isinstance(m, Trimesh):
                     result.append(m)
                 elif isinstance(m, Manifold):
                     result.append(manifold_to_trimesh(m))
                 else:
                     raise TypeError(
-                        f"Expected mesh item to be of type Trimesh or Manifold, got {type(m)}"  # type: ignore[reportUnknowArgumentType] - can't resolve
+                        f"Expected mesh item to be of type Trimesh or Manifold, got {type(m)}"
                     )
             return result
         raise TypeError(
@@ -240,7 +240,7 @@ class LoadWorker(Thread):
             self._check_manifold(mesh)
             return
         if isinstance(mesh, list):
-            for i, m in enumerate(mesh):  # type: ignore[reportUnknowVariableType] - can't resolve
+            for i, m in enumerate(mesh):
                 if isinstance(m, Trimesh):
                     self._check_trimesh_vertices(m)
                     continue
@@ -249,7 +249,7 @@ class LoadWorker(Thread):
                     continue
                 if not isinstance(m, Trimesh) and not isinstance(m, Manifold):
                     raise TypeError(
-                        f"Expected mesh[{i}] to be of type Trimesh or Manifold, got {type(m)}"  # type: ignore[reportUnknowArgumentType] - can't resolve
+                        f"Expected mesh[{i}] to be of type Trimesh or Manifold, got {type(m)}"
                     )
             return
         raise TypeError(

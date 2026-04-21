@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from math import pi
+from typing import cast
 
 import moderngl
 import numpy as np
@@ -48,9 +49,10 @@ class LabelRenderee(Renderee):
         self._sampler = None
         self._vao = None
 
-        self._program["atlas"].value = (  # pyright: ignore [reportAttributeAccessIssue]
-            self.ATLAS_SAMPLER_LOCATION
-        )
+        # ModernGL returns a union; this shader binding is known to be a uniform.
+        cast(
+            moderngl.Uniform, self._program["atlas"]
+        ).value = self.ATLAS_SAMPLER_LOCATION
         self._translate_to_origin = Matrix44.from_translation(
             [-self._number, 0.0, 0.0], dtype="f4"
         )
@@ -130,9 +132,8 @@ class LabelRenderee(Renderee):
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         m_base_scale_at_label = self._calc_base_scale_at_label_matrix()
         m_scale = self._calc_scale_matrix_for_axis(m_base_scale_at_label)
-        self._program["m_scale"].write(  # pyright: ignore [reportAttributeAccessIssue]
-            m_scale
-        )
+        # ModernGL returns a union; this shader binding is known to be a uniform.
+        cast(moderngl.Uniform, self._program["m_scale"]).write(m_scale)
         if (
             self._vao is None
         ):  # Create VAO lazily to ensure it is created during the render while the context is active
@@ -151,25 +152,25 @@ class LabelRenderee(Renderee):
 
     def _calc_base_scale_at_label_matrix(self) -> Matrix44:
         m_shift_up = Matrix44.from_translation([0.0, self.shift_up, 0.0], dtype="f4")
-        m_base_scale_at_label = (  # # pyright: ignore[reportUnknownVariableType] can't resolve
+        m_base_scale_at_label = (
             m_shift_up
             * self._translate_from_origin
             * self._m_base_scale
             * self._translate_to_origin
         )
-        return m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
+        return m_base_scale_at_label
 
     def _calc_scale_matrix_for_axis(self, m_base_scale_at_label: Matrix44) -> Matrix44:
         if self.axis == 0:
             return m_base_scale_at_label
         if self.axis == 1:
             rotation = Matrix44.from_z_rotation(-pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
+            return rotation * m_base_scale_at_label
         if self.axis == 2:
-            rotation = Matrix44.from_z_rotation(  # pyright: ignore[reportUnknownVariableType] can't resolve
+            rotation = Matrix44.from_z_rotation(
                 pi, dtype="f4"
             ) * Matrix44.from_y_rotation(pi / 2.0, dtype="f4")
-            return rotation * m_base_scale_at_label  # pyright: ignore[reportUnknownVariableType] can't resolve
+            return rotation * m_base_scale_at_label
         else:
             raise ValueError(f"Invalid axis value: {self.axis}. Must be 0, 1, or 2.")
 

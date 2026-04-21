@@ -1,9 +1,12 @@
-# type: ignore
-# Ignore types, since we conditionally import tkinter
-# - tkinter may not be available on some systems or python installations
-#
+import logging
+from pathlib import Path
+from typing import Any, Callable
+
+tk: Any
 try:
-    import tkinter as tk
+    import tkinter
+
+    tk = tkinter
 
     tkinter_available = True
 except ImportError:
@@ -20,10 +23,6 @@ except ImportError:
         TclError = Exception
 
     tk = _FakeTk
-
-import logging
-from pathlib import Path
-from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -52,14 +51,14 @@ class NullSplash:
         pass
 
 
-def create_splash_window() -> tuple[tk.Tk | NullRoot, tk.Toplevel | NullSplash]:
+def create_splash_window() -> tuple[Any, Any]:
     """Create and show the splash window."""
     logger.warning(f"***** {MESSAGE_TEXT} *****")
     if not tkinter_available:
         logger.warning("The splash screen is not available so it will not be shown.")
         return NullRoot(), NullSplash()
     root = _create_tk_root()
-    splash = tk.Toplevel(root)  # type: ignore[reportOptionalCall]
+    splash = tk.Toplevel(root)
     splash.overrideredirect(True)
 
     try:
@@ -82,7 +81,7 @@ def create_splash_window() -> tuple[tk.Tk | NullRoot, tk.Toplevel | NullSplash]:
     return root, splash
 
 
-def _create_tk_root() -> tk.Tk:
+def _create_tk_root() -> Any:
     # Hidden root; splash is a Toplevel
     # On Windows, can't seem to use the root as the splash
     root = tk.Tk()
@@ -90,20 +89,20 @@ def _create_tk_root() -> tk.Tk:
     return root
 
 
-def _create_frame(parent: tk.Tk | tk.Toplevel) -> tk.Frame:  #
-    frame = tk.Frame(parent, bg="white", padx=20, pady=20)  # type: ignore[reportUnknownVariableType]
+def _create_frame(parent: Any) -> Any:
+    frame = tk.Frame(parent, bg="white", padx=20, pady=20)
     frame.pack()
     return frame
 
 
-def _add_title(frame: tk.Frame) -> None:
+def _add_title(frame: Any) -> None:
     title_label = tk.Label(
         frame, text=TITLE_TEXT, font=("Helvetica", 20, "bold"), bg="white", fg="#333"
     )
     title_label.pack(pady=(0, 10))
 
 
-def _add_message(frame: tk.Frame) -> None:
+def _add_message(frame: Any) -> None:
     message_label = tk.Label(
         frame,
         text=MESSAGE_TEXT,
@@ -116,7 +115,7 @@ def _add_message(frame: tk.Frame) -> None:
     message_label.pack(pady=(0, 12))
 
 
-def _add_image(window: tk.Tk | tk.Toplevel, image_path: str, frame: tk.Frame) -> None:
+def _add_image(window: Any, image_path: str, frame: Any) -> None:
     if not Path(image_path).is_file():
         logger.warning(f"splash image not found at {image_path}")
         return
@@ -128,12 +127,12 @@ def _add_image(window: tk.Tk | tk.Toplevel, image_path: str, frame: tk.Frame) ->
         return
 
     # Keep reference to avoid garbage collection
-    window._splash_image = img
+    setattr(window, "_splash_image", img)
     img_label = tk.Label(frame, image=img, bg="white")
     img_label.pack()
 
 
-def _center_window(win: tk.Tk | tk.Toplevel) -> None:
+def _center_window(win: Any) -> None:
     win.update_idletasks()
     w = win.winfo_width()
     h = win.winfo_height()

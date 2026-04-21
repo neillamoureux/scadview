@@ -38,9 +38,10 @@ class GlUi:
 
     def _bring_to_front_mac(self):
         try:
-            from AppKit import NSApplication  # type: ignore[reportAttributeAccessIssue]
+            # pyobjc exposes this member at runtime, but ty cannot resolve it.
+            from AppKit import NSApplication  # ty: ignore[unresolved-import]
 
-            app = NSApplication.sharedApplication()  # type: ignore[reportUnknownVariableType]
+            app = NSApplication.sharedApplication()
             app.activateIgnoringOtherApps_(True)
         except Exception:
             pass

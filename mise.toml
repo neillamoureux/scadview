@@ -48,18 +48,14 @@ depends = ["bootstrap"]
 run = "uv run --no-sync inv lint"
 
 [tasks.type]
-description = "Run pyright type checks"
+description = "Run ty type checks"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv type"
 
 [tasks.type_ci]
-description = "Run CI pyright type checks"
+description = "Run CI ty type checks"
 depends = ["bootstrap_ci"]
 run = "uv run --no-sync inv type --ci"
-
-[tasks.type_ty]
-description = "Optional: run Astral ty type checks"
-run = "uvx ty check src"
 
 [tasks.test]
 description = "Run test suite"

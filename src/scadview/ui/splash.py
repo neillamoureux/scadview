@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from scadview.logging_main import log_queue
 from scadview.logging_worker import configure_worker_logging
 from scadview.ui.splash_window import (
-    create_splash_window,  # type: ignore[reportUnknownVariableType]
+    create_splash_window,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def _splash_worker(
     """Runs in a separate process: show Tk splash until told to close."""
     configure_worker_logging(log_q, logger.getEffectiveLevel())
     logger.debug("worker starting")
-    root, splash = create_splash_window()  # type: ignore[reportUnknownVariableType]
+    root, splash = create_splash_window()
 
     def check_pipe():
         if conn.poll():

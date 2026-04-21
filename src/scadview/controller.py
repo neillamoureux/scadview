@@ -26,7 +26,7 @@ UNSUPPORTED_EXPORT_FORMATS = ["dict", "dict64", "stl_ascii", "xyz"]
 def export_formats() -> list[str]:
     return [
         fmt
-        for fmt in export._mesh_exporters.keys()  # pyright: ignore[reportPrivateUsage] - only way to access this
+        for fmt in export._mesh_exporters.keys()
         if fmt not in UNSUPPORTED_EXPORT_FORMATS
     ]
 
@@ -108,15 +108,18 @@ class Controller:
         return load_result
 
     def export(self, file_path: str):
-        if not self.current_mesh:
+        # Cache the property so type narrowing is stable for the selected mesh.
+        current_mesh = self.current_mesh
+        if not current_mesh:
             logger.info("No mesh to export")
             return
-        if isinstance(self.current_mesh, list):
-            export_mesh = self.current_mesh[-1]
+        if isinstance(current_mesh, list):
+            export_mesh = current_mesh[-1]
         else:
-            export_mesh = self.current_mesh
+            export_mesh = current_mesh
         self._last_export_path = file_path
-        export_mesh.export(file_path)
+        # Trimesh exposes export at runtime, but its stubs do not model it.
+        export_mesh.export(file_path)  # ty: ignore[unresolved-attribute]
 
     def default_export_path(self) -> str:
         if self._last_export_path != "":

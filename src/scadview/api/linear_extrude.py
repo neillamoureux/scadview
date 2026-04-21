@@ -111,8 +111,7 @@ def _is_list_2dim_2d_or_3d_points(profile: ProfileType) -> bool:
         and (
             all(
                 [
-                    isinstance(vert, (tuple, list))  # type: ignore[reportUnecessaryIsInstance] - want to report to user if incorrect type
-                    and len(vert) in (2, 3)
+                    isinstance(vert, (tuple, list)) and len(vert) in (2, 3)
                     for vert in profile
                 ]
             )
@@ -132,24 +131,20 @@ def _determine_final_scale(
     scale: float | tuple[float, float] | list[float] | NDArray[np.float32],
 ) -> tuple[float, float]:
     if not isinstance(scale, (tuple, list, np.ndarray)):
-        scale = (float(scale), float(scale))
-    return (float(scale[0]), float(scale[1]))
+        return (float(scale), float(scale))
+    # Normalize indexable scale inputs so ty sees a single concrete shape.
+    scale_values = np.asarray(scale, dtype=np.float32).reshape(-1)
+    return (float(scale_values[0]), float(scale_values[1]))
 
 
 def _as_poly_2d(profile: ProfileType) -> sg.Polygon:
     if isinstance(profile, sg.Polygon):
-        poly = profile
-    elif isinstance(profile, np.ndarray):
-        if profile.shape[1] == 3:
-            poly = sg.Polygon(profile[:, :2])
-        else:
-            poly = sg.Polygon(profile)
-    else:
-        if len(profile[0]) == 3:
-            poly = sg.Polygon([p[:2] for p in profile])
-        else:
-            poly = sg.Polygon(profile)
-    return poly
+        return profile
+    # Normalize list/ndarray profiles before slicing 3D points down to XY.
+    points = np.asarray(profile, dtype=np.float32)
+    if points.shape[1] == 3:
+        points = points[:, :2]
+    return sg.Polygon(points)
 
 
 def _orient_polygon_rings(poly: sg.Polygon) -> sg.Polygon:
@@ -325,13 +320,12 @@ def _find_boundary_rings_indexes(
     # map ring vertices -> triangulation indices
     kdt = KDTree(verts_2d)
     # list of array(shape(mi,), intp) where mi is number of vertices in ring i
-    rings_idxs = [  # pyright: ignore[reportUnknownVariableType] - scipy fn
+    rings_idxs = [
         kdt.query(r, k=1)[1] for r in rings
     ]  # list of len(bndries) of array(shape(m,), intp)
     # ensure indices are intp
     rings_idxs = [
-        np.asarray(ri, dtype=np.intp)
-        for ri in rings_idxs  # pyright: ignore[reportUnknownVariableType] - scipy
+        np.asarray(ri, dtype=np.intp) for ri in rings_idxs
     ]  # list of len(bndries) of array(shape(m,), intp)
     return rings_idxs
 

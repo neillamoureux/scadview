@@ -1,12 +1,13 @@
 import logging
 from abc import abstractmethod
+from typing import cast
 
 import moderngl
 import numpy as np
 from numpy.typing import NDArray
 from trimesh import Trimesh
 from trimesh.bounds import (
-    corners,  # pyright: ignore[reportUnknownVariableType] can't resolve
+    corners,
 )
 
 from scadview.observable import Observable
@@ -37,15 +38,9 @@ def create_colors_array_from_mesh(mesh: Trimesh) -> NDArray[np.uint8]:
 
 def get_metadata_color(mesh: Trimesh) -> NDArray[np.uint8]:
     metadata: dict[str, dict[str, list[float]]]
-    metadata = mesh.metadata  # pyright: ignore[reportUnknownVariableType]
-    if (
-        isinstance(metadata, dict)  # pyright: ignore[reportUnnecessaryIsInstance] - needed since ignoring type in line above
-        and "scadview" in metadata
-    ):
-        if (
-            metadata["scadview"] is not None  # pyright: ignore[reportUnnecessaryComparison] - needed since ignoring type above
-            and "color" in metadata["scadview"]
-        ):
+    metadata = mesh.metadata
+    if isinstance(metadata, dict) and "scadview" in metadata:
+        if metadata["scadview"] is not None and "color" in metadata["scadview"]:
             color = metadata["scadview"]["color"]
             if len(color) == 4 and all(isinstance(c, float) for c in color):
                 return convert_color_to_uint8(metadata["scadview"]["color"])
@@ -167,7 +162,8 @@ class TrimeshOpaqueRenderee(TrimeshRenderee):
             self._ctx.disable(moderngl.CULL_FACE)
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.disable(moderngl.BLEND)
-        self._ctx.depth_mask = True  # type: ignore[attr-defined]
+        # ModernGL exposes depth_mask at runtime, but its stubs omit it.
+        self._ctx.depth_mask = True  # ty: ignore[unresolved-attribute]
         if (
             self._vao is None
         ):  # Lazily create the _vao so that it is created during the render when the context is active
@@ -261,7 +257,8 @@ class AlphaRenderee(Renderee):
         self._ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
         self._ctx.enable(moderngl.DEPTH_TEST)
         self._ctx.enable(moderngl.BLEND)
-        self._ctx.depth_mask = False  # type: ignore[attr-defined]
+        # ModernGL exposes depth_mask at runtime, but its stubs omit it.
+        self._ctx.depth_mask = False  # ty: ignore[unresolved-attribute]
         self._vao.render()
 
 
@@ -392,10 +389,12 @@ def create_trimesh_renderee(
     name: str = "Unknown create_trimesh_renderee",
 ) -> TrimeshRenderee:
     if isinstance(mesh, list):
+        # Trimesh stubs are list-like, so make this branch's contract explicit.
+        meshes = cast(list[Trimesh], mesh)
         return create_trimesh_list_renderee(
             ctx,
             program,
-            mesh,
+            meshes,
             model_matrix,
             view_matrix,
             name,
