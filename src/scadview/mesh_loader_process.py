@@ -20,6 +20,7 @@ from scadview.api.utils import manifold_to_trimesh
 from scadview.features import (
     FeatureMesh,
     FeatureState,
+    NullFeatureMesh,
     get_feature_states,
     set_enabled_feature_states,
 )
@@ -95,7 +96,7 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
-CreateMeshItemType = Trimesh | Manifold | FeatureMesh
+CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
 
@@ -202,6 +203,8 @@ class LoadWorker(Thread):
     def _ensure_trimesh(self, mesh: CreateMeshResultType | None) -> MeshType | None:
         if mesh is None:
             return None
+        if isinstance(mesh, NullFeatureMesh):
+            return None
         if isinstance(mesh, FeatureMesh):
             return self._ensure_trimesh(mesh.resolve())
         if isinstance(mesh, Trimesh):
@@ -277,6 +280,8 @@ class LoadWorker(Thread):
         if isinstance(mesh, FeatureMesh):
             self._check_feature_mesh(mesh)
             return
+        if isinstance(mesh, NullFeatureMesh):
+            return
         if isinstance(mesh, Trimesh):
             self._check_trimesh_vertices(mesh)
             return
@@ -287,6 +292,8 @@ class LoadWorker(Thread):
             for i, m in enumerate(mesh):
                 if isinstance(m, FeatureMesh):
                     self._check_feature_mesh(m, i)
+                    continue
+                if isinstance(m, NullFeatureMesh):
                     continue
                 if isinstance(m, Trimesh):
                     self._check_trimesh_vertices(m)

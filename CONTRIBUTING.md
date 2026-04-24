@@ -258,6 +258,16 @@ ci: | GitHub Actions / CI | Patch
 
 Before submitting your PR, ensure your changes pass all local checks:
 
+### 8. Open the Pull Request
+
+When creating or updating a PR, use the repository PR template in:
+
+```text
+.github/pull_request_template.md
+```
+
+Make sure the PR body is filled out rather than replaced with an ad hoc summary.
+
 - Formatting
 - Linting
 - Type checks (if applicable)

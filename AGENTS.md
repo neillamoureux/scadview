@@ -90,6 +90,8 @@ If guidance conflicts, follow this precedence:
 - Treat `pyproject.toml`, GitHub Actions, and docs as user-facing interfaces.
 - Keep changes reproducible and minimal.
 - Do not modify release, publishing, or deployment behavior without explicitly stating it.
+- When creating or updating a pull request, use the repository PR template at
+  `.github/pull_request_template.md`.
 
 ---
 

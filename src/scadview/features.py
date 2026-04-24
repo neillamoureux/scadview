@@ -20,6 +20,29 @@ class FeatureState:
     enabled: bool = True
 
 
+class NullFeatureMesh:
+    def resolve(self) -> None:
+        return None
+
+    def union(self, other: Any) -> Any:
+        return _identity_for_disabled_feature(other)
+
+    def difference(self, _other: Any) -> NullFeatureMesh:
+        return self
+
+    def intersection(self, _other: Any) -> NullFeatureMesh:
+        return self
+
+    def __add__(self, other: Any) -> Any:
+        return _identity_for_disabled_feature(other)
+
+    def __sub__(self, _other: Any) -> NullFeatureMesh:
+        return self
+
+    def __xor__(self, _other: Any) -> NullFeatureMesh:
+        return self
+
+
 class FeatureMesh:
     def __init__(self, name: str, mesh: FeatureNativeMesh, enabled: bool):
         self._name = name
@@ -213,12 +236,14 @@ def _identity_for_disabled_feature(other: Any) -> Any:
     resolved_other = _resolve_operand(other)
     if resolved_other is not None:
         return resolved_other
-    return None
+    return NullFeatureMesh()
 
 
 def _resolve_operand(value: Any) -> FeatureNativeMeshOrNone | Any:
     if isinstance(value, FeatureMesh):
         return value.resolve()
+    if isinstance(value, NullFeatureMesh):
+        return None
     return value
 
 

@@ -103,3 +103,13 @@ def test_disabled_feature_is_identity_for_manifold_boolean_operators():
     assert (optional + base) is base
     assert (optional ^ base) is base
     assert (optional - base) is base
+
+
+def test_disabled_feature_chain_returns_null_feature_mesh():
+    set_enabled_feature_states({"platform": False, "guide": False})
+    platform = feature("platform", box())
+    guide = feature("guide", box())
+
+    result = platform.union(guide).difference(box())
+
+    assert result.resolve() is None
