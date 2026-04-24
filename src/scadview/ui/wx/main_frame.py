@@ -54,8 +54,6 @@ class MainFrame(wx.Frame):
         self._add_feature_controls()
         self._add_view_buttons()
 
-        self._panel_sizer.AddStretchSpacer()
-
         root = wx.BoxSizer(wx.HORIZONTAL)
         root.Add(
             self._gl_widget,
@@ -159,11 +157,24 @@ class MainFrame(wx.Frame):
             self._button_panel,
             "Features",
         )
+        self._feature_scroll = wx.ScrolledWindow(
+            self._feature_box.GetStaticBox(),
+            style=wx.VSCROLL,
+        )
+        self._feature_scroll.SetScrollRate(0, 10)
+        self._feature_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._feature_scroll.SetSizer(self._feature_sizer)
         self._feature_checkboxes: list[wx.CheckBox] = []
+        self._feature_box.Add(
+            self._feature_scroll,
+            1,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+            BORDER_SIZE,
+        )
         self._feature_box.ShowItems(False)
         self._panel_sizer.Add(
             self._feature_box,
-            0,
+            1,
             wx.ALL | wx.EXPAND,
             BORDER_SIZE,
         )
@@ -210,22 +221,24 @@ class MainFrame(wx.Frame):
         self._feature_box.ShowItems(True)
         for feature in features:
             checkbox = self._create_feature_checkbox(feature)
-            self._feature_box.Add(
+            self._feature_sizer.Add(
                 checkbox,
                 0,
                 wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
                 BORDER_SIZE,
             )
             self._feature_checkboxes.append(checkbox)
+        self._feature_scroll.Layout()
+        self._feature_scroll.FitInside()
         self._button_panel.Layout()
 
     def _clear_feature_controls(self):
-        self._feature_box.Clear(delete_windows=True)
+        self._feature_sizer.Clear(delete_windows=True)
         self._feature_checkboxes = []
 
     def _create_feature_checkbox(self, feature: FeatureState) -> wx.CheckBox:
         checkbox = wx.CheckBox(
-            self._feature_box.GetStaticBox(),
+            self._feature_scroll,
             label=feature.name,
         )
         checkbox.SetValue(feature.enabled)
