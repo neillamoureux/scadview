@@ -5,6 +5,7 @@ import queue
 from trimesh import Trimesh
 from trimesh.exchange import export
 
+from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.logging_main import log_queue
 from scadview.mesh_loader_process import (
@@ -34,9 +35,12 @@ def export_formats() -> list[str]:
 class Controller:
     def __init__(self):
         self.on_module_path_set = Observable()
+        self.on_features_change = Observable()
         self.module_path = ""
         self._last_export_path = ""
         self._closed = False
+        self._current_mesh: list[Trimesh] | Trimesh | None = None
+        self._feature_states: list[FeatureState] = []
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(
@@ -56,6 +60,17 @@ class Controller:
     @current_mesh.setter
     def current_mesh(self, value: list[Trimesh] | Trimesh | None):
         self._current_mesh = value
+
+    @property
+    def feature_states(self) -> list[FeatureState]:
+        return self._feature_states
+
+    @feature_states.setter
+    def feature_states(self, value: list[FeatureState]):
+        if self._feature_states == value:
+            return
+        self._feature_states = value
+        self.on_features_change.notify(value)
 
     @property
     def module_path(self) -> str:
@@ -85,8 +100,9 @@ class Controller:
                 ""  # Reset last export path if loading a new module
             )
             self.module_path = module_path
+            self.feature_states = []
         logger.info(f"Starting load of {module_path}")
-        self._command_queue.put(LoadMeshCommand(module_path))
+        self._command_queue.put(LoadMeshCommand(module_path, self._feature_state_map()))
 
     def reload_mesh(self):
         if self.module_path == "":
@@ -101,11 +117,22 @@ class Controller:
                 self.current_mesh = load_result.mesh
             else:
                 logger.debug("check_load_queue got mesh == None")
+            self.feature_states = load_result.features or []
             self.load_status = load_result.status
         except queue.Empty:
             logger.debug("check_load_queue empty")
             load_result = LoadResult(0, 0, None, None, False)
         return load_result
+
+    def set_feature_enabled(self, name: str, enabled: bool):
+        if self.module_path == "":
+            raise ValueError("No module loaded")
+        feature_states = self._feature_state_map()
+        if feature_states.get(name, True) == enabled:
+            return
+        feature_states[name] = enabled
+        self.feature_states = self._feature_states_with_override(name, enabled)
+        self._queue_feature_reload(feature_states)
 
     def export(self, file_path: str):
         # Cache the property so type narrowing is stable for the selected mesh.
@@ -148,6 +175,31 @@ class Controller:
 
         self._command_queue.close()
         self._load_queue.close()
+
+    def _feature_state_map(self) -> dict[str, bool]:
+        return {feature.name: feature.enabled for feature in self.feature_states}
+
+    def _feature_states_with_override(
+        self,
+        name: str,
+        enabled: bool,
+    ) -> list[FeatureState]:
+        updated_feature_states: list[FeatureState] = []
+        found = False
+        for feature in self.feature_states:
+            if feature.name == name:
+                updated_feature_states.append(FeatureState(name, enabled))
+                found = True
+            else:
+                updated_feature_states.append(feature)
+        if not found:
+            updated_feature_states.append(FeatureState(name, enabled))
+        return updated_feature_states
+
+    def _queue_feature_reload(self, feature_states: dict[str, bool]):
+        self.current_mesh = None
+        self.load_status = LoadStatus.START
+        self._command_queue.put(LoadMeshCommand(self.module_path, feature_states))
 
     def __del__(self):
         try:

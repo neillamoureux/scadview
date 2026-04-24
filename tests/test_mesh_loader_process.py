@@ -5,6 +5,7 @@ import numpy.testing as npt
 import pytest
 from trimesh.creation import box, icosphere
 
+from scadview.features import FeatureState, feature
 from scadview.mesh_loader_process import (
     LoadResult,
     LoadStatus,
@@ -215,6 +216,30 @@ def test_load_worker_colors_mesh_list(load_queue):
     for tm in result.mesh:
         assert "scadview" in tm.metadata
         assert tm.metadata["scadview"]["color"][3] == 0.5
+
+
+def test_load_worker_tracks_feature_states_and_filters_disabled_features(load_queue):
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            yield feature("cutout", box())
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker(
+            "test/path",
+            load_queue,
+            feature_states={"cutout": False},
+        )
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+    assert result.mesh is None
+    assert result.features == [FeatureState("cutout", False)]
+    result = load_queue.get(timeout=1.0)
+    assert result.complete
+    assert result.features == [FeatureState("cutout", False)]
 
 
 def test_load_worker_errors_on_nan_vertices(load_queue):

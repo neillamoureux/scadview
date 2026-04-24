@@ -17,6 +17,12 @@ from trimesh import Trimesh
 
 from scadview.api.colors import set_mesh_color
 from scadview.api.utils import manifold_to_trimesh
+from scadview.features import (
+    FeatureMesh,
+    FeatureState,
+    get_feature_states,
+    set_enabled_feature_states,
+)
 from scadview.load_status import LoadStatus
 from scadview.logging_worker import configure_worker_logging
 from scadview.module_loader import ModuleLoader
@@ -71,8 +77,13 @@ class Command:
 
 
 class LoadMeshCommand(Command):
-    def __init__(self, module_path: str):
+    def __init__(
+        self,
+        module_path: str,
+        feature_states: dict[str, bool] | None = None,
+    ):
         self.module_path = module_path
+        self.feature_states = feature_states or {}
 
 
 class CancelLoadCommand(Command):
@@ -84,7 +95,8 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
-CreateMeshResultType = Trimesh | Manifold | list[Trimesh | Manifold]
+CreateMeshItemType = Trimesh | Manifold | FeatureMesh
+CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
 
 @dataclass
@@ -94,6 +106,7 @@ class LoadResult:
     mesh: MeshType | None
     error: Exception | None
     complete: bool = False
+    features: list[FeatureState] | None = None
 
     @property
     def debug(self) -> bool:
@@ -130,11 +143,18 @@ class LoadWorker(Thread):
     PUT_QUEUE_TIMEOUT = 0.1
     load_number = 0
 
-    def __init__(self, module_path: str, load_queue: MpLoadQueue):
+    def __init__(
+        self,
+        module_path: str,
+        load_queue: MpLoadQueue,
+        feature_states: dict[str, bool] | None = None,
+    ):
         super().__init__()
         self.module_path = module_path
         self.load_queue = load_queue
         self.cancelled = False
+        self.feature_states = feature_states or {}
+        self._loaded_feature_states: list[FeatureState] = []
 
     def run(self):
         LoadWorker.load_number += 1
@@ -161,7 +181,7 @@ class LoadWorker(Thread):
     def _update_mesh(
         self,
         sequence_number: int,
-        mesh: MeshType | None,
+        mesh: CreateMeshResultType | None,
         final: bool = False,
         error: Exception | None = None,
     ):
@@ -175,12 +195,15 @@ class LoadWorker(Thread):
                 tmesh,
                 error=error,
                 complete=final,
+                features=self._current_feature_states(),
             )
         )
 
-    def _ensure_trimesh(self, mesh: Any) -> MeshType | None:
+    def _ensure_trimesh(self, mesh: CreateMeshResultType | None) -> MeshType | None:
         if mesh is None:
             return None
+        if isinstance(mesh, FeatureMesh):
+            return self._ensure_trimesh(mesh.resolve())
         if isinstance(mesh, Trimesh):
             return mesh
         if isinstance(mesh, Manifold):
@@ -188,6 +211,11 @@ class LoadWorker(Thread):
         if isinstance(mesh, list):
             result: list[Trimesh] = []
             for m in mesh:
+                if isinstance(m, FeatureMesh):
+                    resolved_feature = m.resolve()
+                    if resolved_feature is None:
+                        continue
+                    m = resolved_feature
                 if isinstance(m, Trimesh):
                     result.append(m)
                 elif isinstance(m, Manifold):
@@ -196,9 +224,12 @@ class LoadWorker(Thread):
                     raise TypeError(
                         f"Expected mesh item to be of type Trimesh or Manifold, got {type(m)}"
                     )
+            if not result:
+                return None
             return result
         raise TypeError(
-            f"Expected mesh to be of type Trimesh, list[Trimesh], Manifold, or list[Manifold], got {type(mesh)}"
+            "Expected mesh to be of type Trimesh, FeatureMesh, list[Trimesh], "
+            f"Manifold, or list[Manifold], got {type(mesh)}"
         )
 
     def _color_if_debug(self, tmesh: MeshType | None):
@@ -222,17 +253,30 @@ class LoadWorker(Thread):
                 except queue.Empty:
                     pass
 
-    def run_mesh_module(self) -> Generator[MeshType, None, None]:
+    def run_mesh_module(self) -> Generator[CreateMeshResultType, None, None]:
         module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
+        set_enabled_feature_states(self.feature_states)
         t0 = time()
-        for i, mesh in enumerate(module_loader.run_function(self.module_path)):
-            logger.info(f"Loading mesh #{i + 1}")
-            self._check_mesh_type(mesh)
-            yield mesh
-        t1 = time()
-        logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
+        try:
+            for i, mesh in enumerate(module_loader.run_function(self.module_path)):
+                logger.info(f"Loading mesh #{i + 1}")
+                self._check_mesh_type(mesh)
+                yield mesh
+        finally:
+            t1 = time()
+            logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
+            set_enabled_feature_states(None)
+
+    def _current_feature_states(self) -> list[FeatureState]:
+        feature_states = get_feature_states()
+        if feature_states:
+            self._loaded_feature_states = feature_states
+        return self._loaded_feature_states
 
     def _check_mesh_type(self, mesh: Any):
+        if isinstance(mesh, FeatureMesh):
+            self._check_feature_mesh(mesh)
+            return
         if isinstance(mesh, Trimesh):
             self._check_trimesh_vertices(mesh)
             return
@@ -241,6 +285,9 @@ class LoadWorker(Thread):
             return
         if isinstance(mesh, list):
             for i, m in enumerate(mesh):
+                if isinstance(m, FeatureMesh):
+                    self._check_feature_mesh(m, i)
+                    continue
                 if isinstance(m, Trimesh):
                     self._check_trimesh_vertices(m)
                     continue
@@ -249,11 +296,37 @@ class LoadWorker(Thread):
                     continue
                 if not isinstance(m, Trimesh) and not isinstance(m, Manifold):
                     raise TypeError(
-                        f"Expected mesh[{i}] to be of type Trimesh or Manifold, got {type(m)}"
+                        f"Expected mesh[{i}] to be of type Trimesh, FeatureMesh "
+                        f"or Manifold, got {type(m)}"
                     )
             return
         raise TypeError(
-            f"Expected mesh to be of type Trimesh, list[Trimesh], Manifold, or list[Manifold], got {type(mesh)}"
+            "Expected mesh to be of type Trimesh, FeatureMesh, list[Trimesh], "
+            f"Manifold, or list[Manifold], got {type(mesh)}"
+        )
+
+    def _check_feature_mesh(
+        self,
+        feature_mesh: FeatureMesh,
+        list_index: int | None = None,
+    ):
+        resolved_mesh = feature_mesh.resolve()
+        if resolved_mesh is None:
+            return
+        if isinstance(resolved_mesh, Trimesh):
+            self._check_trimesh_vertices(resolved_mesh)
+            return
+        if isinstance(resolved_mesh, Manifold):
+            self._check_manifold(resolved_mesh, list_index)
+            return
+        if list_index is None:
+            raise TypeError(
+                "Expected feature mesh to resolve to Trimesh or Manifold, "
+                f"got {type(resolved_mesh)}"
+            )
+        raise TypeError(
+            f"Expected feature mesh[{list_index}] to resolve to Trimesh or "
+            f"Manifold, got {type(resolved_mesh)}"
         )
 
     def _check_trimesh_vertices(self, mesh: Trimesh):
@@ -317,7 +390,11 @@ class MeshLoaderProcess(Process):
             if isinstance(command, LoadMeshCommand):
                 self.cancel()
                 logger.info(f"Loading mesh from {command.module_path}")
-                self._worker = LoadWorker(command.module_path, self._load_queue)
+                self._worker = LoadWorker(
+                    command.module_path,
+                    self._load_queue,
+                    feature_states=command.feature_states,
+                )
                 self._worker.start()
             elif isinstance(command, CancelLoadCommand):
                 logger.info("Load cancelled")

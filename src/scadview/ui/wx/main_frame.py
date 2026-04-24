@@ -2,8 +2,10 @@ import logging
 import os
 
 import wx
+from trimesh import Trimesh
 
 from scadview.controller import Controller, export_formats
+from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
@@ -49,6 +51,7 @@ class MainFrame(wx.Frame):
         )
 
         self._add_file_buttons()
+        self._add_feature_controls()
         self._add_view_buttons()
 
         self._panel_sizer.AddStretchSpacer()
@@ -74,6 +77,7 @@ class MainFrame(wx.Frame):
         self._loader_last_load_number = 0
         self._loader_last_sequence_number = 0
         self._controller.on_load_status_change.subscribe(self._indicate_load_status)
+        self._controller.on_features_change.subscribe(self._update_feature_controls)
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
@@ -149,11 +153,28 @@ class MainFrame(wx.Frame):
         self._export_btn = self._export_action.button(self._button_panel)
         self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
+    def _add_feature_controls(self):
+        self._feature_box = wx.StaticBoxSizer(
+            wx.VERTICAL,
+            self._button_panel,
+            "Features",
+        )
+        self._feature_checkboxes: list[wx.CheckBox] = []
+        self._feature_box.ShowItems(False)
+        self._panel_sizer.Add(
+            self._feature_box,
+            0,
+            wx.ALL | wx.EXPAND,
+            BORDER_SIZE,
+        )
+
     def _on_module_path_set(self, path: str) -> bool:
         return path != ""
 
     def _can_be_exported(self, status: LoadStatus) -> bool:
-        return status == LoadStatus.COMPLETE
+        return (
+            status == LoadStatus.COMPLETE and self._controller.current_mesh is not None
+        )
 
     def _add_view_buttons(self):
         for action in [
@@ -179,6 +200,45 @@ class MainFrame(wx.Frame):
         ]:
             chk = action.checkbox(self._button_panel)
             self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
+
+    def _update_feature_controls(self, features: list[FeatureState]):
+        self._clear_feature_controls()
+        if not features:
+            self._feature_box.ShowItems(False)
+            self._button_panel.Layout()
+            return
+        self._feature_box.ShowItems(True)
+        for feature in features:
+            checkbox = self._create_feature_checkbox(feature)
+            self._feature_box.Add(
+                checkbox,
+                0,
+                wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+                BORDER_SIZE,
+            )
+            self._feature_checkboxes.append(checkbox)
+        self._button_panel.Layout()
+
+    def _clear_feature_controls(self):
+        self._feature_box.Clear(delete_windows=True)
+        self._feature_checkboxes = []
+
+    def _create_feature_checkbox(self, feature: FeatureState) -> wx.CheckBox:
+        checkbox = wx.CheckBox(
+            self._feature_box.GetStaticBox(),
+            label=feature.name,
+        )
+        checkbox.SetValue(feature.enabled)
+        checkbox.Bind(
+            wx.EVT_CHECKBOX,
+            lambda evt, name=feature.name: self._on_feature_toggle(evt, name),
+        )
+        return checkbox
+
+    def _on_feature_toggle(self, event: wx.CommandEvent, name: str):
+        self._controller.set_feature_enabled(name, event.IsChecked())
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
 
     def _create_file_menu(self) -> wx.Menu:
         file_menu = wx.Menu()
@@ -243,8 +303,7 @@ class MainFrame(wx.Frame):
             logger.error(load_result.error)
         if self._has_mesh_changed(load_result):
             logger.debug("on_load_time: mesh has changed")
-            if mesh is not None:  # Keep the type checker happy
-                self._gl_widget.load_mesh(mesh, "loaded mesh")
+            self._load_mesh_in_view(mesh)
             if self._is_first_in_load(load_result):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
@@ -254,10 +313,17 @@ class MainFrame(wx.Frame):
         self._gl_widget.indicate_load_status(status)
 
     def _has_mesh_changed(self, load_result: LoadResult) -> bool:
-        return load_result.mesh is not None and (
-            self._loader_last_load_number != load_result.load_number
-            or self._loader_last_sequence_number != load_result.sequence_number
-        )
+        new_load = self._loader_last_load_number != load_result.load_number
+        new_sequence = self._loader_last_sequence_number != load_result.sequence_number
+        if load_result.mesh is not None:
+            return new_load or new_sequence
+        return load_result.complete and new_load
+
+    def _load_mesh_in_view(self, mesh: Trimesh | list[Trimesh] | None):
+        if mesh is None:
+            self._gl_widget.load_mesh([], "loaded mesh")
+            return
+        self._gl_widget.load_mesh(mesh, "loaded mesh")
 
     def _is_first_in_load(self, load_result: LoadResult) -> bool:
         return self._loader_last_load_number != load_result.load_number

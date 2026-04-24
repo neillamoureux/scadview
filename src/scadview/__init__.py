@@ -7,6 +7,7 @@ if False:
         Color,
         set_mesh_color,
     )
+    from scadview.api.features import feature
     from scadview.api.linear_extrude import (
         ProfileType,
         linear_extrude,
@@ -27,6 +28,7 @@ if False:
 __all__ = [
     "Color",
     "set_mesh_color",
+    "feature",
     "ProfileType",
     "linear_extrude",
     "mesh_from_heightmap",
@@ -41,6 +43,7 @@ __all__ = [
 _lazy_map = {
     "Color": ("scadview.api.colors", "Color"),
     "set_mesh_color": ("scadview.api.colors", "set_mesh_color"),
+    "feature": ("scadview.api.features", "feature"),
     "ProfileType": ("scadview.api.linear_extrude", "ProfileType"),
     "linear_extrude": ("scadview.api.linear_extrude", "linear_extrude"),
     "mesh_from_heightmap": ("scadview.api.surface", "mesh_from_heightmap"),
