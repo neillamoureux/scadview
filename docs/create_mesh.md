@@ -36,6 +36,61 @@ But `manifold3d` is highly optimized for geometric boolean operations,
 and can be much faster than Trimesh.
 So if you are combining 100s of meshes, consider trying out `manifold3d`.
 
+## Toggleable Features
+
+{{ project_name }} can expose optional geometry as UI-togglable features.
+Use [`feature`](api.md#{{ package_name }}.feature) on a mesh-returning function
+or method:
+
+```python
+from trimesh.creation import box, cylinder
+
+from scadview import feature
+
+
+@feature
+def guide():
+    return box([20, 10, 8])
+
+
+@feature("cutout")
+def cutout():
+    return cylinder(radius=3, height=20)
+```
+
+You can also wrap a mesh directly with `feature("name", mesh)`:
+
+```python
+from trimesh.creation import box
+
+from scadview import feature
+
+
+def create_mesh():
+    base = box([40, 20, 10])
+    guide = feature("guide", box([20, 10, 8]))
+    return base.union(guide)
+```
+
+Feature-decorated functions and methods must return a `Trimesh` or `Manifold`.
+Decorating classes is not supported.
+
+Disabled features behave like identity operands for supported boolean operations:
+
+- `Trimesh`: `union(...)`, `difference(...)`, `intersection(...)`
+- `Manifold`: `+`, `-`, `^`
+
+That lets you write expressions such as:
+
+```python
+def create_mesh():
+    base = box([40, 20, 10])
+    return base.union(guide()).difference(cutout())
+```
+
+When the script is loaded, each discovered feature appears in the UI and can be
+toggled on or off without editing the script.
+
 ## Debug Mode: Return a `list`
 
 Returning a `list` of objects results in {{ project_name }}
