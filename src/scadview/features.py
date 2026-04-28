@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from functools import wraps
-import inspect
 from typing import Any, Callable, ParamSpec, TypeAlias, TypeVar, cast, overload
 
 from manifold3d import Manifold

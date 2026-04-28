@@ -9,7 +9,8 @@ from typing import Callable, ParamSpec, TypeVar, cast, overload
 from manifold3d import Manifold
 from trimesh import Trimesh
 
-from scadview.features import FeatureMesh, feature as _feature
+from scadview.features import FeatureMesh
+from scadview.features import feature as _feature
 
 P = ParamSpec("P")
 TNativeMesh = TypeVar("TNativeMesh", Trimesh, Manifold)

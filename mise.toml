@@ -87,8 +87,8 @@ description = "Lint GitHub workflows"
 run = "actionlint -color"
 
 [tasks.preflight]
-description = "Run lint, types, and tests"
-depends = ["lint", "type", "test"]
+description = "Run format, lint, types, and tests"
+depends = ["format", "lint", "type", "test"]
 
 [tasks.reset]
 description = "Reset the development environment"
