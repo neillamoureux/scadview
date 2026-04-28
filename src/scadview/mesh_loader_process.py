@@ -18,6 +18,7 @@ from trimesh import Trimesh
 from scadview.api.colors import set_mesh_color
 from scadview.api.utils import manifold_to_trimesh
 from scadview.features import (
+    BooleanMesh,
     FeatureMesh,
     FeatureState,
     NullFeatureMesh,
@@ -96,7 +97,7 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
-CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
+CreateMeshItemType = Trimesh | Manifold | FeatureMesh | BooleanMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
 
@@ -206,7 +207,9 @@ class LoadWorker(Thread):
         if isinstance(mesh, NullFeatureMesh):
             return None
         if isinstance(mesh, FeatureMesh):
-            return self._ensure_trimesh(mesh.resolve())
+            return self._ensure_trimesh(mesh.as_operand())
+        if isinstance(mesh, BooleanMesh):
+            return self._ensure_trimesh(mesh.native())
         if isinstance(mesh, Trimesh):
             return mesh
         if isinstance(mesh, Manifold):
@@ -215,10 +218,11 @@ class LoadWorker(Thread):
             result: list[Trimesh] = []
             for m in mesh:
                 if isinstance(m, FeatureMesh):
-                    resolved_feature = m.resolve()
-                    if resolved_feature is None:
+                    operand = m.as_operand()
+                    if operand.is_empty():
                         continue
-                    m = resolved_feature
+                    if isinstance(operand, BooleanMesh):
+                        m = operand.native()
                 if isinstance(m, Trimesh):
                     result.append(m)
                 elif isinstance(m, Manifold):
@@ -317,9 +321,12 @@ class LoadWorker(Thread):
         feature_mesh: FeatureMesh,
         list_index: int | None = None,
     ):
-        resolved_mesh = feature_mesh.resolve()
-        if resolved_mesh is None:
+        operand = feature_mesh.as_operand()
+        if operand.is_empty():
             return
+        if not isinstance(operand, BooleanMesh):
+            raise TypeError(f"Expected non-empty feature mesh, got {type(operand)}")
+        resolved_mesh = operand.native()
         if isinstance(resolved_mesh, Trimesh):
             self._check_trimesh_vertices(resolved_mesh)
             return

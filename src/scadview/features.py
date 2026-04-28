@@ -3,15 +3,41 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, ParamSpec, TypeAlias, TypeVar, cast, overload
+from typing import (
+    Any,
+    Callable,
+    ParamSpec,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from manifold3d import Manifold
 from trimesh import Trimesh
 
 FeatureNativeMesh: TypeAlias = Trimesh | Manifold
-FeatureNativeMeshOrNone: TypeAlias = FeatureNativeMesh | None
 P = ParamSpec("P")
 TNativeMesh = TypeVar("TNativeMesh", Trimesh, Manifold)
+
+
+class BooleanOperand(Protocol):
+    def as_operand(self) -> BooleanOperand: ...
+
+    def is_empty(self) -> bool: ...
+
+    def union(self, other: Any) -> Any: ...
+
+    def difference(self, other: Any) -> Any: ...
+
+    def intersection(self, other: Any) -> Any: ...
+
+    def __add__(self, other: Any) -> Any: ...
+
+    def __sub__(self, other: Any) -> Any: ...
+
+    def __xor__(self, other: Any) -> Any: ...
 
 
 @dataclass(frozen=True)
@@ -21,11 +47,17 @@ class FeatureState:
 
 
 class NullFeatureMesh:
-    def resolve(self) -> None:
-        return None
+    def as_operand(self) -> NullFeatureMesh:
+        return self
+
+    def is_empty(self) -> bool:
+        return True
 
     def union(self, other: Any) -> Any:
-        return _identity_for_disabled_feature(other)
+        operand = _to_boolean_operand(other)
+        if isinstance(operand, NullFeatureMesh):
+            return self
+        return operand.native()
 
     def difference(self, _other: Any) -> NullFeatureMesh:
         return self
@@ -34,7 +66,7 @@ class NullFeatureMesh:
         return self
 
     def __add__(self, other: Any) -> Any:
-        return _identity_for_disabled_feature(other)
+        return self.union(other)
 
     def __sub__(self, _other: Any) -> NullFeatureMesh:
         return self
@@ -43,8 +75,68 @@ class NullFeatureMesh:
         return self
 
 
+class BooleanMesh:
+    def __init__(self, mesh: FeatureNativeMesh) -> None:
+        if not _is_native_mesh(mesh):
+            raise TypeError(
+                f"boolean mesh must be Trimesh or Manifold, got {type(mesh)}"
+            )
+        self._mesh = mesh
+
+    def as_operand(self) -> BooleanMesh:
+        return self
+
+    def is_empty(self) -> bool:
+        return False
+
+    def native(self) -> FeatureNativeMesh:
+        return self._mesh
+
+    def union(self, other: Any) -> Any:
+        mesh = _require_trimesh(self._mesh, "union")
+        operand = _to_boolean_operand(other)
+        if operand.is_empty():
+            return mesh
+        return mesh.union(_require_trimesh(_native(operand), "union"))
+
+    def difference(self, other: Any) -> Any:
+        mesh = _require_trimesh(self._mesh, "difference")
+        operand = _to_boolean_operand(other)
+        if operand.is_empty():
+            return mesh
+        return mesh.difference(_require_trimesh(_native(operand), "difference"))
+
+    def intersection(self, other: Any) -> Any:
+        mesh = _require_trimesh(self._mesh, "intersection")
+        operand = _to_boolean_operand(other)
+        if operand.is_empty():
+            return NullFeatureMesh()
+        return mesh.intersection(_require_trimesh(_native(operand), "intersection"))
+
+    def __add__(self, other: Any) -> Any:
+        mesh = _require_manifold(self._mesh, "+")
+        operand = _to_boolean_operand(other)
+        if operand.is_empty():
+            return mesh
+        return mesh + _require_manifold(_native(operand), "+")
+
+    def __sub__(self, other: Any) -> Any:
+        mesh = _require_manifold(self._mesh, "-")
+        operand = _to_boolean_operand(other)
+        if operand.is_empty():
+            return mesh
+        return mesh - _require_manifold(_native(operand), "-")
+
+    def __xor__(self, other: Any) -> Any:
+        mesh = _require_manifold(self._mesh, "^")
+        operand = _to_boolean_operand(other)
+        if operand.is_empty():
+            return NullFeatureMesh()
+        return mesh ^ _require_manifold(_native(operand), "^")
+
+
 class FeatureMesh:
-    def __init__(self, name: str, mesh: FeatureNativeMesh, enabled: bool):
+    def __init__(self, name: str, mesh: FeatureNativeMesh, enabled: bool) -> None:
         self._name = name
         self._mesh = mesh
         self._enabled = enabled
@@ -57,40 +149,43 @@ class FeatureMesh:
     def enabled(self) -> bool:
         return self._enabled
 
-    def resolve(self) -> FeatureNativeMeshOrNone:
+    def as_operand(self) -> BooleanMesh | NullFeatureMesh:
         if self._enabled:
-            return self._mesh
-        return None
+            return BooleanMesh(self._mesh)
+        return NullFeatureMesh()
+
+    def is_empty(self) -> bool:
+        return self.as_operand().is_empty()
 
     def union(self, other: Any) -> Any:
         if not hasattr(self._mesh, "union"):
             raise AttributeError(
                 f"{type(self._mesh).__name__!s} has no attribute 'union'"
             )
-        return self._call_native_operation("union", other)
+        return self.as_operand().union(other)
 
     def difference(self, other: Any) -> Any:
         if not hasattr(self._mesh, "difference"):
             raise AttributeError(
                 f"{type(self._mesh).__name__!s} has no attribute 'difference'"
             )
-        return self._call_native_operation("difference", other)
+        return self.as_operand().difference(other)
 
     def intersection(self, other: Any) -> Any:
         if not hasattr(self._mesh, "intersection"):
             raise AttributeError(
                 f"{type(self._mesh).__name__!s} has no attribute 'intersection'"
             )
-        return self._call_native_operation("intersection", other)
+        return self.as_operand().intersection(other)
 
     def __add__(self, other: Any) -> Any:
-        return self._call_native_operator("__add__", other)
+        return self.as_operand() + other
 
     def __sub__(self, other: Any) -> Any:
-        return self._call_native_operator("__sub__", other)
+        return self.as_operand() - other
 
     def __xor__(self, other: Any) -> Any:
-        return self._call_native_operator("__xor__", other)
+        return self.as_operand() ^ other
 
     def __getattr__(self, name: str) -> Any:
         attr = getattr(self._mesh, name)
@@ -106,29 +201,13 @@ class FeatureMesh:
 
         return _wrapped
 
-    def _call_native_operation(self, name: str, other: Any) -> Any:
-        if not self._enabled:
-            return _identity_for_disabled_feature(other)
-        resolved_other = _resolve_operand(other)
-        if resolved_other is None:
-            return self._mesh
-        return getattr(self._mesh, name)(resolved_other)
-
-    def _call_native_operator(self, name: str, other: Any) -> Any:
-        if not self._enabled:
-            return _identity_for_disabled_feature(other)
-        resolved_other = _resolve_operand(other)
-        if resolved_other is None:
-            return self._mesh
-        return getattr(self._mesh, name)(resolved_other)
-
 
 class _FeatureContext:
-    def __init__(self):
+    def __init__(self) -> None:
         self._states: dict[str, bool] = {}
         self._order: list[str] = []
 
-    def set_enabled_states(self, states: dict[str, bool] | None):
+    def set_enabled_states(self, states: dict[str, bool] | None) -> None:
         self._states = {} if states is None else dict(states)
         self._order = []
 
@@ -209,6 +288,8 @@ def feature(
 
 
 def _feature_mesh(name: str, mesh: FeatureNativeMesh) -> FeatureMesh:
+    if not _is_native_mesh(mesh):
+        raise TypeError(f"feature mesh must be Trimesh or Manifold, got {type(mesh)}")
     enabled = _FEATURE_CONTEXT.register(name)
     return FeatureMesh(name, mesh, enabled)
 
@@ -232,19 +313,36 @@ def _feature_decorator(
     return _decorate
 
 
-def _identity_for_disabled_feature(other: Any) -> Any:
-    resolved_other = _resolve_operand(other)
-    if resolved_other is not None:
-        return resolved_other
-    return NullFeatureMesh()
-
-
-def _resolve_operand(value: Any) -> FeatureNativeMeshOrNone | Any:
+def _to_boolean_operand(value: Any) -> BooleanMesh | NullFeatureMesh:
     if isinstance(value, FeatureMesh):
-        return value.resolve()
+        return value.as_operand()
+    if isinstance(value, BooleanMesh):
+        return value
     if isinstance(value, NullFeatureMesh):
-        return None
-    return value
+        return value
+    return BooleanMesh(value)
+
+
+def _native(operand: BooleanMesh | NullFeatureMesh) -> FeatureNativeMesh:
+    if isinstance(operand, BooleanMesh):
+        return operand.native()
+    raise TypeError("Expected non-empty boolean operand")
+
+
+def _has_feature_operand(value: Any) -> bool:
+    return isinstance(value, FeatureMesh | NullFeatureMesh)
+
+
+def _require_trimesh(mesh: FeatureNativeMesh, operation: str) -> Trimesh:
+    if isinstance(mesh, Trimesh):
+        return mesh
+    raise TypeError(f"{operation} requires Trimesh operands")
+
+
+def _require_manifold(mesh: FeatureNativeMesh, operation: str) -> Manifold:
+    if isinstance(mesh, Manifold):
+        return mesh
+    raise TypeError(f"{operation} requires Manifold operands")
 
 
 def _is_native_mesh(value: Any) -> bool:
@@ -265,11 +363,11 @@ def _patch_native_boolean_members() -> None:
                 self: Any,
                 other: Any,
                 _original: Callable[..., Any] = original,
+                _member_name: str = member_name,
             ) -> Any:
-                resolved_other = _resolve_operand(other)
-                if resolved_other is None:
-                    return self
-                return _original(self, resolved_other)
+                if _has_feature_operand(other):
+                    return getattr(BooleanMesh(self), _member_name)(other)
+                return _original(self, other)
 
             setattr(cls, member_name, _patched)
             _PATCHED_MEMBERS.add(key)
