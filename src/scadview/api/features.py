@@ -11,6 +11,7 @@ from trimesh import Trimesh
 
 from scadview.features import FeatureMesh
 from scadview.features import feature as _feature
+from scadview.features import feature_default as _feature_default
 
 P = ParamSpec("P")
 TNativeMesh = TypeVar("TNativeMesh", Trimesh, Manifold)
@@ -61,3 +62,18 @@ def feature(
         Callable[P, FeatureMesh],
         _feature(name_or_func),
     )
+
+
+def feature_default(name: str, enabled: bool = True) -> None:
+    """Set the default enabled state for a named feature.
+
+    Controller/UI overrides take precedence over module-declared defaults.
+
+    Args:
+        name: Feature name shown in the UI.
+        enabled: Default enabled state when no controller/UI override exists.
+
+    Raises:
+        ValueError: If the same feature name is given conflicting defaults.
+    """
+    _feature_default(name, enabled)

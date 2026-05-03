@@ -29,6 +29,72 @@ def test_feature_registers_enabled_state_by_default():
     assert get_feature_states() == [FeatureState("lid", True)]
 
 
+def test_feature_default_sets_name_level_default_state():
+    from scadview.features import feature_default
+
+    feature_default("supports", enabled=False)
+
+    support_a = feature("supports", box())
+    support_b = feature("supports", box())
+
+    assert not support_a.enabled
+    assert not support_b.enabled
+    assert get_feature_states() == [FeatureState("supports", False)]
+
+
+def test_feature_default_uses_enabled_when_no_default_is_declared():
+    from scadview.features import feature_default
+
+    feature_default("supports", enabled=False)
+
+    lid = feature("lid", box())
+
+    assert lid.enabled
+    assert get_feature_states() == [FeatureState("lid", True)]
+
+
+def test_feature_default_does_not_override_controller_state():
+    from scadview.features import feature_default
+
+    set_enabled_feature_states({"supports": True})
+    feature_default("supports", enabled=False)
+
+    support = feature("supports", box())
+
+    assert support.enabled
+    assert get_feature_states() == [FeatureState("supports", True)]
+
+
+def test_feature_default_allows_idempotent_duplicate_declarations():
+    from scadview.features import feature_default
+
+    feature_default("supports", enabled=False)
+    feature_default("supports", enabled=False)
+
+    support = feature("supports", box())
+
+    assert not support.enabled
+
+
+def test_feature_default_rejects_conflicting_duplicate_declarations():
+    from scadview.features import feature_default
+
+    feature_default("supports", enabled=False)
+
+    with pytest.raises(ValueError, match="Conflicting default"):
+        feature_default("supports", enabled=True)
+
+
+def test_feature_default_is_available_from_top_level_api():
+    from scadview import feature_default
+
+    feature_default("supports", enabled=False)
+
+    support = feature("supports", box())
+
+    assert not support.enabled
+
+
 def test_feature_decorator_uses_function_name_by_default():
     @feature
     def lid():

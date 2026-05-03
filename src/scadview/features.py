@@ -205,20 +205,28 @@ class FeatureMesh:
 class _FeatureContext:
     def __init__(self) -> None:
         self._states: dict[str, bool] = {}
+        self._defaults: dict[str, bool] = {}
         self._order: list[str] = []
 
     def set_enabled_states(self, states: dict[str, bool] | None) -> None:
         self._states = {} if states is None else dict(states)
+        self._defaults = {}
         self._order = []
+
+    def set_default(self, name: str, enabled: bool) -> None:
+        if name in self._defaults and self._defaults[name] != enabled:
+            raise ValueError(f"Conflicting default for feature {name!r}")
+        self._defaults[name] = enabled
 
     def register(self, name: str) -> bool:
         if name not in self._order:
             self._order.append(name)
-        return self._states.get(name, True)
+        return self._states.get(name, self._defaults.get(name, True))
 
     def states(self) -> list[FeatureState]:
         return [
-            FeatureState(name, self._states.get(name, True)) for name in self._order
+            FeatureState(name, self._states.get(name, self._defaults.get(name, True)))
+            for name in self._order
         ]
 
 
@@ -236,6 +244,10 @@ def set_enabled_feature_states(states: dict[str, bool] | None) -> None:
 
 def get_feature_states() -> list[FeatureState]:
     return _FEATURE_CONTEXT.states()
+
+
+def feature_default(name: str, enabled: bool = True) -> None:
+    _FEATURE_CONTEXT.set_default(name, enabled)
 
 
 @overload

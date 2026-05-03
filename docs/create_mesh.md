@@ -91,6 +91,31 @@ def create_mesh():
 When the script is loaded, each discovered feature appears in the UI and can be
 toggled on or off without editing the script.
 
+Features are enabled by default. Use
+[`feature_default`](api.md#{{ package_name }}.feature_default) to make a named
+feature start disabled when no UI override exists:
+
+```python
+from trimesh.creation import box
+
+from scadview import feature, feature_default
+
+
+feature_default("supports", enabled=False)
+
+
+def create_mesh():
+    base = box([40, 20, 10])
+    support_a = feature("supports", box([4, 4, 20]))
+    support_b = feature("supports", box([4, 4, 20]))
+    return base.union(support_a).union(support_b)
+```
+
+Defaults apply by feature name, so every mesh registered as `"supports"` uses the
+same default. If the UI has already toggled a feature, that UI state takes
+precedence over the script default. Repeating the same default is allowed, but
+declaring conflicting defaults for the same feature name raises `ValueError`.
+
 ## Debug Mode: Return a `list`
 
 Returning a `list` of objects results in {{ project_name }}

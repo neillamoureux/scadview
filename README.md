@@ -109,13 +109,19 @@ features like this:
 
 ```python
 from trimesh.creation import box
-from scadview import feature
+from scadview import feature, feature_default
+
+
+feature_default("guide", enabled=False)
 
 
 @feature
 def guide():
     return box([20, 10, 8])
 ```
+
+Features are enabled by default. `feature_default(...)` sets the initial state
+for a feature name when no UI override exists.
 
 Save the file:
 

@@ -3,6 +3,7 @@
 ::: scadview.Color
 ::: scadview.set_mesh_color
 ::: scadview.feature
+::: scadview.feature_default
 ::: scadview.surface
 ::: scadview.mesh_from_heightmap
 ::: scadview.SIZE_MULTIPLIER
