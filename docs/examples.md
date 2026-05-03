@@ -63,6 +63,22 @@ Creates a lovely red heart vase.
 </details>
 ![Heart Vase](images/heart_vase.png)
 
+## features.py
+
+Shows the feature API in one compact model: `feature(...)` as a decorator,
+directly wrapping a mesh, `feature_default(...)`, and multiple meshes sharing the
+same feature name.
+
+<details>
+<summary>Source</summary>
+
+```python
+
+{% include "../examples/features.py" %}
+
+```
+</details>
+
 ## invalid_code.py
 
 Imports a non-existent module to force an import error. Useful for verifying error handling.
