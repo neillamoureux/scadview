@@ -97,7 +97,7 @@ class ShutDownCommand(Command):
 
 
 MeshType = Trimesh | list[Trimesh]
-CreateMeshItemType = Trimesh | Manifold | FeatureMesh | BooleanMesh | NullFeatureMesh
+CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
 
@@ -207,9 +207,12 @@ class LoadWorker(Thread):
         if isinstance(mesh, NullFeatureMesh):
             return None
         if isinstance(mesh, FeatureMesh):
-            return self._ensure_trimesh(mesh.as_operand())
-        if isinstance(mesh, BooleanMesh):
-            return self._ensure_trimesh(mesh.native())
+            operand = mesh.as_operand()
+            if operand.is_empty():
+                return None
+            if not isinstance(operand, BooleanMesh):
+                raise TypeError(f"Expected non-empty feature mesh, got {type(operand)}")
+            return self._ensure_trimesh(operand.native())
         if isinstance(mesh, Trimesh):
             return mesh
         if isinstance(mesh, Manifold):
