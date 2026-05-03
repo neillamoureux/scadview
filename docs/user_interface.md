@@ -12,6 +12,9 @@ you complete them.
   button to pick a Python file that defines `create_mesh`.
 - If you want to re-run the last script after edits, use `File > Reload` or the
   `Reload` button.
+- If your script uses `scadview.feature(...)`, the right sidebar shows a
+  `Features` section with one checkbox per discovered feature. Toggle a feature
+  to reload the script with that optional geometry enabled or disabled.
 - If you want to export the current mesh, use `File > Export...` or the `Export`
   button. Export is enabled only after a load completes.
 - If an export format reports a missing dependency, install the package named
@@ -58,6 +61,8 @@ you complete them.
 
 - If you want to see loading progress, watch the right-side progress bar. It
   pulses while loading and fills when complete.
+- If your script defines many features, the `Features` section scrolls
+  independently so the lower sidebar controls remain visible.
 - The viewport background color also provides status:
     - Blue: currently loading
     - Green: loaded successfully

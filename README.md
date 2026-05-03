@@ -20,6 +20,9 @@ SCADview enables a iterative work flow to build Trimesh objects.
 1.  Reload and view the modified mesh.
 1.  Repeat the edits and reloads.
 
+Optional geometry can also be exposed as UI-togglable features by decorating
+mesh-returning functions or methods with `scadview.feature(...)`.
+
 ## Getting Started
 
 ### Installation
@@ -100,6 +103,25 @@ def create_mesh():
 ```
 
 Notice that you don't need to import the scadview package.
+
+If you want to expose optional parts of your model in the UI, you can define
+features like this:
+
+```python
+from trimesh.creation import box
+from scadview import feature, feature_default
+
+
+feature_default("guide", enabled=False)
+
+
+@feature
+def guide():
+    return box([20, 10, 8])
+```
+
+Features are enabled by default. `feature_default(...)` sets the initial state
+for a feature name when no UI override exists.
 
 Save the file:
 

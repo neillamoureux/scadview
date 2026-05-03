@@ -303,7 +303,10 @@ class Renderer:
         if isinstance(mesh, list):
             # Trimesh stubs are list-like, so make this branch's contract explicit.
             meshes = cast(list[Trimesh], mesh)
-            self.scale = max([m.scale for m in meshes])
+            if meshes:
+                self.scale = max([m.scale for m in meshes])
+            else:
+                self.scale = 1.0
         else:
             self.scale = mesh.scale
         self._main_renderee.subscribe_to_updates(self.on_program_value_change)

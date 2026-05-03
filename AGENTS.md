@@ -45,6 +45,33 @@ If guidance conflicts, follow this precedence:
 
 ---
 
+## API Design
+
+- Keep public user-facing APIs small and explicit.
+- Expose public helpers through `src/scadview/api/*` and the top-level lazy
+  exports in `src/scadview/__init__.py` when appropriate.
+- Prefer name-level state over per-instance state when UI controls represent
+  shared concepts.
+- For unreleased APIs, prefer clear internal models over preserving accidental
+  compatibility from intermediate branches or PR iterations.
+- Do not expand the documented `create_mesh` return contract unless the user
+  explicitly asks for that public API change.
+- When adding or changing public behavior, update tests, docs, and examples in
+  the same change when practical.
+
+---
+
+## Feature Capability
+
+- Feature enabled/disabled state is name-level and controlled by `FeatureState`.
+- `feature_default(...)` defines module defaults; controller and UI overrides
+  take precedence.
+- Keep boolean mesh wrappers internal unless a public API change is explicitly
+  requested.
+- Do not conflate feature inclusion state with visualization or debug modes.
+
+---
+
 ## Change Strategy
 
 - Inspect first, then propose changes, then implement.
@@ -90,6 +117,11 @@ If guidance conflicts, follow this precedence:
 - Treat `pyproject.toml`, GitHub Actions, and docs as user-facing interfaces.
 - Keep changes reproducible and minimal.
 - Do not modify release, publishing, or deployment behavior without explicitly stating it.
+- When creating GitHub issues, use the matching issue template from
+  `.github/ISSUE_TEMPLATE/` and apply only labels that already exist in the
+  repository.
+- When creating or updating a pull request, use the repository PR template at
+  `.github/pull_request_template.md`.
 
 ---
 

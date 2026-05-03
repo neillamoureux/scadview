@@ -170,6 +170,9 @@ mise run reset
 - **Follow coding standards**, as documented `STYLE.md`
 - Add or update tests where appropriate
 - Update documentation if public behavior or APIs change
+- When changing a public API, update the relevant docs and examples in the same
+  PR when practical, so users can see both the reference behavior and usage
+  pattern.
 
 #### Documentation Workflow (Versioned Docs)
 
