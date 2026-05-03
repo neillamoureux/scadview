@@ -7,7 +7,6 @@ from typing import (
     Any,
     Callable,
     ParamSpec,
-    Protocol,
     TypeAlias,
     TypeVar,
     cast,
@@ -20,24 +19,6 @@ from trimesh import Trimesh
 FeatureNativeMesh: TypeAlias = Trimesh | Manifold
 P = ParamSpec("P")
 TNativeMesh = TypeVar("TNativeMesh", Trimesh, Manifold)
-
-
-class BooleanOperand(Protocol):
-    def as_operand(self) -> BooleanOperand: ...
-
-    def is_empty(self) -> bool: ...
-
-    def union(self, other: Any) -> Any: ...
-
-    def difference(self, other: Any) -> Any: ...
-
-    def intersection(self, other: Any) -> Any: ...
-
-    def __add__(self, other: Any) -> Any: ...
-
-    def __sub__(self, other: Any) -> Any: ...
-
-    def __xor__(self, other: Any) -> Any: ...
 
 
 @dataclass(frozen=True)
