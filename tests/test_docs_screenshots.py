@@ -120,6 +120,25 @@ def test_validate_manifest_rejects_duplicate_names(tmp_path):
         validate_manifest(manifest_path, repo_root=tmp_path)
 
 
+def test_validate_manifest_ignores_markdown_outside_readme_and_docs(tmp_path):
+    from scadview.docs_screenshots import ScreenshotManifestError, validate_manifest
+
+    manifest_path = _write_valid_docs_tree(
+        tmp_path,
+        screenshots=[
+            _screenshot_block("grid", "images/grid.png", "examples/sphere.py"),
+        ],
+        markdown_refs=[],
+    )
+    (tmp_path / "notes.md").write_text(
+        "![Ignored](docs/images/grid.png)",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ScreenshotManifestError, match="not referenced.*grid.png"):
+        validate_manifest(manifest_path, repo_root=tmp_path)
+
+
 @pytest.mark.parametrize(
     ("screenshot_specs", "markdown_refs", "selected_names", "match"),
     [

@@ -226,9 +226,21 @@ def _is_relative_to(path: Path, root: Path) -> bool:
 
 def _collect_markdown_image_paths(repo_root: Path) -> set[Path]:
     references: set[Path] = set()
-    for markdown_path in repo_root.rglob("*.md"):
+    for markdown_path in _docs_markdown_paths(repo_root):
         references.update(_markdown_image_paths(markdown_path))
     return references
+
+
+def _docs_markdown_paths(repo_root: Path) -> list[Path]:
+    markdown_paths: list[Path] = []
+    readme_path = repo_root / "README.md"
+    if readme_path.is_file():
+        markdown_paths.append(readme_path)
+
+    docs_root = repo_root / "docs"
+    if docs_root.is_dir():
+        markdown_paths.extend(sorted(docs_root.rglob("*.md")))
+    return markdown_paths
 
 
 def _markdown_image_paths(markdown_path: Path) -> set[Path]:
