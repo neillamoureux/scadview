@@ -4,10 +4,10 @@ import argparse
 import re
 import sys
 import tomllib
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 
 ViewName = Literal["frame", "xyz", "x", "y", "z"]
 CameraName = Literal["perspective", "orthogonal"]
@@ -39,6 +39,30 @@ class ScreenshotEntry:
 class ScreenshotManifest:
     path: Path
     entries: tuple[ScreenshotEntry, ...]
+
+
+@dataclass(frozen=True)
+class ScreenshotCaptureRequest:
+    entry: ScreenshotEntry
+    module_path: Path
+    output_path: Path
+
+
+class ScreenshotCaptureBackend(Protocol):
+    def capture(self, request: ScreenshotCaptureRequest) -> None:
+        pass
+
+
+CaptureBackendFactory = Callable[[], ScreenshotCaptureBackend]
+
+
+class UnavailableScreenshotCaptureBackend(ScreenshotCaptureBackend):
+    def capture(self, request: ScreenshotCaptureRequest) -> None:
+        del request
+        raise NotImplementedError(
+            "local docs screenshot capture is not implemented yet; use --check to "
+            "validate docs/screenshots.toml"
+        )
 
 
 def load_manifest(manifest_path: Path) -> ScreenshotManifest:
@@ -160,6 +184,29 @@ def validate_manifest(
     return ScreenshotManifest(path=manifest.path, entries=tuple(selected_entries))
 
 
+def generate_screenshots(
+    manifest: ScreenshotManifest,
+    *,
+    repo_root: Path,
+    capture_backend: ScreenshotCaptureBackend,
+) -> None:
+    docs_root = manifest.path.parent
+    for entry in manifest.entries:
+        capture_backend.capture(_capture_request(entry, repo_root, docs_root))
+
+
+def _capture_request(
+    entry: ScreenshotEntry,
+    repo_root: Path,
+    docs_root: Path,
+) -> ScreenshotCaptureRequest:
+    return ScreenshotCaptureRequest(
+        entry=entry,
+        module_path=_resolve_relative_path(repo_root, entry.module),
+        output_path=_resolve_relative_path(docs_root, entry.output),
+    )
+
+
 def _validate_unique_names(entries: Sequence[ScreenshotEntry]) -> None:
     seen: set[str] = set()
     for entry in entries:
@@ -256,17 +303,32 @@ def _is_local_reference(reference: str) -> bool:
     return not re.match(r"^[a-z][a-z0-9+.-]*:", reference)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    capture_backend_factory: CaptureBackendFactory | None = None,
+) -> int:
     args = _parse_args(argv)
     repo_root = args.manifest.parent.parent
     selected_names = set(args.names)
-    validate_manifest(args.manifest, repo_root=repo_root, selected_names=selected_names)
+    manifest = validate_manifest(
+        args.manifest,
+        repo_root=repo_root,
+        selected_names=selected_names,
+    )
     if args.check:
         return 0
-    raise NotImplementedError(
-        "local docs screenshot capture is not implemented yet; use --check to "
-        "validate docs/screenshots.toml"
+    backend_factory = capture_backend_factory or _create_default_capture_backend
+    generate_screenshots(
+        manifest,
+        repo_root=repo_root,
+        capture_backend=backend_factory(),
     )
+    return 0
+
+
+def _create_default_capture_backend() -> ScreenshotCaptureBackend:
+    return UnavailableScreenshotCaptureBackend()
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:

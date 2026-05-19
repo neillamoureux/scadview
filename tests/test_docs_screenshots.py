@@ -1,5 +1,6 @@
 import builtins
 import importlib.util
+import sys
 import tomllib
 from pathlib import Path
 from textwrap import dedent
@@ -311,6 +312,63 @@ def test_docs_screenshots_cli_check_returns_success(tmp_path):
     assert result == 0
 
 
+def test_generate_screenshots_delegates_validated_entries_to_capture_backend(tmp_path):
+    from scadview.docs_screenshots import generate_screenshots, validate_manifest
+
+    manifest_path = _write_valid_docs_tree(tmp_path)
+    manifest = validate_manifest(
+        manifest_path,
+        repo_root=tmp_path,
+        selected_names={"grid"},
+    )
+    backend = _RecordingCaptureBackend()
+
+    generate_screenshots(manifest, repo_root=tmp_path, capture_backend=backend)
+
+    assert backend.requests == [
+        {
+            "name": "grid",
+            "module_path": tmp_path / "examples/sphere.py",
+            "output_path": tmp_path / "docs/images/grid.png",
+            "window_size": (960, 720),
+            "view": "frame",
+            "camera": "perspective",
+            "grid": True,
+            "axes": True,
+            "edges": False,
+            "gnomon": True,
+        }
+    ]
+
+
+def test_docs_screenshots_cli_generation_uses_capture_backend_factory(tmp_path):
+    import scadview.docs_screenshots as docs_screenshots
+
+    manifest_path = _write_valid_docs_tree(tmp_path)
+    backend = _RecordingCaptureBackend()
+
+    result = docs_screenshots.main(
+        ["--manifest", str(manifest_path), "sphere"],
+        capture_backend_factory=lambda: backend,
+    )
+
+    assert result == 0
+    assert [request["name"] for request in backend.requests] == ["sphere"]
+
+
+def test_docs_screenshots_check_does_not_import_capture_backend(tmp_path, monkeypatch):
+    import scadview.docs_screenshots as docs_screenshots
+
+    manifest_path = _write_valid_docs_tree(tmp_path)
+    monkeypatch.delitem(sys.modules, "scadview.ui.wx.docs_capture", raising=False)
+    _fail_on_wx_import(monkeypatch)
+
+    result = docs_screenshots.main(["--manifest", str(manifest_path), "--check"])
+
+    assert result == 0
+    assert "scadview.ui.wx.docs_capture" not in sys.modules
+
+
 def test_mise_declares_docs_screenshots_task():
     payload = tomllib.loads(Path("mise.toml").read_text(encoding="utf-8"))
 
@@ -319,6 +377,27 @@ def test_mise_declares_docs_screenshots_task():
     assert task_config["description"] == "Validate docs screenshot manifest"
     assert task_config["depends"] == ["bootstrap_ci"]
     assert task_config["run"] == "uv run --no-sync inv docs_screenshots"
+
+
+class _RecordingCaptureBackend:
+    def __init__(self):
+        self.requests = []
+
+    def capture(self, request):
+        self.requests.append(
+            {
+                "name": request.entry.name,
+                "module_path": request.module_path,
+                "output_path": request.output_path,
+                "window_size": request.entry.window_size,
+                "view": request.entry.view,
+                "camera": request.entry.camera,
+                "grid": request.entry.grid,
+                "axes": request.entry.axes,
+                "edges": request.entry.edges,
+                "gnomon": request.entry.gnomon,
+            }
+        )
 
 
 def _write_valid_docs_tree(
