@@ -108,6 +108,21 @@ class GlWidget(GLCanvas):
         self.SwapBuffers()
         logger.debug("on_paint end")
 
+    def capture_bitmap(self) -> wx.Bitmap:
+        self.SetCurrent(self.ctx_wx)
+        self._sync_pixel_size()
+        size = self.GetClientSize()
+        scale = self.GetContentScaleFactor()
+        width = int(scale * size.width)
+        height = int(scale * size.height)
+        pixel_bytes = self._gl_widget_adapter.capture_pixels(width, height)
+        image = wx.Image(width, height)
+        image.SetData(pixel_bytes)
+        image = image.Mirror(False)
+        if scale != 1:
+            image = image.Rescale(size.width, size.height, wx.IMAGE_QUALITY_HIGH)
+        return image.ConvertToBitmap()
+
     def on_mouse_press_left(self, event: wx.MouseEvent):
         pos = event.GetPosition()
         if not self._mouse_captured:

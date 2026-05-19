@@ -400,6 +400,11 @@ class MainFrame(wx.Frame):
         self._apply_docs_screenshot_view(entry.view)
 
     def capture_client_bitmap(self) -> wx.Bitmap:
+        bitmap = self._capture_client_bitmap()
+        self._draw_gl_bitmap(bitmap)
+        return bitmap
+
+    def _capture_client_bitmap(self) -> wx.Bitmap:
         size = self.GetClientSize()
         bitmap = wx.Bitmap(size.width, size.height)
         dc = wx.MemoryDC(bitmap)
@@ -417,6 +422,17 @@ class MainFrame(wx.Frame):
         finally:
             dc.SelectObject(wx.NullBitmap)
         return bitmap
+
+    def _draw_gl_bitmap(self, bitmap: wx.Bitmap) -> None:
+        gl_bitmap = self._gl_widget.capture_bitmap()
+        gl_position = self._gl_widget.ClientToScreen(wx.Point(0, 0))
+        frame_position = self.ClientToScreen(wx.Point(0, 0))
+        target_position = gl_position - frame_position
+        dc = wx.MemoryDC(bitmap)
+        try:
+            dc.DrawBitmap(gl_bitmap, target_position.x, target_position.y)
+        finally:
+            dc.SelectObject(wx.NullBitmap)
 
     def _apply_docs_screenshot_view(self, view: str) -> None:
         if view == "frame":

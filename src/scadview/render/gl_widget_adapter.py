@@ -107,6 +107,10 @@ class GlWidgetAdapter:
         )
         logger.debug("render end")
 
+    def capture_pixels(self, width: int, height: int) -> bytes:
+        self.render(width, height)
+        return self._renderer.capture_pixels(width, height)
+
     def _init_gl(self, width: int, height: int):
         # You cannot create the context before initializeGL is called
         self._renderer = self._renderer_factory.make((width, height))
