@@ -72,6 +72,11 @@ description = "Serve docs with live reload (mkdocs)"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv docs_live_serve"
 
+[tasks.docs_screenshots]
+description = "Validate docs screenshot manifest"
+depends = ["bootstrap_ci"]
+run = "uv run --no-sync inv docs_screenshots"
+
 [tasks.docs_sync]
 description = "Sync local versioned docs state in local gh-pages branch"
 depends = ["bootstrap"]

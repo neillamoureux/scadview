@@ -1,0 +1,71 @@
+[[screenshots]]
+name = "startup_window"
+output = "images/startup_window.png"
+module = "examples/xyz_cube.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "grid"
+output = "images/grid.png"
+module = "examples/xyz_cube.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "edges"
+output = "images/edges.png"
+module = "examples/xyz_cube.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = true
+gnomon = true
+
+[[screenshots]]
+name = "sphere"
+output = "images/sphere.png"
+module = "examples/sphere.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "colors"
+output = "images/colors.png"
+module = "examples/colors.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "cube_minus_sphere"
+output = "images/cube_minus_sphere.png"
+module = "examples/cube_minus_sphere.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = true
+gnomon = true

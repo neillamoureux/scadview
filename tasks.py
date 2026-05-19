@@ -162,6 +162,17 @@ def docs_live_serve(context: Context) -> None:
     _run_checked(context, "python -m mkdocs serve")
 
 
+@task(name="docs_screenshots")
+def docs_screenshots(context: Context, args: str = "") -> None:
+    """Validate docs screenshot manifest."""
+    extra: str = _join_args(args)
+    _run_checked(
+        context,
+        f"python -m scadview.docs_screenshots --manifest docs/screenshots.toml "
+        f"--check{extra}",
+    )
+
+
 @task(name="docs_sync")
 def docs_sync(
     context: Context,
