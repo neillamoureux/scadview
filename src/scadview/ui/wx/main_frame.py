@@ -1,5 +1,7 @@
 import logging
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import wx
 from trimesh import Trimesh
@@ -23,6 +25,9 @@ logger = logging.getLogger(__name__)
 LOAD_CHECK_INTERVAL_MS = 10
 INITIAL_FRAME_SIZE = (900, 600)
 BORDER_SIZE = 6
+
+if TYPE_CHECKING:
+    from scadview.docs_screenshots import ScreenshotEntry
 
 
 class MainFrame(wx.Frame):
@@ -308,6 +313,9 @@ class MainFrame(wx.Frame):
 
     def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
+        self._handle_load_result(load_result)
+
+    def _handle_load_result(self, load_result: LoadResult) -> None:
         mesh = load_result.mesh
         if load_result.complete:
             self._loader_timer.Stop()
@@ -321,6 +329,15 @@ class MainFrame(wx.Frame):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
+
+    def load_docs_screenshot_module(self, module_path: Path) -> None:
+        self._controller.load_mesh(str(module_path))
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
+
+    def poll_docs_screenshot_load(self) -> LoadStatus:
+        self._handle_load_result(self._controller.check_load_queue())
+        return self._controller.load_status
 
     def _indicate_load_status(self, status: LoadStatus):
         self._gl_widget.indicate_load_status(status)
@@ -371,6 +388,45 @@ class MainFrame(wx.Frame):
 
     def on_toggle_gnomon(self, _: wx.Event):
         self._gl_widget.toggle_gnomon()
+
+    def apply_docs_screenshot_state(self, entry: ScreenshotEntry) -> None:
+        self._gl_widget.show_grid = entry.grid
+        self._gl_widget.show_axes = entry.axes
+        self._gl_widget.show_edges = entry.edges
+        self._gl_widget.show_gnomon = entry.gnomon
+        self._gl_widget.camera_type = entry.camera
+        self._apply_docs_screenshot_view(entry.view)
+
+    def capture_client_bitmap(self) -> wx.Bitmap:
+        size = self.GetClientSize()
+        bitmap = wx.Bitmap(size.width, size.height)
+        dc = wx.MemoryDC(bitmap)
+        source_dc = wx.ClientDC(self)
+        try:
+            dc.Blit(
+                0,
+                0,
+                size.width,
+                size.height,
+                source_dc,
+                0,
+                0,
+            )
+        finally:
+            dc.SelectObject(wx.NullBitmap)
+        return bitmap
+
+    def _apply_docs_screenshot_view(self, view: str) -> None:
+        if view == "frame":
+            self._gl_widget.frame()
+        elif view == "xyz":
+            self._gl_widget.view_from_xyz()
+        elif view == "x":
+            self._gl_widget.view_from_x()
+        elif view == "y":
+            self._gl_widget.view_from_y()
+        elif view == "z":
+            self._gl_widget.view_from_z()
 
     def on_close(self, _: wx.Event):
         self._loader_timer.Stop()

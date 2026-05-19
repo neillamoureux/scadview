@@ -56,15 +56,6 @@ class ScreenshotCaptureBackend(Protocol):
 CaptureBackendFactory = Callable[[], ScreenshotCaptureBackend]
 
 
-class UnavailableScreenshotCaptureBackend(ScreenshotCaptureBackend):
-    def capture(self, request: ScreenshotCaptureRequest) -> None:
-        del request
-        raise NotImplementedError(
-            "local docs screenshot capture is not implemented yet; use --check to "
-            "validate docs/screenshots.toml"
-        )
-
-
 def load_manifest(manifest_path: Path) -> ScreenshotManifest:
     raw_entries = _read_manifest_entries(manifest_path)
     entries = tuple(_parse_entry(raw_entry) for raw_entry in raw_entries)
@@ -328,7 +319,9 @@ def main(
 
 
 def _create_default_capture_backend() -> ScreenshotCaptureBackend:
-    return UnavailableScreenshotCaptureBackend()
+    from scadview.ui.wx.docs_capture import WxScreenshotCaptureBackend
+
+    return WxScreenshotCaptureBackend()
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:

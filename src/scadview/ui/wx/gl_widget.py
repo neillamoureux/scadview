@@ -220,6 +220,11 @@ class GlWidget(GLCanvas):
     def show_axes(self) -> bool:
         return self._gl_widget_adapter.show_axes
 
+    @show_axes.setter
+    def show_axes(self, value: bool) -> None:
+        self._gl_widget_adapter.show_axes = value
+        self.Refresh(False)
+
     def toggle_axes(self):
         self._gl_widget_adapter.toggle_axes()
         self.Refresh(False)
@@ -228,6 +233,11 @@ class GlWidget(GLCanvas):
     def show_edges(self) -> bool:
         return self._gl_widget_adapter.show_edges
 
+    @show_edges.setter
+    def show_edges(self, value: bool) -> None:
+        self._gl_widget_adapter.show_edges = value
+        self.Refresh(False)
+
     def toggle_edges(self):
         self._gl_widget_adapter.toggle_edges()
         self.Refresh(False)
@@ -235,6 +245,11 @@ class GlWidget(GLCanvas):
     @property
     def show_gnomon(self) -> bool:
         return self._gl_widget_adapter.show_gnomon
+
+    @show_gnomon.setter
+    def show_gnomon(self, value: bool) -> None:
+        self._gl_widget_adapter.show_gnomon = value
+        self.Refresh(False)
 
     def toggle_gnomon(self):
         self._gl_widget_adapter.toggle_gnomon()
