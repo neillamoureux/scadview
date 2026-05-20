@@ -37,10 +37,52 @@ def test_repository_manifest_lists_initial_screenshot_entries():
         }
 
 
+def test_tools_package_exposes_docs_screenshots_module():
+    import tools.docs_screenshots as docs_screenshots
+
+    assert docs_screenshots.__name__ == "tools.docs_screenshots"
+
+
+def test_runtime_package_does_not_contain_docs_screenshot_tooling():
+    forbidden_paths = [
+        Path("src/scadview/docs_screenshots.py"),
+        Path("src/scadview/ui/wx/docs_capture.py"),
+    ]
+
+    assert [path for path in forbidden_paths if path.exists()] == []
+
+
+def test_runtime_package_does_not_import_tools_package():
+    runtime_imports = []
+    for path in Path("src/scadview").rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        if "from tools" in text or "import tools" in text:
+            runtime_imports.append(path)
+
+    assert runtime_imports == []
+
+
+def test_main_frame_does_not_expose_docs_specific_hooks():
+    main_frame_source = Path("src/scadview/ui/wx/main_frame.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "docs_screenshot" not in main_frame_source
+    assert "ScreenshotEntry" not in main_frame_source
+
+
+def test_gl_widget_does_not_import_moderngl():
+    gl_widget_source = Path("src/scadview/ui/wx/gl_widget.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "moderngl" not in gl_widget_source
+
+
 def test_repository_manifest_validates_against_docs_without_importing_wx(monkeypatch):
     _fail_on_wx_import(monkeypatch)
 
-    from scadview.docs_screenshots import validate_manifest
+    from tools.docs_screenshots import validate_manifest
 
     manifest = validate_manifest(
         Path("docs/screenshots.toml"),
@@ -58,7 +100,7 @@ def test_repository_manifest_validates_against_docs_without_importing_wx(monkeyp
 
 
 def test_load_manifest_parses_screenshot_entries(tmp_path):
-    from scadview.docs_screenshots import load_manifest
+    from tools.docs_screenshots import load_manifest
 
     manifest_path = _write_valid_docs_tree(
         tmp_path,
@@ -94,7 +136,7 @@ def test_validate_manifest_accepts_selected_subset_without_importing_wx(
     manifest_path = _write_valid_docs_tree(tmp_path)
     _fail_on_wx_import(monkeypatch)
 
-    from scadview.docs_screenshots import validate_manifest
+    from tools.docs_screenshots import validate_manifest
 
     manifest = validate_manifest(
         manifest_path,
@@ -106,7 +148,7 @@ def test_validate_manifest_accepts_selected_subset_without_importing_wx(
 
 
 def test_validate_manifest_rejects_duplicate_names(tmp_path):
-    from scadview.docs_screenshots import ScreenshotManifestError, validate_manifest
+    from tools.docs_screenshots import ScreenshotManifestError, validate_manifest
 
     manifest_path = _write_valid_docs_tree(
         tmp_path,
@@ -122,7 +164,7 @@ def test_validate_manifest_rejects_duplicate_names(tmp_path):
 
 
 def test_validate_manifest_ignores_markdown_outside_readme_and_docs(tmp_path):
-    from scadview.docs_screenshots import ScreenshotManifestError, validate_manifest
+    from tools.docs_screenshots import ScreenshotManifestError, validate_manifest
 
     manifest_path = _write_valid_docs_tree(
         tmp_path,
@@ -214,7 +256,7 @@ def test_validate_manifest_rejects_invalid_manifest(
     selected_names,
     match,
 ):
-    from scadview.docs_screenshots import ScreenshotManifestError, validate_manifest
+    from tools.docs_screenshots import ScreenshotManifestError, validate_manifest
 
     screenshots = _screenshot_blocks(screenshot_specs)
     manifest_path = _write_valid_docs_tree(
@@ -242,7 +284,7 @@ def _screenshot_blocks(specs):
 
 @pytest.mark.parametrize("view", ["frame", "xyz", "x", "y", "z"])
 def test_validate_manifest_accepts_supported_view_values(tmp_path, view):
-    from scadview.docs_screenshots import validate_manifest
+    from tools.docs_screenshots import validate_manifest
 
     manifest_path = _write_valid_docs_tree(
         tmp_path,
@@ -264,7 +306,7 @@ def test_validate_manifest_accepts_supported_view_values(tmp_path, view):
 
 @pytest.mark.parametrize("camera", ["perspective", "orthogonal"])
 def test_validate_manifest_accepts_supported_camera_values(tmp_path, camera):
-    from scadview.docs_screenshots import validate_manifest
+    from tools.docs_screenshots import validate_manifest
 
     manifest_path = _write_valid_docs_tree(
         tmp_path,
@@ -284,7 +326,7 @@ def test_validate_manifest_accepts_supported_camera_values(tmp_path, camera):
     assert manifest.entries[0].camera == camera
 
 
-def test_docs_screenshots_task_runs_manifest_check_without_capture(monkeypatch):
+def test_docs_screenshots_task_runs_manifest_validation_without_capture(monkeypatch):
     tasks = _load_tasks_module()
 
     commands = []
@@ -297,23 +339,40 @@ def test_docs_screenshots_task_runs_manifest_check_without_capture(monkeypatch):
     tasks.docs_screenshots.body(object(), args="grid sphere")
 
     assert commands == [
-        "python -m scadview.docs_screenshots "
-        "--manifest docs/screenshots.toml --check grid sphere"
+        "python -m tools.docs_screenshots --manifest docs/screenshots.toml grid sphere"
     ]
 
 
-def test_docs_screenshots_cli_check_returns_success(tmp_path):
-    from scadview.docs_screenshots import main
+def test_docs_screenshots_task_forwards_generate_arguments(monkeypatch):
+    tasks = _load_tasks_module()
+
+    commands = []
+    monkeypatch.setattr(
+        tasks,
+        "_run_checked",
+        lambda _context, command, **_kwargs: commands.append(command),
+    )
+
+    tasks.docs_screenshots.body(object(), args="--generate grid")
+
+    assert commands == [
+        "python -m tools.docs_screenshots "
+        "--manifest docs/screenshots.toml --generate grid"
+    ]
+
+
+def test_docs_screenshots_cli_defaults_to_validation(tmp_path):
+    from tools.docs_screenshots import main
 
     manifest_path = _write_valid_docs_tree(tmp_path)
 
-    result = main(["--manifest", str(manifest_path), "--check", "grid"])
+    result = main(["--manifest", str(manifest_path), "grid"])
 
     assert result == 0
 
 
 def test_generate_screenshots_delegates_validated_entries_to_capture_backend(tmp_path):
-    from scadview.docs_screenshots import generate_screenshots, validate_manifest
+    from tools.docs_screenshots import generate_screenshots, validate_manifest
 
     manifest_path = _write_valid_docs_tree(tmp_path)
     manifest = validate_manifest(
@@ -342,13 +401,13 @@ def test_generate_screenshots_delegates_validated_entries_to_capture_backend(tmp
 
 
 def test_docs_screenshots_cli_generation_uses_capture_backend_factory(tmp_path):
-    import scadview.docs_screenshots as docs_screenshots
+    import tools.docs_screenshots as docs_screenshots
 
     manifest_path = _write_valid_docs_tree(tmp_path)
     backend = _RecordingCaptureBackend()
 
     result = docs_screenshots.main(
-        ["--manifest", str(manifest_path), "sphere"],
+        ["--manifest", str(manifest_path), "--generate", "sphere"],
         capture_backend_factory=lambda: backend,
     )
 
@@ -356,17 +415,20 @@ def test_docs_screenshots_cli_generation_uses_capture_backend_factory(tmp_path):
     assert [request["name"] for request in backend.requests] == ["sphere"]
 
 
-def test_docs_screenshots_check_does_not_import_capture_backend(tmp_path, monkeypatch):
-    import scadview.docs_screenshots as docs_screenshots
+def test_docs_screenshots_validation_does_not_import_capture_backend(
+    tmp_path, monkeypatch
+):
+    import tools.docs_screenshots as docs_screenshots
 
     manifest_path = _write_valid_docs_tree(tmp_path)
-    monkeypatch.delitem(sys.modules, "scadview.ui.wx.docs_capture", raising=False)
+    monkeypatch.delitem(sys.modules, "scadview.ui.wx", raising=False)
+    monkeypatch.delitem(sys.modules, "scadview.ui.wx.main_frame", raising=False)
     _fail_on_wx_import(monkeypatch)
 
-    result = docs_screenshots.main(["--manifest", str(manifest_path), "--check"])
+    result = docs_screenshots.main(["--manifest", str(manifest_path)])
 
     assert result == 0
-    assert "scadview.ui.wx.docs_capture" not in sys.modules
+    assert "scadview.ui.wx.main_frame" not in sys.modules
 
 
 def test_mise_declares_docs_screenshots_task():
