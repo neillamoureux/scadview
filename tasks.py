@@ -171,12 +171,18 @@ def docs_live_serve(context: Context) -> None:
 
 
 @task(name="docs_screenshots")
-def docs_screenshots(context: Context, args: str = "") -> None:
+def docs_screenshots(
+    context: Context,
+    generate: bool = False,
+    args: str = "",
+) -> None:
     """Validate docs screenshot manifest."""
     extra: str = _join_args(args)
+    generate_arg: str = " --generate" if generate else ""
     _run_checked(
         context,
-        f"python -m tools.docs_screenshots --manifest docs/screenshots.toml{extra}",
+        f"python -m tools.docs_screenshots "
+        f"--manifest docs/screenshots.toml{generate_arg}{extra}",
         env=_repo_pythonpath_env(),
     )
 

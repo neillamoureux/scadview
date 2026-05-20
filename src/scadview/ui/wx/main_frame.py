@@ -329,13 +329,19 @@ class MainFrame(wx.Frame):
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
 
-    def load_module(self, module_path: Path) -> None:
+    def load_module(self, module_path: Path, *, start_timer: bool = True) -> None:
         self._controller.load_mesh(str(module_path))
-        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
-        self._load_progress_gauge.Pulse()
+        if start_timer:
+            self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+            self._load_progress_gauge.Pulse()
 
     def poll_load_status(self) -> LoadStatus:
-        self._handle_load_result(self._controller.check_load_queue())
+        load_result = self._controller.check_load_queue()
+        self._handle_load_result(load_result)
+        if load_result.complete:
+            return LoadStatus.COMPLETE
+        if load_result.error:
+            return LoadStatus.ERROR
         return self._controller.load_status
 
     def _indicate_load_status(self, status: LoadStatus):

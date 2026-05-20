@@ -15,7 +15,7 @@ from scadview.load_status import LoadStatus
 from scadview.ui.view_state import CameraName, ViewName, ViewState
 
 MARKDOWN_IMAGE_PATTERN: re.Pattern[str] = re.compile(r"!\[[^\]]*\]\(([^)\s]+)")
-LOAD_TIMEOUT_SECONDS = 30.0
+LOAD_TIMEOUT_SECONDS = 120.0
 SETTLE_EVENT_CYCLES = 3
 
 
@@ -77,7 +77,7 @@ class ScreenshotFrameProtocol(Protocol):
     def Show(self) -> None:
         pass
 
-    def load_module(self, module_path: Path) -> None:
+    def load_module(self, module_path: Path, *, start_timer: bool = True) -> None:
         pass
 
     def poll_load_status(self) -> LoadStatus:
@@ -432,8 +432,8 @@ def _capture_with_frame(
     frame.SetClientSize(wx.Size(*request.entry.window_size))
     frame.Show()
     _flush_events(app)
-    frame.load_module(request.module_path)
-    _wait_for_load(app, frame)
+    frame.load_module(request.module_path, start_timer=False)
+    _wait_for_load(app, frame, request.entry.name)
     frame.apply_view_state(_view_state(request.entry))
     _settle_frame(app, frame)
     _save_bitmap(frame.capture_client_bitmap(), request.output_path)
@@ -443,7 +443,11 @@ def _flush_events(app: WxAppProtocol) -> None:
     app.Yield()
 
 
-def _wait_for_load(app: WxAppProtocol, frame: ScreenshotFrameProtocol) -> None:
+def _wait_for_load(
+    app: WxAppProtocol,
+    frame: ScreenshotFrameProtocol,
+    screenshot_name: str,
+) -> None:
     from scadview.ui.wx.main_frame import LOAD_CHECK_INTERVAL_MS
 
     deadline = time.monotonic() + LOAD_TIMEOUT_SECONDS
@@ -455,7 +459,9 @@ def _wait_for_load(app: WxAppProtocol, frame: ScreenshotFrameProtocol) -> None:
         if status == LoadStatus.ERROR:
             raise RuntimeError("Docs screenshot module failed to load")
         time.sleep(LOAD_CHECK_INTERVAL_MS / 1000.0)
-    raise TimeoutError("Timed out waiting for docs screenshot module to load")
+    raise TimeoutError(
+        f"Timed out waiting for docs screenshot module to load: {screenshot_name}"
+    )
 
 
 def _view_state(entry: ScreenshotEntry) -> ViewState:

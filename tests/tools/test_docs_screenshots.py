@@ -326,7 +326,9 @@ def test_validate_manifest_accepts_supported_camera_values(tmp_path, camera):
     assert manifest.entries[0].camera == camera
 
 
-def test_docs_screenshots_task_runs_manifest_validation_without_capture(monkeypatch):
+def test_docs_screenshots_invoke_task_runs_manifest_validation_without_capture(
+    monkeypatch,
+):
     tasks = _load_tasks_module()
 
     commands = []
@@ -351,7 +353,7 @@ def test_docs_screenshots_task_runs_manifest_validation_without_capture(monkeypa
     ]
 
 
-def test_docs_screenshots_task_forwards_generate_arguments(monkeypatch):
+def test_docs_screenshots_invoke_task_forwards_generate_arguments(monkeypatch):
     tasks = _load_tasks_module()
 
     commands = []
@@ -361,7 +363,7 @@ def test_docs_screenshots_task_forwards_generate_arguments(monkeypatch):
         lambda _context, command, **_kwargs: commands.append(command),
     )
 
-    tasks.docs_screenshots.body(object(), args="--generate grid")
+    tasks.docs_screenshots.body(object(), generate=True, args="grid")
 
     assert commands == [
         "python -m tools.docs_screenshots "
@@ -446,7 +448,11 @@ def test_mise_declares_docs_screenshots_task():
 
     assert task_config["description"] == "Validate docs screenshot manifest"
     assert task_config["depends"] == ["bootstrap_invoke"]
-    assert task_config["run"] == "uv run --no-sync inv docs_screenshots"
+    assert task_config["run"] == (
+        'PYTHONPATH="$PWD:$PWD/src${PYTHONPATH:+:$PYTHONPATH}" '
+        "uv run --no-sync python -m tools.docs_screenshots "
+        "--manifest docs/screenshots.toml"
+    )
 
 
 class _RecordingCaptureBackend:
