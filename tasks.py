@@ -37,14 +37,6 @@ def _join_args(raw: str) -> str:
     return f" {raw.strip()}" if raw.strip() else ""
 
 
-def _repo_pythonpath_env() -> dict[str, str]:
-    paths: list[str] = [str(REPO_ROOT), str(REPO_ROOT / "src")]
-    existing = os.environ.get("PYTHONPATH", "").strip()
-    if existing:
-        paths.append(existing)
-    return {"PYTHONPATH": os.pathsep.join(paths)}
-
-
 def _run_capture(context: Context, command: str) -> str:
     result = context.run(command, warn=True, hide=True, pty=False)
     if result:
@@ -168,23 +160,6 @@ def run(context: Context, args: str = "") -> None:
 def docs_live_serve(context: Context) -> None:
     """Serve docs with live reload (mkdocs)."""
     _run_checked(context, "python -m mkdocs serve")
-
-
-@task(name="docs_screenshots")
-def docs_screenshots(
-    context: Context,
-    generate: bool = False,
-    args: str = "",
-) -> None:
-    """Validate docs screenshot manifest."""
-    extra: str = _join_args(args)
-    generate_arg: str = " --generate" if generate else ""
-    _run_checked(
-        context,
-        f"python -m tools.docs_screenshots "
-        f"--manifest docs/screenshots.toml{generate_arg}{extra}",
-        env=_repo_pythonpath_env(),
-    )
 
 
 @task(name="docs_sync")

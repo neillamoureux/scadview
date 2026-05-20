@@ -1,5 +1,4 @@
 import builtins
-import os
 import sys
 import tomllib
 from pathlib import Path
@@ -326,51 +325,6 @@ def test_validate_manifest_accepts_supported_camera_values(tmp_path, camera):
     assert manifest.entries[0].camera == camera
 
 
-def test_docs_screenshots_invoke_task_runs_manifest_validation_without_capture(
-    monkeypatch,
-):
-    tasks = _load_tasks_module()
-
-    commands = []
-    envs = []
-    monkeypatch.setattr(
-        tasks,
-        "_run_checked",
-        lambda _context, command, **kwargs: (
-            commands.append(command),
-            envs.append(kwargs.get("env")),
-        ),
-    )
-
-    tasks.docs_screenshots.body(object(), args="grid sphere")
-
-    assert commands == [
-        "python -m tools.docs_screenshots --manifest docs/screenshots.toml grid sphere"
-    ]
-    assert envs[0]["PYTHONPATH"].split(os.pathsep)[:2] == [
-        str(Path(".").resolve()),
-        str((Path(".") / "src").resolve()),
-    ]
-
-
-def test_docs_screenshots_invoke_task_forwards_generate_arguments(monkeypatch):
-    tasks = _load_tasks_module()
-
-    commands = []
-    monkeypatch.setattr(
-        tasks,
-        "_run_checked",
-        lambda _context, command, **_kwargs: commands.append(command),
-    )
-
-    tasks.docs_screenshots.body(object(), generate=True, args="grid")
-
-    assert commands == [
-        "python -m tools.docs_screenshots "
-        "--manifest docs/screenshots.toml --generate grid"
-    ]
-
-
 def test_docs_screenshots_cli_defaults_to_validation(tmp_path):
     from tools.docs_screenshots import main
 
@@ -441,14 +395,24 @@ def test_docs_screenshots_validation_does_not_import_capture_backend(
     assert "scadview.ui.wx.main_frame" not in sys.modules
 
 
-def test_mise_declares_docs_screenshots_task():
+def test_mise_declares_docs_screenshot_tasks():
     payload = tomllib.loads(Path("mise.toml").read_text(encoding="utf-8"))
 
-    task_config = payload["tasks"]["docs_screenshots"]
+    assert "docs_screenshots" not in payload["tasks"]
 
-    assert task_config["description"] == "Validate docs screenshot manifest"
-    assert task_config["depends"] == ["bootstrap_invoke"]
-    assert task_config["run"] == (
+    check_task = payload["tasks"]["docs_check_screenshots_manifest"]
+    assert check_task["description"] == "Validate docs screenshot manifest"
+    assert check_task["depends"] == ["bootstrap_invoke"]
+    assert check_task["run"] == _docs_screenshots_command()
+
+    generate_task = payload["tasks"]["docs_generate_screenshots"]
+    assert generate_task["description"] == "Generate docs screenshots"
+    assert generate_task["depends"] == ["bootstrap"]
+    assert generate_task["run"] == f"{_docs_screenshots_command()} --generate"
+
+
+def _docs_screenshots_command() -> str:
+    return (
         'PYTHONPATH="$PWD:$PWD/src${PYTHONPATH:+:$PYTHONPATH}" '
         "uv run --no-sync python -m tools.docs_screenshots "
         "--manifest docs/screenshots.toml"
@@ -566,9 +530,3 @@ def _fail_on_wx_import(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-
-
-def _load_tasks_module():
-    import tasks
-
-    return tasks

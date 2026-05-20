@@ -39,11 +39,12 @@ scadview package -> repository docs tool
 
 - Keep docs screenshot manifest parsing, validation, CLI entrypoint, and capture
   orchestration outside `src/scadview`.
-- Preserve the existing user-facing workflow for maintainers:
-  `mise run docs_screenshots`.
+- Preserve clear user-facing workflows for maintainers:
+  `mise run docs_check_screenshots_manifest` for CI-safe validation and
+  `mise run docs_generate_screenshots` for local generation.
 - Preserve the ability to validate the manifest in CI without importing wx.
-- Preserve the ability to generate screenshots locally by passing generation
-  arguments through the existing task.
+- Preserve the ability to generate all screenshots locally by default, with an
+  option to pass selected screenshot names.
 - Keep GL access inside the render layer. wx may manage the native GL context,
   but it must not import or call ModernGL directly.
 - Replace docs-specific `MainFrame` methods with neutral automation methods that
@@ -165,14 +166,15 @@ mise.toml
 ```
 
 The external tool should default to validation-only behavior. Screenshot capture
-should require an explicit `--generate` flag. The default `mise run
-docs_screenshots` command should remain validation-only and CI-safe. It should
-invoke the external tool, not `python -m scadview.docs_screenshots`.
+should require an explicit `--generate` flag. The `mise run
+docs_check_screenshots_manifest` command should remain validation-only and
+CI-safe. It should invoke the external tool, not
+`python -m scadview.docs_screenshots`.
 
 Example target behavior:
 
 ```text
-mise run docs_screenshots
+mise run docs_check_screenshots_manifest
 ```
 
 runs:
@@ -181,10 +183,16 @@ runs:
 python tools/docs_screenshots.py --manifest docs/screenshots.toml
 ```
 
-Generation should be available by forwarding `--generate` through the task:
+Generation should use a separate task that generates all screenshots by default:
 
 ```text
-mise run docs_screenshots -- --generate
+mise run docs_generate_screenshots
+```
+
+Selected screenshots should be passed as positional arguments:
+
+```text
+mise run docs_generate_screenshots -- grid sphere
 ```
 
 ## Required Behavior
@@ -345,7 +353,7 @@ After implementation, a human should generate screenshots locally and inspect
 the resulting PNGs:
 
 ```bash
-mise run docs_screenshots -- --generate
+mise run docs_generate_screenshots
 ```
 
 If the final command syntax differs, document it in the PR summary and update
@@ -365,7 +373,10 @@ Manual verification must confirm:
 - The external tool imports and drives SCADview rather than SCADview importing
   the external tool.
 - No docs-specific models or method names remain in `MainFrame`.
-- `mise run docs_screenshots` still validates the manifest without importing wx.
+- `mise run docs_check_screenshots_manifest` validates the manifest without
+  importing wx.
+- `mise run docs_generate_screenshots` generates all screenshots by default and
+  accepts optional screenshot names.
 - Local generation still captures the app client area including GL and buttons.
 - Existing targeted tests pass.
 - Lint, format, and type checks pass for changed files.
