@@ -1,5 +1,5 @@
 import builtins
-import importlib.util
+import os
 import sys
 import tomllib
 from pathlib import Path
@@ -330,16 +330,24 @@ def test_docs_screenshots_task_runs_manifest_validation_without_capture(monkeypa
     tasks = _load_tasks_module()
 
     commands = []
+    envs = []
     monkeypatch.setattr(
         tasks,
         "_run_checked",
-        lambda _context, command, **_kwargs: commands.append(command),
+        lambda _context, command, **kwargs: (
+            commands.append(command),
+            envs.append(kwargs.get("env")),
+        ),
     )
 
     tasks.docs_screenshots.body(object(), args="grid sphere")
 
     assert commands == [
         "python -m tools.docs_screenshots --manifest docs/screenshots.toml grid sphere"
+    ]
+    assert envs[0]["PYTHONPATH"].split(os.pathsep)[:2] == [
+        str(Path(".").resolve()),
+        str((Path(".") / "src").resolve()),
     ]
 
 
@@ -437,7 +445,7 @@ def test_mise_declares_docs_screenshots_task():
     task_config = payload["tasks"]["docs_screenshots"]
 
     assert task_config["description"] == "Validate docs screenshot manifest"
-    assert task_config["depends"] == ["bootstrap_ci"]
+    assert task_config["depends"] == ["bootstrap_invoke"]
     assert task_config["run"] == "uv run --no-sync inv docs_screenshots"
 
 
@@ -555,10 +563,6 @@ def _fail_on_wx_import(monkeypatch):
 
 
 def _load_tasks_module():
-    spec = importlib.util.spec_from_file_location(
-        "scadview_tasks_under_test",
-        Path("tasks.py"),
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    import tasks
+
+    return tasks

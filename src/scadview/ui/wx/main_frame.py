@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import wx
 from trimesh import Trimesh
@@ -13,6 +12,7 @@ from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
+from scadview.ui.view_state import ViewState
 from scadview.ui.wx.action import (
     Action,
     CheckableAction,
@@ -27,9 +27,6 @@ logger = logging.getLogger(__name__)
 LOAD_CHECK_INTERVAL_MS = 10
 INITIAL_FRAME_SIZE = (900, 600)
 BORDER_SIZE = 6
-
-if TYPE_CHECKING:
-    from scadview.docs_screenshots import ScreenshotEntry
 
 
 class MainFrame(wx.Frame):
@@ -332,12 +329,12 @@ class MainFrame(wx.Frame):
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
 
-    def load_docs_screenshot_module(self, module_path: Path) -> None:
+    def load_module(self, module_path: Path) -> None:
         self._controller.load_mesh(str(module_path))
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 
-    def poll_docs_screenshot_load(self) -> LoadStatus:
+    def poll_load_status(self) -> LoadStatus:
         self._handle_load_result(self._controller.check_load_queue())
         return self._controller.load_status
 
@@ -391,13 +388,13 @@ class MainFrame(wx.Frame):
     def on_toggle_gnomon(self, _: wx.Event):
         self._gl_widget.toggle_gnomon()
 
-    def apply_docs_screenshot_state(self, entry: ScreenshotEntry) -> None:
-        self._gl_widget.show_grid = entry.grid
-        self._gl_widget.show_axes = entry.axes
-        self._gl_widget.show_edges = entry.edges
-        self._gl_widget.show_gnomon = entry.gnomon
-        self._gl_widget.camera_type = entry.camera
-        self._apply_docs_screenshot_view(entry.view)
+    def apply_view_state(self, view_state: ViewState) -> None:
+        self._gl_widget.show_grid = view_state.grid
+        self._gl_widget.show_axes = view_state.axes
+        self._gl_widget.show_edges = view_state.edges
+        self._gl_widget.show_gnomon = view_state.gnomon
+        self._gl_widget.camera_type = view_state.camera
+        self._apply_view(view_state.view)
 
     def capture_client_bitmap(self) -> wx.Bitmap:
         bitmap = self._capture_client_bitmap()
@@ -434,7 +431,7 @@ class MainFrame(wx.Frame):
         finally:
             dc.SelectObject(wx.NullBitmap)
 
-    def _apply_docs_screenshot_view(self, view: str) -> None:
+    def _apply_view(self, view: str) -> None:
         if view == "frame":
             self._gl_widget.frame()
         elif view == "xyz":

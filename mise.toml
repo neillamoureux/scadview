@@ -74,7 +74,7 @@ run = "uv run --no-sync inv docs_live_serve"
 
 [tasks.docs_screenshots]
 description = "Validate docs screenshot manifest"
-depends = ["bootstrap_ci"]
+depends = ["bootstrap_invoke"]
 run = "uv run --no-sync inv docs_screenshots"
 
 [tasks.docs_sync]

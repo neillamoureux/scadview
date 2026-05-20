@@ -37,6 +37,14 @@ def _join_args(raw: str) -> str:
     return f" {raw.strip()}" if raw.strip() else ""
 
 
+def _repo_pythonpath_env() -> dict[str, str]:
+    paths: list[str] = [str(REPO_ROOT), str(REPO_ROOT / "src")]
+    existing = os.environ.get("PYTHONPATH", "").strip()
+    if existing:
+        paths.append(existing)
+    return {"PYTHONPATH": os.pathsep.join(paths)}
+
+
 def _run_capture(context: Context, command: str) -> str:
     result = context.run(command, warn=True, hide=True, pty=False)
     if result:
@@ -168,8 +176,8 @@ def docs_screenshots(context: Context, args: str = "") -> None:
     extra: str = _join_args(args)
     _run_checked(
         context,
-        f"python -m scadview.docs_screenshots --manifest docs/screenshots.toml "
-        f"--check{extra}",
+        f"python -m tools.docs_screenshots --manifest docs/screenshots.toml{extra}",
+        env=_repo_pythonpath_env(),
     )
 
 
