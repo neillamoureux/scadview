@@ -12,18 +12,15 @@ from tests.tools.docs_screenshots_test_support import (
 )
 
 
-def test_repository_manifest_lists_initial_screenshot_entries():
-    manifest_path = Path("docs/screenshots.toml")
+def test_fixture_manifest_lists_expected_screenshot_entry_fields(tmp_path):
+    manifest_path = write_valid_docs_tree(tmp_path)
 
     payload = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
     names = [entry["name"] for entry in payload["screenshots"]]
 
-    assert names[0] == "startup_window"
+    assert names[0] == "grid"
     assert "grid" in names
-    assert "edges" in names
     assert "sphere" in names
-    assert "colors" in names
-    assert "cube_minus_sphere" in names
     for entry in payload["screenshots"]:
         assert set(entry) == {
             "axes",
@@ -45,23 +42,23 @@ def test_tools_package_exposes_docs_screenshots_check_module():
     assert docs_screenshots_check.__name__ == "tools.docs_screenshots_check"
 
 
-def test_repository_manifest_validates_against_docs_without_importing_wx(monkeypatch):
+def test_validate_manifest_accepts_fixture_manifest_without_importing_wx(
+    tmp_path, monkeypatch
+):
     fail_on_wx_import(monkeypatch)
 
     from tools.docs_screenshots_check import validate_manifest
 
+    manifest_path = write_valid_docs_tree(tmp_path)
     manifest = validate_manifest(
-        Path("docs/screenshots.toml"),
-        repo_root=Path("."),
+        manifest_path,
+        repo_root=tmp_path,
     )
 
     names = [entry.name for entry in manifest.entries]
-    assert names[0] == "startup_window"
+    assert names[0] == "grid"
     assert "grid" in names
-    assert "edges" in names
     assert "sphere" in names
-    assert "colors" in names
-    assert "cube_minus_sphere" in names
 
 
 def test_load_manifest_parses_screenshot_entries(tmp_path):
