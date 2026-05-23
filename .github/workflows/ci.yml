@@ -50,3 +50,6 @@ jobs:
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         run: uv run --no-sync pytest -p no:pytestqt -p pytest_cov
+
+      - name: Run docs screenshots test
+        run: uv run --no-sync python -m tools.docs_screenshots --manifest docs/screenshots.toml
