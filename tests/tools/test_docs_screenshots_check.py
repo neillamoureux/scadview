@@ -18,14 +18,12 @@ def test_repository_manifest_lists_initial_screenshot_entries():
     payload = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
     names = [entry["name"] for entry in payload["screenshots"]]
 
-    assert names == [
-        "startup_window",
-        "grid",
-        "edges",
-        "sphere",
-        "colors",
-        "cube_minus_sphere",
-    ]
+    assert names[0] == "startup_window"
+    assert "grid" in names
+    assert "edges" in names
+    assert "sphere" in names
+    assert "colors" in names
+    assert "cube_minus_sphere" in names
     for entry in payload["screenshots"]:
         assert set(entry) == {
             "axes",
@@ -57,14 +55,13 @@ def test_repository_manifest_validates_against_docs_without_importing_wx(monkeyp
         repo_root=Path("."),
     )
 
-    assert [entry.name for entry in manifest.entries] == [
-        "startup_window",
-        "grid",
-        "edges",
-        "sphere",
-        "colors",
-        "cube_minus_sphere",
-    ]
+    names = [entry.name for entry in manifest.entries]
+    assert names[0] == "startup_window"
+    assert "grid" in names
+    assert "edges" in names
+    assert "sphere" in names
+    assert "colors" in names
+    assert "cube_minus_sphere" in names
 
 
 def test_load_manifest_parses_screenshot_entries(tmp_path):

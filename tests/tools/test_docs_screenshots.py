@@ -84,7 +84,7 @@ def test_mise_declares_docs_screenshot_tasks():
 
     check_task = payload["tasks"]["docs_check_screenshots_manifest"]
     assert check_task["description"] == "Validate docs screenshot manifest"
-    assert check_task["depends"] == ["bootstrap_invoke"]
+    assert check_task["depends"] == ["bootstrap"]
     assert check_task["run"] == _docs_screenshots_command()
 
     generate_task = payload["tasks"]["docs_generate_screenshots"]

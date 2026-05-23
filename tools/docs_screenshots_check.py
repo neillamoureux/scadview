@@ -34,7 +34,7 @@ class ScreenshotEntry:
     @field_validator("window_size", mode="before")
     @classmethod
     def _validate_window_size(cls, value: object) -> tuple[int, int]:
-        if not isinstance(value, list) or len(value) != 2:
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
             raise ValueError(
                 "window_size must contain two positive integer values"
             )
@@ -183,7 +183,7 @@ def _validate_output(
     entry: ScreenshotEntry,
     docs_root: Path,
 ) -> None:
-    output_path = _resolve_relative_path(docs_root, entry.output)
+    output_path = resolve_relative_path(docs_root, entry.output)
     if not _is_relative_to(output_path, docs_root.resolve()):
         raise ScreenshotManifestError(
             f"output path may not escape docs: {entry.output}"
@@ -193,7 +193,7 @@ def _validate_output(
 
 
 def _validate_module(entry: ScreenshotEntry, repo_root: Path) -> None:
-    module_path = _resolve_relative_path(repo_root, entry.module)
+    module_path = resolve_relative_path(repo_root, entry.module)
     if not _is_relative_to(module_path, repo_root.resolve()):
         raise ScreenshotManifestError(
             f"module path may not escape repo: {entry.module}"
@@ -202,7 +202,7 @@ def _validate_module(entry: ScreenshotEntry, repo_root: Path) -> None:
         raise ScreenshotManifestError(f"module is missing: {entry.module}")
 
 
-def _resolve_relative_path(root: Path, relative_path: Path) -> Path:
+def resolve_relative_path(root: Path, relative_path: Path) -> Path:
     if relative_path.is_absolute():
         raise ScreenshotManifestError(f"path must be relative: {relative_path}")
     return (root / relative_path).resolve()

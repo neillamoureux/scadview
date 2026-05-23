@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import pytest
+
 from tests.tools.docs_screenshots_test_support import (
     RecordingCaptureBackend,
     write_valid_docs_tree,
@@ -38,6 +42,40 @@ def test_generate_screenshots_delegates_validated_entries_to_capture_backend(tmp
             "gnomon": True,
         }
     ]
+
+
+def test_generate_screenshots_rejects_absolute_output_path(tmp_path):
+    from tools.docs_screenshots import generate_screenshots
+    from tools.docs_screenshots_check import (
+        ScreenshotEntry,
+        ScreenshotManifest,
+        ScreenshotManifestError,
+    )
+
+    manifest = ScreenshotManifest(
+        path=tmp_path / "docs" / "screenshots.toml",
+        entries=(
+            ScreenshotEntry(
+                name="grid",
+                output=Path("/tmp/grid.png"),
+                module=Path("examples/sphere.py"),
+                window_size=(960, 720),
+                view="frame",
+                camera="perspective",
+                grid=True,
+                axes=True,
+                edges=False,
+                gnomon=True,
+            ),
+        ),
+    )
+
+    with pytest.raises(ScreenshotManifestError, match="path must be relative"):
+        generate_screenshots(
+            manifest,
+            repo_root=tmp_path,
+            capture_backend=RecordingCaptureBackend(),
+        )
 
 
 def test_docs_screenshots_cli_generation_uses_capture_backend_factory(tmp_path):

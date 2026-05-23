@@ -9,7 +9,11 @@ from typing import Protocol
 
 from scadview.load_status import LoadStatus
 from scadview.ui.view_state import ViewState
-from tools.docs_screenshots_check import ScreenshotEntry, ScreenshotManifest
+from tools.docs_screenshots_check import (
+    ScreenshotEntry,
+    ScreenshotManifest,
+    resolve_relative_path,
+)
 
 LOAD_TIMEOUT_SECONDS = 120.0
 SETTLE_EVENT_CYCLES = 3
@@ -95,13 +99,9 @@ def _capture_request(
 ) -> ScreenshotCaptureRequest:
     return ScreenshotCaptureRequest(
         entry=entry,
-        module_path=_resolve_relative_path(repo_root, entry.module),
-        output_path=_resolve_relative_path(docs_root, entry.output),
+        module_path=resolve_relative_path(repo_root, entry.module),
+        output_path=resolve_relative_path(docs_root, entry.output),
     )
-
-
-def _resolve_relative_path(root: Path, relative_path: Path) -> Path:
-    return (root / relative_path).resolve()
 
 
 class WxScreenshotCaptureBackend(ScreenshotCaptureBackend):
