@@ -174,6 +174,31 @@ mise run reset
   PR when practical, so users can see both the reference behavior and usage
   pattern.
 
+#### Documentation Screenshot Workflow
+
+Use the docs screenshot tooling when you add or update images referenced from
+the documentation:
+
+1. Validate the screenshot manifest:
+```
+mise run docs_check_screenshots_manifest
+```
+
+2. Generate screenshots locally:
+```
+mise run docs_generate_screenshots
+```
+
+The screenshot manifest lives at `docs/screenshots.toml`.
+
+Current automation scope is intentionally narrow:
+
+- The tool supports screenshots of rendered models after the module code runs.
+- Automated orientation support is limited to the standard views `x`, `y`, `z`,
+  and `xyz`.
+- Do not expect this workflow to capture arbitrary camera poses, native window
+  chrome, modal dialogs, or other manual UI states.
+
 #### Documentation Workflow (Versioned Docs)
 
 Use two commands depending on what you need:
