@@ -162,7 +162,7 @@ Let modify that one line again and press "Reload":
     ball = icosphere(subdivisions=2, radius=42.67/2)
 ```
 You should now see a resized ball.
-![Golf Ball Resized](images/golf_ball_step_03_sized.png)
+![Golf Ball Resized](images/golf_ball_step_03.png)
 
 But it looks like the same size!
 This is because {{ project_name }} reframes the model
@@ -238,7 +238,7 @@ and press "Reload".
 Great!  Now the ball is showing again, 
 the background is green (which is good).
 
-![Golf Ball No Dimple](images/golf_ball_step_03_sized.png)
+![Golf Ball No Dimple](images/golf_ball_step_03.png)
 
 But no dimple. 
 You can move the camera all around 
