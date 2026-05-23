@@ -42,6 +42,18 @@ def test_tools_package_exposes_docs_screenshots_module():
     assert docs_screenshots.__name__ == "tools.docs_screenshots"
 
 
+def test_tools_package_exposes_docs_screenshots_check_module():
+    import tools.docs_screenshots_check as docs_screenshots_check
+
+    assert docs_screenshots_check.__name__ == "tools.docs_screenshots_check"
+
+
+def test_tools_package_exposes_docs_screenshots_generate_module():
+    import tools.docs_screenshots_generate as docs_screenshots_generate
+
+    assert docs_screenshots_generate.__name__ == "tools.docs_screenshots_generate"
+
+
 def test_runtime_package_does_not_contain_docs_screenshot_tooling():
     forbidden_paths = [
         Path("src/scadview/docs_screenshots.py"),
@@ -162,8 +174,8 @@ def test_validate_manifest_rejects_duplicate_names(tmp_path):
         validate_manifest(manifest_path, repo_root=tmp_path)
 
 
-def test_validate_manifest_ignores_markdown_outside_readme_and_docs(tmp_path):
-    from tools.docs_screenshots import ScreenshotManifestError, validate_manifest
+def test_validate_manifest_does_not_require_markdown_references(tmp_path):
+    from tools.docs_screenshots import validate_manifest
 
     manifest_path = _write_valid_docs_tree(
         tmp_path,
@@ -177,8 +189,9 @@ def test_validate_manifest_ignores_markdown_outside_readme_and_docs(tmp_path):
         encoding="utf-8",
     )
 
-    with pytest.raises(ScreenshotManifestError, match="not referenced.*grid.png"):
-        validate_manifest(manifest_path, repo_root=tmp_path)
+    manifest = validate_manifest(manifest_path, repo_root=tmp_path)
+
+    assert [entry.name for entry in manifest.entries] == ["grid"]
 
 
 @pytest.mark.parametrize(
@@ -239,12 +252,6 @@ def test_validate_manifest_ignores_markdown_outside_readme_and_docs(tmp_path):
             ["docs/images/grid.jpg"],
             None,
             "PNG.*output",
-        ),
-        (
-            [("grid", "images/grid.png", "examples/sphere.py", {})],
-            [],
-            None,
-            "not referenced.*grid.png",
         ),
     ],
 )
@@ -385,6 +392,7 @@ def test_docs_screenshots_validation_does_not_import_capture_backend(
     import tools.docs_screenshots as docs_screenshots
 
     manifest_path = _write_valid_docs_tree(tmp_path)
+    monkeypatch.delitem(sys.modules, "tools.docs_screenshots_generate", raising=False)
     monkeypatch.delitem(sys.modules, "scadview.ui.wx", raising=False)
     monkeypatch.delitem(sys.modules, "scadview.ui.wx.main_frame", raising=False)
     _fail_on_wx_import(monkeypatch)
@@ -392,6 +400,7 @@ def test_docs_screenshots_validation_does_not_import_capture_backend(
     result = docs_screenshots.main(["--manifest", str(manifest_path)])
 
     assert result == 0
+    assert "tools.docs_screenshots_generate" not in sys.modules
     assert "scadview.ui.wx.main_frame" not in sys.modules
 
 

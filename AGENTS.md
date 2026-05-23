@@ -43,6 +43,21 @@ If guidance conflicts, follow this precedence:
 - Prefer specific exceptions and explicit error paths.
 - Do not introduce new dependencies unless clearly justified.
 
+### Function Ordering
+
+- Order functions in execution order from top to bottom.
+- Put the primary public entry point first (for example `main()`).
+- After a function, place the next function it calls immediately below it when
+  practical.
+- If a function calls multiple helpers, order those helpers by the order they
+  are first reached in the call flow.
+- Think of the file as a call tree flattened top down: parent first, then
+  children in first-use order.
+- When refactoring, preserve or restore this ordering after introducing new
+  helpers, context objects, or orchestration layers.
+- Do not place a later-reached sibling helper above an earlier-reached sibling
+  without a task-specific reason.
+
 ---
 
 ## API Design
