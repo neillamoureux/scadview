@@ -1,14 +1,17 @@
-[[screenshots]]
-name = "startup_window"
-output = "images/startup_window.png"
-module = "examples/xyz_cube.py"
-window_size = [960, 720]
-view = "frame"
-camera = "perspective"
-grid = false
-axes = true
-edges = false
-gnomon = true
+# This has be to captured manually, 
+# since this tool must load a model before
+# taking a screenshot.
+# [[screenshots]]
+# name = "startup_window"
+# output = "images/startup_window.png"
+# module = "examples/xyz_cube.py"
+# window_size = [960, 720]
+# view = "frame"
+# camera = "perspective"
+# grid = false
+# axes = true
+# edges = false
+# gnomon = true
 
 [[screenshots]]
 name = "getting_started_ball"
@@ -109,19 +112,17 @@ edges = false
 gnomon = true
 
 
-# This needs to be done manually, 
-# since we need to rotate the camera to get the dimples to show up in the screenshot
-# [[screenshots]]
-# name = "golf_ball_step_07"
-# output = "images/golf_ball_step_07.png"
-# module = "tutorial/golf_ball_step_07.py"
-# window_size = [960, 720]
-# view = "frame"
-# camera = "perspective"
-# grid = false
-# axes = true
-# edges = false
-# gnomon = true
+[[screenshots]]
+name = "golf_ball_step_07"
+output = "images/golf_ball_step_07.png"
+module = "tutorial/golf_ball_step_07.py"
+window_size = [960, 720]
+view = "y"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
 
 [[screenshots]]
 name = "golf_ball_step_08"
@@ -358,7 +359,7 @@ name = "surface"
 output = "images/surface.png"
 module = "examples/surface.py"
 window_size = [960, 720]
-view = "frame"
+view = "z"
 camera = "perspective"
 grid = false
 axes = true
