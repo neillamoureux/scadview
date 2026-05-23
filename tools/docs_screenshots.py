@@ -7,12 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tools.docs_screenshots_check import (
-    ScreenshotManifest,
-    # ScreenshotManifestError,
-    # load_manifest,
-    validate_manifest,
-)
+from tools.docs_screenshots_check import ScreenshotManifest, validate_manifest
 
 if TYPE_CHECKING:
     from tools.docs_screenshots_generate import ScreenshotCaptureBackend

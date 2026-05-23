@@ -4,7 +4,10 @@ import tomllib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Annotated
 
+from pydantic import StringConstraints, TypeAdapter, ValidationError, field_validator
+from pydantic.dataclasses import dataclass as validated_dataclass
 from scadview.ui.view_state import CameraName, ViewName
 
 
@@ -12,9 +15,12 @@ class ScreenshotManifestError(ValueError):
     """Raised when the docs screenshot manifest is invalid."""
 
 
-@dataclass(frozen=True)
+NonEmptyString = Annotated[str, StringConstraints(min_length=1, strict=True)]
+
+
+@validated_dataclass(frozen=True)
 class ScreenshotEntry:
-    name: str
+    name: NonEmptyString
     output: Path
     module: Path
     window_size: tuple[int, int]
@@ -24,6 +30,60 @@ class ScreenshotEntry:
     axes: bool
     edges: bool
     gnomon: bool
+
+    @field_validator("window_size", mode="before")
+    @classmethod
+    def _validate_window_size(cls, value: object) -> tuple[int, int]:
+        if not isinstance(value, list) or len(value) != 2:
+            raise ValueError(
+                "window_size must contain two positive integer values"
+            )
+        width = value[0]
+        height = value[1]
+        if (
+            not isinstance(width, int)
+            or not isinstance(height, int)
+            or isinstance(width, bool)
+            or isinstance(height, bool)
+            or width <= 0
+            or height <= 0
+        ):
+            raise ValueError(
+                "window_size must contain two positive integer values"
+            )
+        return (width, height)
+
+    @field_validator("view", mode="before")
+    @classmethod
+    def _validate_view(cls, value: object) -> ViewName:
+        if value == "frame":
+            return "frame"
+        if value == "xyz":
+            return "xyz"
+        if value == "x":
+            return "x"
+        if value == "y":
+            return "y"
+        if value == "z":
+            return "z"
+        raise ValueError(f"view value is not supported: {value}")
+
+    @field_validator("camera", mode="before")
+    @classmethod
+    def _validate_camera(cls, value: object) -> CameraName:
+        if value == "perspective":
+            return "perspective"
+        if value == "orthogonal":
+            return "orthogonal"
+        raise ValueError(f"camera value is not supported: {value}")
+
+    @field_validator("grid", "axes", "edges", "gnomon", mode="before")
+    @classmethod
+    def _validate_toggle(cls, value: object, info: object) -> bool:
+        field_name = getattr(info, "field_name", "value")
+        if not isinstance(value, bool):
+            raise ValueError(f"{field_name} must be true or false")
+        return value
 
 
 @dataclass(frozen=True)
@@ -68,18 +128,10 @@ def _read_manifest_entries(manifest_path: Path) -> list[object]:
 
 def _parse_entry(raw_entry: object) -> ScreenshotEntry:
     entry = _entry_table(raw_entry)
-    return ScreenshotEntry(
-        name=_required_str(entry, "name"),
-        output=Path(_required_str(entry, "output")),
-        module=Path(_required_str(entry, "module")),
-        window_size=_parse_window_size(entry.get("window_size")),
-        view=_parse_view(_required_str(entry, "view")),
-        camera=_parse_camera(_required_str(entry, "camera")),
-        grid=_required_bool(entry, "grid"),
-        axes=_required_bool(entry, "axes"),
-        edges=_required_bool(entry, "edges"),
-        gnomon=_required_bool(entry, "gnomon"),
-    )
+    try:
+        return _screenshot_entry_adapter().validate_python(entry)
+    except ValidationError as error:
+        raise ScreenshotManifestError(_validation_error_message(error)) from error
 
 
 def _entry_table(raw_entry: object) -> dict[str, object]:
@@ -93,61 +145,16 @@ def _entry_table(raw_entry: object) -> dict[str, object]:
     return entry
 
 
-def _required_str(raw_entry: dict[str, object], field: str) -> str:
-    value = raw_entry.get(field)
-    if not isinstance(value, str) or not value:
-        raise ScreenshotManifestError(f"{field} must be a non-empty string")
-    return value
+def _screenshot_entry_adapter() -> TypeAdapter[ScreenshotEntry]:
+    return TypeAdapter(ScreenshotEntry)
 
 
-def _required_bool(raw_entry: dict[str, object], field: str) -> bool:
-    value = raw_entry.get(field)
-    if not isinstance(value, bool):
-        raise ScreenshotManifestError(f"{field} must be true or false")
-    return value
-
-
-def _parse_window_size(value: object) -> tuple[int, int]:
-    if not isinstance(value, list) or len(value) != 2:
-        raise ScreenshotManifestError(
-            "window_size must contain two positive integer values"
-        )
-    width = value[0]
-    height = value[1]
-    if (
-        not isinstance(width, int)
-        or not isinstance(height, int)
-        or isinstance(width, bool)
-        or isinstance(height, bool)
-        or width <= 0
-        or height <= 0
-    ):
-        raise ScreenshotManifestError(
-            "window_size must contain two positive integer values"
-        )
-    return (width, height)
-
-
-def _parse_view(value: str) -> ViewName:
-    if value == "frame":
-        return "frame"
-    if value == "xyz":
-        return "xyz"
-    if value == "x":
-        return "x"
-    if value == "y":
-        return "y"
-    if value == "z":
-        return "z"
-    raise ScreenshotManifestError(f"view value is not supported: {value}")
-
-
-def _parse_camera(value: str) -> CameraName:
-    if value == "perspective":
-        return "perspective"
-    if value == "orthogonal":
-        return "orthogonal"
-    raise ScreenshotManifestError(f"camera value is not supported: {value}")
+def _validation_error_message(error: ValidationError) -> str:
+    first_error = error.errors(include_url=False)[0]
+    message = first_error["msg"]
+    if isinstance(message, str) and message.startswith("Value error, "):
+        return message.removeprefix("Value error, ")
+    return str(message)
 
 
 def _validate_unique_names(entries: Sequence[ScreenshotEntry]) -> None:
