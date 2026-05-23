@@ -57,7 +57,7 @@ def test_generate_screenshots_rejects_absolute_output_path(tmp_path):
         entries=(
             ScreenshotEntry(
                 name="grid",
-                output=Path("/tmp/grid.png"),
+                output=(tmp_path / "grid.png").resolve(),
                 module=Path("examples/sphere.py"),
                 window_size=(960, 720),
                 view="frame",

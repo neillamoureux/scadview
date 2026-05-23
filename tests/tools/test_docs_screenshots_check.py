@@ -196,12 +196,6 @@ def test_validate_manifest_does_not_require_markdown_references(tmp_path):
             "module.*escape",
         ),
         (
-            [("grid", "/tmp/grid.png", "examples/sphere.py", {})],
-            ["docs/images/grid.png"],
-            None,
-            "path must be relative",
-        ),
-        (
             [("grid", "images/grid.png", "examples/sphere.py", {"view": "isometric"})],
             ["docs/images/grid.png"],
             None,
@@ -259,6 +253,25 @@ def test_validate_manifest_rejects_invalid_manifest(
             repo_root=tmp_path,
             selected_names=selected_names,
         )
+
+
+def test_validate_manifest_rejects_absolute_output_path(tmp_path):
+    from tools.docs_screenshots_check import ScreenshotManifestError, validate_manifest
+
+    manifest_path = write_valid_docs_tree(
+        tmp_path,
+        screenshots=[
+            screenshot_block(
+                "grid",
+                (tmp_path / "grid.png").resolve().as_posix(),
+                "examples/sphere.py",
+            ),
+        ],
+        markdown_refs=["docs/images/grid.png"],
+    )
+
+    with pytest.raises(ScreenshotManifestError, match="path must be relative"):
+        validate_manifest(manifest_path, repo_root=tmp_path)
 
 
 @pytest.mark.parametrize("view", ["frame", "xyz", "x", "y", "z"])
