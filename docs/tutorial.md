@@ -582,6 +582,13 @@ and create the necessary gcode file for printing.
 
 ## Additional Topics
 
+### Named Features
+
+Using the [@feature decorator](./api.md#scadview.feature), 
+you can define meshes as named features, 
+and show or hide them [using code](./api.md#scadview.feature_default)
+of through the [UI](./user_interface.md#features).
+
 ### Creating Multiple Meshes for Export
 
 The `create_mesh()` allows you to return multiple meshes in a list,

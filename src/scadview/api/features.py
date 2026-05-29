@@ -40,6 +40,13 @@ def feature(
     | Callable[[Callable[P, TNativeMesh]], Callable[P, FeatureMesh]]
 ):
     """Mark a mesh or mesh-returning function or method as a named feature.
+    This can be used as a decorator or a function call.
+    As a decorator, use as shown in the example below:
+    ```
+    @feature("my_feature")
+    def create_my_feature_mesh():
+        return Trimesh(...)
+    ```
 
     Args:
         name_or_func: Feature name shown in the UI, or a decorated mesh factory.

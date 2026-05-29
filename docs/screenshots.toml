@@ -223,6 +223,19 @@ edges = true
 gnomon = true
 
 [[screenshots]]
+name = "features"
+output = "images/features.png"
+module = "examples/features.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+
+[[screenshots]]
 name = "heart_vase"
 output = "images/heart_vase.png"
 module = "examples/heart_vase.py"

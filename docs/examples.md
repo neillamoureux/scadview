@@ -49,20 +49,6 @@ it enters debug mode. It demonstrates colors and transparency in debug mode.
 </details>
 ![Cube Minus Sphere](images/cube_minus_sphere.png)
 
-## heart_vase.py
-
-Creates a lovely red heart vase.
-<details>
-<summary>Source</summary>
-
-```python
-
-{% include "../examples/heart_vase.py" %}
-
-```
-</details>
-![Heart Vase](images/heart_vase.png)
-
 ## features.py
 
 Shows the feature API in one compact model: `feature(...)` as a decorator,
@@ -78,6 +64,21 @@ same feature name.
 
 ```
 </details>
+![Features](images/features.png)
+
+## heart_vase.py
+
+Creates a lovely red heart vase.
+<details>
+<summary>Source</summary>
+
+```python
+
+{% include "../examples/heart_vase.py" %}
+
+```
+</details>
+![Heart Vase](images/heart_vase.png)
 
 ## invalid_code.py
 
