@@ -2,7 +2,7 @@ from trimesh.creation import box, cylinder
 
 from scadview import feature, feature_default
 
-feature_default("supports", enabled=False)
+feature_default("handle", enabled=False)
 
 
 @feature("cutout")

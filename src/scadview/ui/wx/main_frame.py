@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os
+from pathlib import Path
 
 import wx
 from trimesh import Trimesh
@@ -9,6 +12,7 @@ from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
+from scadview.ui.view_state import ViewState
 from scadview.ui.wx.action import (
     Action,
     CheckableAction,
@@ -308,6 +312,9 @@ class MainFrame(wx.Frame):
 
     def on_load_timer(self, _: wx.Event):
         load_result = self._controller.check_load_queue()
+        self._handle_load_result(load_result)
+
+    def _handle_load_result(self, load_result: LoadResult) -> None:
         mesh = load_result.mesh
         if load_result.complete:
             self._loader_timer.Stop()
@@ -321,6 +328,21 @@ class MainFrame(wx.Frame):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
+
+    def load_module(self, module_path: Path, *, start_timer: bool = True) -> None:
+        self._controller.load_mesh(str(module_path))
+        if start_timer:
+            self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+            self._load_progress_gauge.Pulse()
+
+    def poll_load_status(self) -> LoadStatus:
+        load_result = self._controller.check_load_queue()
+        self._handle_load_result(load_result)
+        if load_result.complete:
+            return LoadStatus.COMPLETE
+        if load_result.error:
+            return LoadStatus.ERROR
+        return self._controller.load_status
 
     def _indicate_load_status(self, status: LoadStatus):
         self._gl_widget.indicate_load_status(status)
@@ -371,6 +393,61 @@ class MainFrame(wx.Frame):
 
     def on_toggle_gnomon(self, _: wx.Event):
         self._gl_widget.toggle_gnomon()
+
+    def apply_view_state(self, view_state: ViewState) -> None:
+        self._gl_widget.show_grid = view_state.grid
+        self._gl_widget.show_axes = view_state.axes
+        self._gl_widget.show_edges = view_state.edges
+        self._gl_widget.show_gnomon = view_state.gnomon
+        self._gl_widget.camera_type = view_state.camera
+        self._apply_view(view_state.view)
+
+    def capture_client_bitmap(self) -> wx.Bitmap:
+        bitmap = self._capture_client_bitmap()
+        self._draw_gl_bitmap(bitmap)
+        return bitmap
+
+    def _capture_client_bitmap(self) -> wx.Bitmap:
+        size = self.GetClientSize()
+        bitmap = wx.Bitmap(size.width, size.height)
+        dc = wx.MemoryDC(bitmap)
+        source_dc = wx.ClientDC(self)
+        try:
+            dc.Blit(
+                0,
+                0,
+                size.width,
+                size.height,
+                source_dc,
+                0,
+                0,
+            )
+        finally:
+            dc.SelectObject(wx.NullBitmap)
+        return bitmap
+
+    def _draw_gl_bitmap(self, bitmap: wx.Bitmap) -> None:
+        gl_bitmap = self._gl_widget.capture_bitmap()
+        gl_position = self._gl_widget.ClientToScreen(wx.Point(0, 0))
+        frame_position = self.ClientToScreen(wx.Point(0, 0))
+        target_position = gl_position - frame_position
+        dc = wx.MemoryDC(bitmap)
+        try:
+            dc.DrawBitmap(gl_bitmap, target_position.x, target_position.y)
+        finally:
+            dc.SelectObject(wx.NullBitmap)
+
+    def _apply_view(self, view: str) -> None:
+        if view == "frame":
+            self._gl_widget.frame()
+        elif view == "xyz":
+            self._gl_widget.view_from_xyz()
+        elif view == "x":
+            self._gl_widget.view_from_x()
+        elif view == "y":
+            self._gl_widget.view_from_y()
+        elif view == "z":
+            self._gl_widget.view_from_z()
 
     def on_close(self, _: wx.Event):
         self._loader_timer.Stop()

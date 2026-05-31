@@ -86,7 +86,8 @@ Otherwise, you will see:
 
 ![Splash](./images/splash_window.png){ .md-image width=400 }
 
-Once it has initialized, you should see the main user interface:
+Once it has initialized, you should see the main user interface.  
+The image below does not show the OS-specific "chrome" (such as the title base, close button).
 ![Startup Window](./images/startup_window.png){ .md-image width=700 }
 
 Notice that your terminal shows output from the {{ package_name }} module.

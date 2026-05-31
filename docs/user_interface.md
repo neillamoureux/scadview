@@ -20,6 +20,16 @@ you complete them.
 - If an export format reports a missing dependency, install the package named
   in the error, or choose a different format.
 
+## Features
+The features capability enable defining component meshes as named "features",
+and you can turn them on or off through the UI.
+Turning them off acts as if that mesh was not created and combined (union, subtract or intersection) with the final mesh.
+
+The "Features" section only appears if you name some features in your code.
+See the [`feature(...)` API call](./api.md#scadview.feature) for details on how to define features.
+
+![Feature Example](images/features.png)
+
 ## View and Inspect
 
 - If you want to refit the camera to the mesh, use `View > Frame` or the `Frame`

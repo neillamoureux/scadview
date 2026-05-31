@@ -364,6 +364,13 @@ class Renderer:
         if show_gnomon:
             self._gnomon_renderee.render()
 
+    def capture_pixels(self, width: int, height: int) -> bytes:
+        return self._ctx.screen.read(
+            viewport=(0, 0, width, height),
+            components=3,
+            alignment=1,
+        )
+
 
 class RendererFactory:
     def __init__(

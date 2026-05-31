@@ -72,6 +72,16 @@ description = "Serve docs with live reload (mkdocs)"
 depends = ["bootstrap"]
 run = "uv run --no-sync inv docs_live_serve"
 
+[tasks.docs_check_screenshots_manifest]
+description = "Validate docs screenshot manifest"
+depends = ["bootstrap"]
+run = "PYTHONPATH=\"$PWD:$PWD/src${PYTHONPATH:+:$PYTHONPATH}\" uv run --no-sync python -m tools.docs_screenshots --manifest docs/screenshots.toml"
+
+[tasks.docs_generate_screenshots]
+description = "Generate docs screenshots"
+depends = ["bootstrap"]
+run = "PYTHONPATH=\"$PWD:$PWD/src${PYTHONPATH:+:$PYTHONPATH}\" uv run --no-sync python -m tools.docs_screenshots --manifest docs/screenshots.toml --generate"
+
 [tasks.docs_sync]
 description = "Sync local versioned docs state in local gh-pages branch"
 depends = ["bootstrap"]

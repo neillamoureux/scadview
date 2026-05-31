@@ -108,6 +108,21 @@ class GlWidget(GLCanvas):
         self.SwapBuffers()
         logger.debug("on_paint end")
 
+    def capture_bitmap(self) -> wx.Bitmap:
+        self.SetCurrent(self.ctx_wx)
+        self._sync_pixel_size()
+        size = self.GetClientSize()
+        scale = self.GetContentScaleFactor()
+        width = int(scale * size.width)
+        height = int(scale * size.height)
+        pixel_bytes = self._gl_widget_adapter.capture_pixels(width, height)
+        image = wx.Image(width, height)
+        image.SetData(pixel_bytes)
+        image = image.Mirror(False)
+        if scale != 1:
+            image = image.Rescale(size.width, size.height, wx.IMAGE_QUALITY_HIGH)
+        return image.ConvertToBitmap()
+
     def on_mouse_press_left(self, event: wx.MouseEvent):
         pos = event.GetPosition()
         if not self._mouse_captured:
@@ -220,6 +235,11 @@ class GlWidget(GLCanvas):
     def show_axes(self) -> bool:
         return self._gl_widget_adapter.show_axes
 
+    @show_axes.setter
+    def show_axes(self, value: bool) -> None:
+        self._gl_widget_adapter.show_axes = value
+        self.Refresh(False)
+
     def toggle_axes(self):
         self._gl_widget_adapter.toggle_axes()
         self.Refresh(False)
@@ -228,6 +248,11 @@ class GlWidget(GLCanvas):
     def show_edges(self) -> bool:
         return self._gl_widget_adapter.show_edges
 
+    @show_edges.setter
+    def show_edges(self, value: bool) -> None:
+        self._gl_widget_adapter.show_edges = value
+        self.Refresh(False)
+
     def toggle_edges(self):
         self._gl_widget_adapter.toggle_edges()
         self.Refresh(False)
@@ -235,6 +260,11 @@ class GlWidget(GLCanvas):
     @property
     def show_gnomon(self) -> bool:
         return self._gl_widget_adapter.show_gnomon
+
+    @show_gnomon.setter
+    def show_gnomon(self, value: bool) -> None:
+        self._gl_widget_adapter.show_gnomon = value
+        self.Refresh(False)
 
     def toggle_gnomon(self):
         self._gl_widget_adapter.toggle_gnomon()

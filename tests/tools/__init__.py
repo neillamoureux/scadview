@@ -1,0 +1,1 @@
+"""Tooling tests for SCADview."""

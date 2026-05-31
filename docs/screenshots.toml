@@ -1,0 +1,429 @@
+# This has be to captured manually, 
+# since this tool must load a model before
+# taking a screenshot.
+# [[screenshots]]
+# name = "startup_window"
+# output = "images/startup_window.png"
+# module = "examples/xyz_cube.py"
+# window_size = [960, 720]
+# view = "frame"
+# camera = "perspective"
+# grid = false
+# axes = true
+# edges = false
+# gnomon = true
+
+[[screenshots]]
+name = "getting_started_ball"
+output = "images/getting_started_ball.png"
+module = "docs/images/code/getting_started_ball.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "getting_started_ball_2"
+output = "images/getting_started_ball_2.png"
+module = "docs/images/code/getting_started_ball_2.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+# Tutorial screenshots
+
+[[screenshots]]
+name = "golf_ball_step_02"
+output = "images/golf_ball_step_02.png"
+module = "tutorial/golf_ball_step_02.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_03_sub_1"
+output = "images/golf_ball_step_03_sub_1.png"
+module = "tutorial/golf_ball_step_03_sub_1.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_03"
+output = "images/golf_ball_step_03.png"
+module = "tutorial/golf_ball_step_03.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_05_debug"
+output = "images/golf_ball_step_05_debug.png"
+module = "tutorial/golf_ball_step_05_debug.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_05_debug_b"
+output = "images/golf_ball_step_05_debug_b.png"
+module = "tutorial/golf_ball_step_05_debug_b.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_06"
+output = "images/golf_ball_step_06.png"
+module = "tutorial/golf_ball_step_06.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+
+[[screenshots]]
+name = "golf_ball_step_07"
+output = "images/golf_ball_step_07.png"
+module = "tutorial/golf_ball_step_07.py"
+window_size = [960, 720]
+view = "y"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_08"
+output = "images/golf_ball_step_08.png"
+module = "tutorial/golf_ball_step_08.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "golf_ball_step_09"
+output = "images/golf_ball_step_09.png"
+module = "tutorial/golf_ball_step_09.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "red"
+output = "images/red.png"
+module = "examples/invalid_code.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+### UI screenshots
+[[screenshots]]
+name = "grid"
+output = "images/grid.png"
+module = "examples/xyz_cube.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "edges"
+output = "images/edges.png"
+module = "examples/xyz_cube.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = true
+gnomon = true
+
+[[screenshots]]
+name = "cli_export"
+output = "images/cli_export.png"
+module = "examples/cli_export.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+
+[[screenshots]]
+name = "colors"
+output = "images/colors.png"
+module = "examples/colors.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "cube_minus_sphere"
+output = "images/cube_minus_sphere.png"
+module = "examples/cube_minus_sphere.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = true
+gnomon = true
+
+[[screenshots]]
+name = "features"
+output = "images/features.png"
+module = "examples/features.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+
+[[screenshots]]
+name = "heart_vase"
+output = "images/heart_vase.png"
+module = "examples/heart_vase.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "koch_snowflake_vase"
+output = "images/koch_snowflake_vase.png"
+module = "examples/koch_snowflake_vase.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "lego"
+output = "images/lego.png"
+module = "examples/lego.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "messner_mani"
+output = "images/messner_mani.png"
+module = "examples/messner_mani.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "mobius"
+output = "images/mobius.png"
+module = "examples/mobius.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "mushroom"
+output = "images/mushroom.png"
+module = "examples/mushroom.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "simple_animation"
+output = "images/simple_animation.png"
+module = "examples/simple_animation.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "sphere"
+output = "images/sphere.png"
+module = "examples/sphere.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = true
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "spice_rack"
+output = "images/spice_rack.png"
+module = "examples/spice_rack.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "star_linear_extrude"
+output = "images/star_linear_extrude.png"
+module = "examples/star_linear_extrude.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "surface_bend"
+output = "images/surface_bend.png"
+module = "examples/surface_bend.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "surface"
+output = "images/surface.png"
+module = "examples/surface.py"
+window_size = [960, 720]
+view = "z"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "text"
+output = "images/text.png"
+module = "examples/text.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = false
+edges = false
+gnomon = true
+
+[[screenshots]]
+name = "toothbrush_holder"
+output = "images/toothbrush_holder.png"
+module = "examples/toothbrush_holder.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = false
+edges = false
+gnomon = true
+
+# Need to be done manually, since the animation never ends.
+# [[screenshots]]
+# name = "xyz"
+# output = "images/xyz.png"
+# module = "examples/xyz.py"
+# window_size = [960, 720]
+# view = "frame"
+# camera = "perspective"
+# grid = false
+# axes = true
+# edges = false
+# gnomon = true
+
+[[screenshots]]
+name = "xyz_cube"
+output = "images/xyz_cube.png"
+module = "examples/xyz_cube.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
