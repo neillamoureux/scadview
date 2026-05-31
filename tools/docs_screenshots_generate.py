@@ -31,21 +31,6 @@ class ScreenshotCaptureBackend(Protocol):
         pass
 
 
-class WxAppProtocol(Protocol):
-    def Yield(self) -> None:
-        pass
-
-
-class ControllerProtocol(Protocol):
-    def close(self) -> None:
-        pass
-
-
-class BitmapProtocol(Protocol):
-    def SaveFile(self, filename: str, file_type: int) -> bool:
-        pass
-
-
 class ScreenshotFrameProtocol(Protocol):
     def SetClientSize(self, size: object) -> None:
         pass
@@ -62,7 +47,7 @@ class ScreenshotFrameProtocol(Protocol):
     def apply_view_state(self, view_state: ViewState) -> None:
         pass
 
-    def capture_client_bitmap(self) -> BitmapProtocol:
+    def capture_client_bitmap(self) -> object:
         pass
 
     def Layout(self) -> None:
@@ -120,7 +105,7 @@ def create_default_capture_backend() -> ScreenshotCaptureBackend:
     return WxScreenshotCaptureBackend()
 
 
-def _wx_app() -> WxAppProtocol:
+def _wx_app() -> object:
     import wx
 
     app = wx.App.Get()
@@ -129,7 +114,7 @@ def _wx_app() -> WxAppProtocol:
     return app
 
 
-def _create_controller() -> ControllerProtocol:
+def _create_controller() -> object:
     from scadview.controller import Controller
 
     return Controller()
@@ -147,7 +132,7 @@ def _create_frame(controller: object) -> ScreenshotFrameProtocol:
 
 
 def _capture_with_frame(
-    app: WxAppProtocol,
+    app: object,
     frame: ScreenshotFrameProtocol,
     request: ScreenshotCaptureRequest,
 ) -> None:
@@ -163,12 +148,12 @@ def _capture_with_frame(
     _save_bitmap(frame.capture_client_bitmap(), request.output_path)
 
 
-def _flush_events(app: WxAppProtocol) -> None:
+def _flush_events(app: object) -> None:
     app.Yield()
 
 
 def _wait_for_load(
-    app: WxAppProtocol,
+    app: object,
     frame: ScreenshotFrameProtocol,
     screenshot_name: str,
 ) -> None:
@@ -199,7 +184,7 @@ def _view_state(entry: ScreenshotEntry) -> ViewState:
     )
 
 
-def _settle_frame(app: WxAppProtocol, frame: ScreenshotFrameProtocol) -> None:
+def _settle_frame(app: object, frame: ScreenshotFrameProtocol) -> None:
     frame.Layout()
     frame.Refresh(False)
     for _ in range(SETTLE_EVENT_CYCLES):
@@ -207,7 +192,7 @@ def _settle_frame(app: WxAppProtocol, frame: ScreenshotFrameProtocol) -> None:
         _flush_events(app)
 
 
-def _save_bitmap(bitmap: BitmapProtocol, output_path: Path) -> None:
+def _save_bitmap(bitmap: object, output_path: Path) -> None:
     import wx
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
