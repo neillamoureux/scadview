@@ -1,0 +1,1016 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://scadview.org/0.2.8/style/">
+      
+      
+        <link rel="prev" href="../contributing/">
+      
+      
+        <link rel="next" href="../architecture/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Style Guide - SCADview Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#style-guidelines" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SCADview Documentation" class="md-header__button md-logo" aria-label="SCADview Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SCADview Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Style Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../about/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  About
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli_options/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Command-Line Options
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../tutorial/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Tutorial
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user_interface/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Interface
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../create_mesh/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Creating a Mesh
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Command-Line Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../contributing/" class="md-tabs__link">
+          
+  
+  
+  Developers
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../license/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  License
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SCADview Documentation" class="md-nav__button md-logo" aria-label="SCADview Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SCADview Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    About
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli_options/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command-Line Options
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tutorial
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user_interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../create_mesh/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Creating a Mesh
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command-Line Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Developers
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            Developers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Style Guide
+    
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    License
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="style-guidelines">Style Guidelines</h1>
+<p>The goal of these guidelines is encourage clean, maintainable code that passes our specific linter and formatter (<code>ruff</code>).
+Please follow these guidelines when submitting code.</p>
+<h1 id="style-hierarchy-priority-order">Style Hierarchy (Priority Order)</h1>
+<ol>
+<li><strong>Project Specific Exceptions</strong> (Highest Priority - Overrides everything else)</li>
+<li><strong>Google Python Style Guide</strong> (Medium Priority - Applied where not overridden)</li>
+<li><strong>PEP 8</strong> (Lowest Priority - Fallback)</li>
+</ol>
+<hr />
+<h1 id="1-project-specific-overrides-highest-priority">1. Project Specific Overrides (HIGHEST PRIORITY)</h1>
+<h2 id="naming-conventions-strict">Naming Conventions (Strict)</h2>
+<ul>
+<li><strong>Initialisms &amp; Acronyms:</strong> Treat them as full words (CamelCase or snake_case).<ul>
+<li><em>Good:</em> <code>HtmlRequest</code>, <code>html_request</code>, <code>NatoCountry</code>, <code>nato_country</code></li>
+<li><em>Bad:</em> <code>HTMLRequest</code>, <code>h_t_m_l_request</code>, <code>NATOCountry</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="formatting-linting">Formatting &amp; Linting</h2>
+<ul>
+<li><strong>Formatter:</strong> Use <code>ruff</code> rules (no manual formatting adjustments).</li>
+<li><strong>Line Length:</strong> <strong>88 characters</strong> (Overrides Google's 80).</li>
+<li><strong>Linter:</strong> Optimize code to pass <code>ruff</code>.</li>
+<li><strong>No Formatting Exceptions:</strong> Do not use <code># fmt: off</code> unless absolutely critical.</li>
+<li><strong>Final Empty Line:</strong> Files should end with an empty blank line.</li>
+</ul>
+<h2 id="imports">Imports</h2>
+<ul>
+<li><strong>Allowed:</strong> Importing individual classes or functions is <strong>PERMITTED</strong> (Overrides Google's "packages only" rule).</li>
+<li><strong>Absolute Imports:</strong> Use absolute imports for all packages/modules whenever possible.</li>
+</ul>
+<h2 id="comments-clean-code-style">Comments (Clean Code Style)</h2>
+<ul>
+<li><strong>Philosophy:</strong> "Comments are a failure to express code in the language itself."</li>
+<li><strong>Avoid:</strong> Do not write comments for obvious code.</li>
+<li><strong>Refactor First:</strong> If a block needs a comment to explain <em>what</em> it does, rename variables/functions or extract the code into a well-named function instead.</li>
+<li><strong>Extraction:</strong> If you feel the need to comment a section, extract it.</li>
+<li><strong>License:</strong> License boilerplate is not required in every file.</li>
+</ul>
+<h2 id="function-length-strict">Function Length (Strict)</h2>
+<ul>
+<li><strong>Goal:</strong> Short functions.</li>
+<li><strong>Guideline:</strong> "~10 statements should be plenty.  Note this is <strong>statements</strong>, not <strong>lines</strong>"</li>
+<li><strong>Smell:</strong> Any function &gt; 9 statements is a candidate for refactoring.</li>
+<li><strong>Action:</strong> Break large functions into many small, single-purpose functions.</li>
+</ul>
+<h2 id="function-order">Function Order</h2>
+<ul>
+<li><strong>Goal:</strong> Easy to read the file top down</li>
+<li><strong>Guidelines:</strong>: <ul>
+<li>The top function should be a public function, and then order of the following function is listed in the order they would be called.</li>
+<li>After that, the next public function not yet called is listed.</li>
+<li>For example:
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">_fn_a</span><span class="p">()</span>
+    <span class="n">fn_b</span><span class="p">()</span>
+    <span class="n">_fn_c</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fn_a</span><span class="p">():</span>
+    <span class="n">fn_d</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fn_d</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fn_b</span><span class="p">()</span>
+    <span class="n">_fn_a</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fn_c</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fn_g</span><span class="p">():</span>
+    <span class="n">_fn_h</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fn_h</span><span class="p">():</span>
+    <span class="k">pass</span>
+</code></pre></div></li>
+</ul>
+</li>
+</ul>
+<h2 id="json-normalization">JSON Normalization</h2>
+<ul>
+<li><strong>Format:</strong> Multiline (pretty print), 4-space indent, keys sorted alphabetically.</li>
+</ul>
+<h2 id="type-hints">Type Hints</h2>
+<ul>
+<li><strong>Mandatory:</strong> Use type hints for all function signatures except in <code>examples/</code> and <code>tests/</code></li>
+</ul>
+<hr />
+<h1 id="2-google-python-style-guide-applied-where-not-overridden">2. Google Python Style Guide (Applied where not overridden)</h1>
+<h2 id="code-structure-logic">Code Structure &amp; Logic</h2>
+<ul>
+<li><strong>Main:</strong> Executable files must always use <code>if __name__ == '__main__': main()</code>.</li>
+<li><strong>Global State:</strong> Avoid mutable global state. Module-level constants should be <code>ALL_CAPS</code>.</li>
+<li><strong>Nested Functions:</strong> Use only for closures/decorators. Do not nest just to hide code (use <code>_private_module_func</code> instead).</li>
+<li><strong>Comprehensions:</strong> Allowed for simple cases. <strong>Prohibited</strong> if they contain multiple <code>for</code> clauses or complex filter expressions.</li>
+<li><strong>Default Arguments:</strong> <strong>NEVER</strong> use mutable objects (lists, dicts) as default values. Use <code>None</code> and initialize inside the function.</li>
+<li><strong>True/False Evaluations:</strong> Use implicit false.<ul>
+<li><em>Yes:</em> <code>if not users:</code></li>
+<li><em>No:</em> <code>if len(users) == 0:</code></li>
+</ul>
+</li>
+<li><strong>Lambdas:</strong> One-liners only. If it's longer, define a function.</li>
+<li><strong>Conditional Expressions:</strong> Allowed for simple cases (<code>x = y if c else z</code>).</li>
+<li><strong>Power Features:</strong> Avoid metaclasses, bytecode access, reflection (<code>getattr</code> allowed only if necessary), and <code>__del__</code>.</li>
+</ul>
+<h2 id="classes-oop">Classes &amp; OOP</h2>
+<ul>
+<li><strong>Properties:</strong> Use <code>@property</code> for simple data access or light logic.</li>
+<li><strong>Accessors:</strong> Use <code>get_foo()</code> / <code>set_foo()</code> only if the logic is complex or expensive. Otherwise, use public attributes or properties.</li>
+<li><strong>Inheritance:</strong> Inherit from <code>Exception</code> for custom errors (suffix with <code>Error</code>).</li>
+<li><strong>Decorators:</strong> Must be clearly documented. <strong>Avoid</strong> external dependencies (DB, sockets) in decorators (import time safety).</li>
+</ul>
+<h2 id="strings-todos">Strings &amp; TODOs</h2>
+<ul>
+<li><strong>Formatting:</strong> Prefer <strong>f-strings</strong> (<code>f"Name: {name}"</code>) over <code>%</code> or <code>.format()</code>.</li>
+<li><strong>Accumulation:</strong> Do not use <code>+</code> to accumulate strings in a loop (O(n^2)). Use <code>list.append()</code> and <code>''.join()</code>.</li>
+<li><strong>TODOs:</strong> Format: <code># TODO(username): description of task</code>.</li>
+</ul>
+<h2 id="exceptions">Exceptions</h2>
+<ul>
+<li><strong>Handling:</strong> <strong>NEVER</strong> use catch-all <code>except:</code> or <code>except Exception:</code>. Catch specific errors.</li>
+<li><strong>Raising:</strong> Do not raise generic <code>Exception</code>. Use <code>ValueError</code>, <code>TypeError</code>, or custom classes.</li>
+<li><strong>Asserts:</strong> Do not use <code>assert</code> for control flow or validation; use it only for tests or internal invariants.</li>
+</ul>
+<h2 id="docstrings-api-documentation">Docstrings (API Documentation)</h2>
+<ul>
+<li><strong>Requirement:</strong> Mandatory for all public modules, classes, and functions under <code>src/scadview/api/</code></li>
+<li><strong>Format:</strong> Three double quotes <code>"""</code>.</li>
+<li><strong>Structure:</strong>
+    <div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;One line summary.</span>
+
+<span class="sd">Extended description.</span>
+
+<span class="sd">Args:</span>
+<span class="sd">    arg_name: Description.</span>
+
+<span class="sd">Returns:</span>
+<span class="sd">    Description.</span>
+
+<span class="sd">Raises:</span>
+<span class="sd">    ErrorType: Description.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+</code></pre></div></li>
+</ul>
+<hr />
+<h1 id="3-pep-8-fallback">3. PEP 8 (Fallback)</h1>
+<ul>
+<li>Use standard PEP 8 conventions for any naming or style rules not covered by the above.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.top", "search.suggestions", "search.highlight", "toc.integrated", "content.code.annotate", "content.code.copy", "content.code.foldable", "content.code.tabbed", "content.tabs.linked", "header.autohide", "footer.social", "palette.toggle", "palette.switcher", "announcement.bar"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
