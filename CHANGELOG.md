@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.8](https://github.com/neillamoureux/scadview/compare/v0.2.7...v0.2.8) (2026-05-31)
+
+
+### Features
+
+* add toggleable mesh features ([#146](https://github.com/neillamoureux/scadview/issues/146)) ([dbb8df5](https://github.com/neillamoureux/scadview/commit/dbb8df5b7a87e8cb0aafb46cdae91f7af64f6877))
+* Automate docs screenshots with manifest tooling ([#150](https://github.com/neillamoureux/scadview/issues/150)) ([d5905c0](https://github.com/neillamoureux/scadview/commit/d5905c04f79365cb18cb3fe22ce066a460a941e9))
+
+
+### Bug Fixes
+
+* **ci:** remove PAT dependency from release-please flow ([#152](https://github.com/neillamoureux/scadview/issues/152)) ([8602202](https://github.com/neillamoureux/scadview/commit/8602202a9c1f9a9e7e215fbb967cce7abf89c5a4))
+
+
+### Chores
+
+* replaced pyright with py ([#144](https://github.com/neillamoureux/scadview/issues/144)) ([011ec57](https://github.com/neillamoureux/scadview/commit/011ec5732b85f01d655b33dfa5aded91ecde6afa))
+* Update AGENTS.md and add .codex/config.toml for codex agent ([#142](https://github.com/neillamoureux/scadview/issues/142)) ([c0cc678](https://github.com/neillamoureux/scadview/commit/c0cc678f00ae0ba44811b5ea990f826cc4a23fb6))
+
 ## [0.2.7](https://github.com/neillamoureux/scadview/compare/v0.2.6...v0.2.7) (2026-03-09)
 
 
