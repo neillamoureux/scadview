@@ -1,8 +1,22 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version without v prefix (e.g. 0.2.7)."
+        required: true
+        type: string
+      publish:
+        description: "Publish package to PyPI"
+        required: false
+        default: true
+        type: boolean
+      deploy_docs:
+        description: "Deploy docs to gh-pages with mike"
+        required: false
+        default: true
+        type: boolean
   workflow_dispatch:
     inputs:
       version:
@@ -25,12 +39,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "release-${{ github.event.release.tag_name || github.ref_name }}"
+  group: "release-${{ inputs.version || github.ref_name }}"
   cancel-in-progress: false
 
 jobs:
   publish:
-    if: github.event_name == 'release' || inputs.publish
+    if: inputs.publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,11 +77,7 @@ jobs:
       - name: Resolve release version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-          else
-            VERSION="${{ inputs.version }}"
-          fi
+          VERSION="${{ inputs.version }}"
           VERSION="${VERSION#v}"
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -88,8 +98,8 @@ jobs:
         run: uv publish --trusted-publishing=always
 
   docs:
-    if: (github.event_name == 'release' || (inputs.deploy_docs && inputs.version != '')) && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    if: inputs.deploy_docs && inputs.version != '' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     needs: publish
     uses: ./.github/workflows/docs.yml
     with:
-      version: ${{ inputs.version || github.event.release.tag_name }}
+      version: ${{ inputs.version }}
