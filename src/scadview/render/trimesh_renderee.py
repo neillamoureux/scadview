@@ -259,7 +259,10 @@ class AlphaRenderee(Renderee):
         self._ctx.enable(moderngl.BLEND)
         # ModernGL exposes depth_mask at runtime, but its stubs omit it.
         self._ctx.depth_mask = False  # ty: ignore[unresolved-attribute]
-        self._vao.render()
+        try:
+            self._vao.render()
+        finally:
+            self._ctx.depth_mask = True  # ty: ignore[unresolved-attribute]
 
 
 class TrimeshAlphaRenderee(TrimeshRenderee):
