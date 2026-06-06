@@ -49,6 +49,10 @@ If guidance conflicts, follow this precedence:
 - If you find a process error, suggest an update to `AGENTS.md` when that would
   help prevent the issue from recurring.
 - Never write absolute paths in files to be committed.
+- Prefer tests that verify behavior through stable seams instead of private
+  implementation details.
+- If a test needs extensive patching of private methods or constructors,
+  reconsider the design or extract a smaller pure helper first.
 
 ### Function Ordering
 
