@@ -51,8 +51,9 @@ class ShaderProgram:
                     vertex_shader=vs_f.read_text(),
                     fragment_shader=fs_f.read_text(),
                 )
-            except Exception as e:
-                logger.exception(f"Error creating shader program: {e}")
+            except Exception:
+                logger.exception("Error creating shader program")
+                raise
 
     def update_program_var(self, var: ShaderVar, value: Any):
         self._current_values[var] = value
