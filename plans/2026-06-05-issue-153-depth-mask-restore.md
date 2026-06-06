@@ -58,7 +58,7 @@ def test_alpha_renderee_render_restores_depth_mask_when_vao_render_fails(
 
 Run: `uv run pytest tests/render/test_trimesh_renderee.py -v`
 
-Expected: FAIL because `AlphaRenderee.render()` currently leaves `depth_mask` as `False` at [src/scadview/render/trimesh_renderee.py](/Users/neillamoureux/Documents/0neil/0home/repos/scadview/src/scadview/render/trimesh_renderee.py:254).
+Expected: FAIL because `AlphaRenderee.render()` currently leaves `depth_mask` as `False` at [src/scadview/render/trimesh_renderee.py](../src/scadview/render/trimesh_renderee.py:254).
 
 - [ ] **Step 3: Commit the failing tests**
 
