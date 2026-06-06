@@ -46,6 +46,9 @@ If guidance conflicts, follow this precedence:
   `pytest`, `ruff`, `ty`, or similar tools are available directly on the shell
   `PATH`.
 - Write plan documents in the top-level `plans/` directory.
+- If you find a process error, suggest an update to `AGENTS.md` when that would
+  help prevent the issue from recurring.
+- Never write absolute paths in files to be committed.
 
 ### Function Ordering
 
