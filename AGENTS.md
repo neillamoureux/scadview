@@ -42,6 +42,10 @@ If guidance conflicts, follow this precedence:
   comments for complex blocks.
 - Prefer specific exceptions and explicit error paths.
 - Do not introduce new dependencies unless clearly justified.
+- Use `uv run ...` for Python tooling commands in this repository; do not assume
+  `pytest`, `ruff`, `ty`, or similar tools are available directly on the shell
+  `PATH`.
+- Write plan documents in the top-level `plans/` directory.
 
 ### Function Ordering
 
