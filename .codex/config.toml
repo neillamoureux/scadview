@@ -6,4 +6,4 @@ sandbox_mode = "workspace-write"
 project_root_markers = [".git"]
 
 [features]
-codex_hooks = false
+hooks = false
