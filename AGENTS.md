@@ -94,6 +94,11 @@ If guidance conflicts, follow this precedence:
 ## Change Strategy
 
 - Inspect first, then propose changes, then implement.
+- For bug fixes and behavior changes, write or update the relevant tests first.
+- Run those tests before making production changes and confirm they fail for the
+  expected reason.
+- Make the production changes only after the failing test is in place, then run
+  the same tests again and confirm they pass.
 - Prefer the smallest reviewable diff that solves the problem.
 - Avoid renames, file moves, or style-only changes unless required for correctness.
 - Preserve public behavior, CLI entry points, and documented workflows unless explicitly instructed otherwise.
@@ -114,6 +119,8 @@ If guidance conflicts, follow this precedence:
 ## Validation
 
 - Run the smallest relevant validation first before broader checks.
+- Re-run the exact tests used for the red step after implementation to confirm
+  the fix passes.
 - Prefer targeted tests or commands over full-suite runs unless necessary.
 - Do not assume GUI tests are reliable or available in all environments.
 - After changes affecting rendering or UI behavior:
