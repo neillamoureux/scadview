@@ -429,23 +429,34 @@ def test_alpha_renderee_sort_buffers_calls_ctx_buffer(
 
 
 @mock.patch("scadview.render.trimesh_renderee.create_vao")
-def test_alpha_renderee_render_calls_sort_and_vao_render(
+def test_alpha_renderee_render_restores_depth_mask_after_render(
     create_vao,
     alpha_renderee,
 ):
     alpha_renderee._resort_verts = True
     alpha_renderee._sort_buffers = mock.MagicMock()
-    # dummy_trimesh_alpha_renderee._create_vao = mock.MagicMock()
     vao_mock = mock.MagicMock()
     create_vao.return_value = vao_mock
-    # dummy_trimesh_alpha_renderee._create_vao.return_value = vao_mock
     alpha_renderee._vao = vao_mock
     alpha_renderee.render()
     alpha_renderee._sort_buffers.assert_called_once()
-    # dummy_trimesh_alpha_renderee._create_vao.assert_called_once()
     vao_mock.render.assert_called_once()
     assert alpha_renderee._ctx.enable.call_count >= 2
-    assert alpha_renderee._ctx.depth_mask is False
+    assert alpha_renderee._ctx.depth_mask is True
+
+
+def test_alpha_renderee_render_restores_depth_mask_when_vao_render_fails(
+    alpha_renderee,
+):
+    alpha_renderee._resort_verts = False
+    vao_mock = mock.MagicMock()
+    vao_mock.render.side_effect = RuntimeError("render failed")
+    alpha_renderee._vao = vao_mock
+
+    with pytest.raises(RuntimeError, match="render failed"):
+        alpha_renderee.render()
+
+    assert alpha_renderee._ctx.depth_mask is True
 
 
 def test_trimesh_list_renderee_points_concat(dummy_trimesh_list_renderee):

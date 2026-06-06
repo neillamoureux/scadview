@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
+import pytest
 
 from scadview.render.camera import Camera
 from scadview.render.renderer import Renderer
@@ -44,3 +45,11 @@ def test_frame():
         renderer = Renderer(context, camera, window_size)
         renderer.frame(np.array([[1, 0, 0]]))
         camera.frame.assert_called()
+
+
+def test_renderer_reraises_shader_creation_failure():
+    context = MagicMock()
+    camera = Camera()
+    context.program.side_effect = RuntimeError("shader compile failed")
+    with pytest.raises(RuntimeError, match="shader compile failed"):
+        Renderer(context, camera, (320, 200))

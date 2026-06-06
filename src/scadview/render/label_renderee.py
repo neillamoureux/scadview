@@ -146,6 +146,12 @@ class LabelRenderee(Renderee):
         self._vao.render(moderngl.TRIANGLE_STRIP)
         self._ctx.disable(moderngl.BLEND)
 
+    def _release_gl_resources(self) -> None:
+        self._vertices.release()
+        self._uv.release()
+        if self._vao is not None:
+            self._vao.release()
+
     def _update_m_base_scale(self, scale: float):
         self._m_base_scale[0, 0] = scale
         self._m_base_scale[1, 1] = scale
@@ -200,7 +206,14 @@ class LabelSetRenderee(Renderee):
             return
         step = self._calc_label_step(visible_axis_spans)
         char_width = self._calc_char_width(visible_axis_spans, step)
-        self._render_labels(visible_axis_spans, step, char_width)
+        active_labels: set[str] = set()
+        self._render_labels(visible_axis_spans, step, char_width, active_labels)
+        self._prune_inactive_labels(active_labels)
+
+    def _prune_inactive_labels(self, active_labels: set[str]) -> None:
+        inactive_labels = set(self._label_renderees) - active_labels
+        for label in inactive_labels:
+            self._label_renderees.pop(label)._release_gl_resources()
 
     def _get_visible_axis_spans(self) -> list[_AxisSpan]:
         axis_spans = [_AxisSpan(i, self.camera.axis_visible_span(i)) for i in range(3)]
@@ -231,6 +244,7 @@ class LabelSetRenderee(Renderee):
         visible_spans: list[_AxisSpan],
         step: float,
         char_width: float,
+        active_labels: set[str],
     ):
         for visible in visible_spans:
             axis = visible.axis
@@ -239,10 +253,17 @@ class LabelSetRenderee(Renderee):
             min_value = visible.range.min
             max_value = visible.range.max
             show = labels_to_show(float(min_value), float(max_value), step)
-            self._render_labels_for_axis(char_width, axis, show)
+            self._render_labels_for_axis(char_width, axis, show, active_labels)
 
-    def _render_labels_for_axis(self, char_width: float, axis: int, labels: list[str]):
+    def _render_labels_for_axis(
+        self,
+        char_width: float,
+        axis: int,
+        labels: list[str],
+        active_labels: set[str],
+    ):
         for label in labels:
+            active_labels.add(label)
             if label not in self._label_renderees.keys():
                 self._label_renderees[label] = LabelRenderee(
                     self._ctx,

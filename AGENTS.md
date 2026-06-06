@@ -42,6 +42,17 @@ If guidance conflicts, follow this precedence:
   comments for complex blocks.
 - Prefer specific exceptions and explicit error paths.
 - Do not introduce new dependencies unless clearly justified.
+- Use `uv run ...` for Python tooling commands in this repository; do not assume
+  `pytest`, `ruff`, `ty`, or similar tools are available directly on the shell
+  `PATH`.
+- Write plan documents in the top-level `plans/` directory.
+- If you find a process error, suggest an update to `AGENTS.md` when that would
+  help prevent the issue from recurring.
+- Never write absolute paths in files to be committed.
+- Prefer tests that verify behavior through stable seams instead of private
+  implementation details.
+- If a test needs extensive patching of private methods or constructors,
+  reconsider the design or extract a smaller pure helper first.
 
 ### Function Ordering
 
@@ -90,6 +101,11 @@ If guidance conflicts, follow this precedence:
 ## Change Strategy
 
 - Inspect first, then propose changes, then implement.
+- For bug fixes and behavior changes, write or update the relevant tests first.
+- Run those tests before making production changes and confirm they fail for the
+  expected reason.
+- Make the production changes only after the failing test is in place, then run
+  the same tests again and confirm they pass.
 - Prefer the smallest reviewable diff that solves the problem.
 - Avoid renames, file moves, or style-only changes unless required for correctness.
 - Preserve public behavior, CLI entry points, and documented workflows unless explicitly instructed otherwise.
@@ -110,6 +126,8 @@ If guidance conflicts, follow this precedence:
 ## Validation
 
 - Run the smallest relevant validation first before broader checks.
+- Re-run the exact tests used for the red step after implementation to confirm
+  the fix passes.
 - Prefer targeted tests or commands over full-suite runs unless necessary.
 - Do not assume GUI tests are reliable or available in all environments.
 - After changes affecting rendering or UI behavior:

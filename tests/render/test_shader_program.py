@@ -38,6 +38,27 @@ def test_shader_program_initialization(shader_program, mock_context):
     assert shader_program.program is not None
 
 
+def test_shader_program_reraises_creation_failure(mock_context):
+    register = {ShaderVar.SHOW_GRID: "u_showGrid"}
+    shader_error = RuntimeError("shader compile failed")
+    mock_context.program.side_effect = shader_error
+    with (
+        patch("scadview.render.shader_program.as_file") as mock_as_file,
+        patch("scadview.render.shader_program.logger.exception") as mock_exception,
+    ):
+        mock_as_file.return_value.__enter__.return_value.read_text.return_value = (
+            "shader code"
+        )
+        with pytest.raises(RuntimeError, match="shader compile failed"):
+            ShaderProgram(
+                ctx=mock_context,
+                vertex_shader_loc="vertex_shader.glsl",
+                fragment_shader_loc="fragment_shader.glsl",
+                register=register,
+            )
+    mock_exception.assert_called_once_with("Error creating shader program")
+
+
 def test_update_program_var_boolean(shader_program):
     mock_uniform = MagicMock()
     mock_uniform.gl_type = ShaderProgram.BOOLEAN
