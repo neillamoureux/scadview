@@ -53,6 +53,10 @@ If guidance conflicts, follow this precedence:
   implementation details.
 - If a test needs extensive patching of private methods or constructors,
   reconsider the design or extract a smaller pure helper first.
+- Use Conventional Commits for commit messages. Format them as
+  `<type>: <imperative summary>`; use the repository-supported type that best
+  matches the change, such as `feat`, `fix`, `docs`, `test`, `refactor`,
+  `chore`, or `ci`.
 
 ### Function Ordering
 
@@ -154,7 +158,8 @@ If guidance conflicts, follow this precedence:
   `.github/ISSUE_TEMPLATE/` and apply only labels that already exist in the
   repository.
 - When creating or updating a pull request, use the repository PR template at
-  `.github/pull_request_template.md`.
+  `.github/pull_request_template.md`. Preserve its sections, complete the
+  applicable checklist items, and do not replace it with an ad hoc summary.
 
 ---
 
