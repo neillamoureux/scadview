@@ -158,7 +158,8 @@ If guidance conflicts, follow this precedence:
   `.github/ISSUE_TEMPLATE/` and apply only labels that already exist in the
   repository.
 - When creating or updating a pull request, use the repository PR template at
-  `.github/pull_request_template.md`.
+  `.github/pull_request_template.md`. Preserve its sections, complete the
+  applicable checklist items, and do not replace it with an ad hoc summary.
 
 ---
 
