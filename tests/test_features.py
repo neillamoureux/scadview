@@ -8,11 +8,14 @@ from trimesh.creation import box
 from scadview.features import (
     _NATIVE_BOOLEAN_MEMBERS,
     BooleanMesh,
+    FeatureSource,
     FeatureState,
     NullFeatureMesh,
     _native,
     _patch_native_boolean_members,
+    begin_feature_capture,
     feature,
+    get_feature_sources,
     get_feature_states,
     set_enabled_feature_states,
 )
@@ -27,6 +30,67 @@ def test_feature_registers_enabled_state_by_default():
 
     assert optional_mesh.enabled
     assert get_feature_states() == [FeatureState("lid", True)]
+
+
+def test_feature_captures_source_at_registration():
+    source_mesh = box()
+
+    feature("lid", source_mesh)
+
+    sources = get_feature_sources()
+    assert len(sources) == 1
+    assert sources[0] == FeatureSource("lid", source_mesh, True)
+    assert sources[0].mesh is source_mesh
+
+
+def test_feature_capture_preserves_duplicate_registration_order():
+    first_mesh = box()
+    second_mesh = box()
+
+    feature("support", first_mesh)
+    feature("support", second_mesh)
+
+    sources = get_feature_sources()
+    assert [source.name for source in sources] == ["support", "support"]
+    assert sources[0].mesh is first_mesh
+    assert sources[1].mesh is second_mesh
+
+
+def test_feature_capture_records_disabled_state():
+    set_enabled_feature_states({"cutout": False})
+
+    feature("cutout", box())
+
+    assert get_feature_sources()[0].enabled is False
+
+
+def test_feature_decorator_captures_source_at_registration():
+    source_mesh = box()
+
+    @feature("guide")
+    def guide():
+        return source_mesh
+
+    guide()
+
+    assert get_feature_sources()[0] == FeatureSource("guide", source_mesh, True)
+
+
+def test_feature_capture_resets_between_executions():
+    feature("first", box())
+
+    begin_feature_capture()
+    feature("second", box())
+
+    assert [source.name for source in get_feature_sources()] == ["second"]
+
+
+def test_feature_capture_retains_manifold_source():
+    source_mesh = Manifold.cube()
+
+    feature("manifold", source_mesh)
+
+    assert get_feature_sources()[0] == FeatureSource("manifold", source_mesh, True)
 
 
 def test_feature_default_sets_name_level_default_state():
