@@ -95,6 +95,12 @@ class MainFrame(wx.Frame):
             on_value_change=self._controller.on_load_status_change,
             enable_func=self._can_be_exported,
         )
+        self._debug_features_action = CheckableAction[bool](
+            Action("Debug features", self._on_debug_features_toggle, checkable=True),
+            self._controller.debug_features,
+            lambda value: value,
+            self._controller.on_debug_features_change,
+        )
 
     def _create_view_actions(self):
         self._frame_action = Action("Frame", lambda _: self._gl_widget.frame(), "F")
@@ -169,6 +175,15 @@ class MainFrame(wx.Frame):
         self._feature_sizer = wx.BoxSizer(wx.VERTICAL)
         self._feature_scroll.SetSizer(self._feature_sizer)
         self._feature_checkboxes: list[wx.CheckBox] = []
+        self._debug_features_checkbox = self._debug_features_action.checkbox(
+            self._feature_box.GetStaticBox()
+        )
+        self._feature_box.Add(
+            self._debug_features_checkbox,
+            0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+            BORDER_SIZE,
+        )
         self._feature_box.Add(
             self._feature_scroll,
             1,
@@ -254,6 +269,11 @@ class MainFrame(wx.Frame):
 
     def _on_feature_toggle(self, event: wx.CommandEvent, name: str):
         self._controller.set_feature_enabled(name, event.IsChecked())
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
+
+    def _on_debug_features_toggle(self, event: wx.CommandEvent):
+        self._controller.set_debug_features(event.IsChecked())
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 

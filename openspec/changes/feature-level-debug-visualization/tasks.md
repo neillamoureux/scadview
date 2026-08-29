@@ -12,9 +12,9 @@
 
 ## 3. Controller state and UI
 
-- [ ] 3.1 Add controller debug-feature state and reload wiring stubs; verify the state defaults to false and is retained across reloads and module-path changes
-- [ ] 3.2 Add failing controller and UI tests for toggling debug mode independently of feature checkboxes, retaining the state through feature discovery resets, issuing a reload, and placing the control outside the scrolling per-feature list; verify failures identify missing state/action behavior
-- [ ] 3.3 Implement controller state propagation and add the global Debug features toggle near the feature controls; verify targeted controller/UI tests pass
+- [x] 3.1 Add controller debug-feature state and reload wiring stubs; verify the state defaults to false and is retained across reloads and module-path changes
+- [x] 3.2 Add failing controller and UI tests for toggling debug mode independently of feature checkboxes, retaining the state through feature discovery resets, issuing a reload, and placing the control outside the scrolling per-feature list; verify failures identify missing state/action behavior
+- [x] 3.3 Implement controller state propagation and add the global Debug features toggle near the feature controls; verify targeted controller/UI tests pass
 
 ## 4. Integration and documentation
 

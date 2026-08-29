@@ -36,11 +36,13 @@ class Controller:
     def __init__(self):
         self.on_module_path_set = Observable()
         self.on_features_change = Observable()
+        self.on_debug_features_change = Observable()
         self.module_path = ""
         self._last_export_path = ""
         self._closed = False
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._feature_states: list[FeatureState] = []
+        self._debug_features = False
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(
@@ -73,6 +75,10 @@ class Controller:
         self.on_features_change.notify(value)
 
     @property
+    def debug_features(self) -> bool:
+        return self._debug_features
+
+    @property
     def module_path(self) -> str:
         return self._module_path
 
@@ -102,7 +108,13 @@ class Controller:
             self.module_path = module_path
             self.feature_states = []
         logger.info(f"Starting load of {module_path}")
-        self._command_queue.put(LoadMeshCommand(module_path, self._feature_state_map()))
+        self._command_queue.put(
+            LoadMeshCommand(
+                module_path,
+                self._feature_state_map(),
+                debug_features=self.debug_features,
+            )
+        )
 
     def reload_mesh(self):
         if self.module_path == "":
@@ -133,6 +145,14 @@ class Controller:
         feature_states[name] = enabled
         self.feature_states = self._feature_states_with_override(name, enabled)
         self._queue_feature_reload(feature_states)
+
+    def set_debug_features(self, enabled: bool):
+        if self._debug_features == enabled:
+            return
+        self._debug_features = enabled
+        self.on_debug_features_change.notify(enabled)
+        if self.module_path != "":
+            self._queue_feature_reload(self._feature_state_map())
 
     def export(self, file_path: str):
         # Cache the property so type narrowing is stable for the selected mesh.
@@ -199,7 +219,13 @@ class Controller:
     def _queue_feature_reload(self, feature_states: dict[str, bool]):
         self.current_mesh = None
         self.load_status = LoadStatus.START
-        self._command_queue.put(LoadMeshCommand(self.module_path, feature_states))
+        self._command_queue.put(
+            LoadMeshCommand(
+                self.module_path,
+                feature_states,
+                debug_features=self.debug_features,
+            )
+        )
 
     def __del__(self):
         try:
