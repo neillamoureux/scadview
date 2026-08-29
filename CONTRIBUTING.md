@@ -47,20 +47,23 @@ design decisions, and implementation tasks together in a reviewable change
 directory. Install the OpenSpec CLI and configure its agent integration before
 using it.
 
-From the repository root, use the `/opsx` commands provided by your coding
-agent when available:
+From the repository root, use the commands provided by your coding agent when
+available. In Codex, use these skills (the `$` prefix identifies Codex skill
+commands):
 
 ```bash
-/opsx:propose <describe the change>
-/opsx:apply <change-name>
-/opsx:archive <change-name>
+$openspec-propose <describe the change>
+$openspec-apply-change <change-name>
+$openspec-archive-change <change-name>
 ```
 
-Use `/opsx:propose` to create and review the planning artifacts before coding,
-then `/opsx:apply` to implement the approved change and `/opsx:archive` after
-completion. If your agent does not provide `/opsx` commands, use the OpenSpec
-CLI directly. Follow the task order in `openspec/config.yaml`: create code
-stubs, write tests that fail for the expected reason, then implement the code.
+Use `$openspec-propose` to create and review the planning artifacts before
+coding, then `$openspec-apply-change` to implement the approved change and
+`$openspec-archive-change` after completion. Other coding agents may expose
+equivalent `/opsx:propose`, `/opsx:apply`, and `/opsx:archive` commands. If your
+agent does not provide an OpenSpec integration, use the OpenSpec CLI directly.
+Follow the task order in `openspec/config.yaml`: create code stubs, write tests
+that fail for the expected reason, then implement the code.
 Small fixes that do not need a plan may proceed directly to the implementation
 workflow.
 
