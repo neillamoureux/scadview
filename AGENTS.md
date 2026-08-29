@@ -53,6 +53,10 @@ If guidance conflicts, follow this precedence:
   implementation details.
 - If a test needs extensive patching of private methods or constructors,
   reconsider the design or extract a smaller pure helper first.
+- Use Conventional Commits for commit messages. Format them as
+  `<type>: <imperative summary>`; use the repository-supported type that best
+  matches the change, such as `feat`, `fix`, `docs`, `test`, `refactor`,
+  `chore`, or `ci`.
 
 ### Function Ordering
 
