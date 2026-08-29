@@ -22,6 +22,8 @@ from scadview.features import (
     FeatureMesh,
     FeatureState,
     NullFeatureMesh,
+    begin_feature_capture,
+    get_feature_sources,
     get_feature_states,
     set_enabled_feature_states,
 )
@@ -83,9 +85,11 @@ class LoadMeshCommand(Command):
         self,
         module_path: str,
         feature_states: dict[str, bool] | None = None,
+        debug_features: bool = False,
     ):
         self.module_path = module_path
         self.feature_states = feature_states or {}
+        self.debug_features = debug_features
 
 
 class CancelLoadCommand(Command):
@@ -150,13 +154,16 @@ class LoadWorker(Thread):
         module_path: str,
         load_queue: MpLoadQueue,
         feature_states: dict[str, bool] | None = None,
+        debug_features: bool = False,
     ):
         super().__init__()
         self.module_path = module_path
         self.load_queue = load_queue
         self.cancelled = False
         self.feature_states = feature_states or {}
+        self.debug_features = debug_features
         self._loaded_feature_states: list[FeatureState] = []
+        self._feature_sources = []
 
     def run(self):
         LoadWorker.load_number += 1
@@ -188,6 +195,7 @@ class LoadWorker(Thread):
         error: Exception | None = None,
     ):
         tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
+        tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
 
         self.put_in_queue(
@@ -242,6 +250,14 @@ class LoadWorker(Thread):
             f"Manifold, or list[Manifold], got {type(mesh)}"
         )
 
+    def _select_debug_mesh(self, mesh: MeshType | None) -> MeshType | None:
+        if not self.debug_features:
+            return mesh
+        sources = [source.mesh for source in self._feature_sources if source.enabled]
+        if not sources:
+            return mesh
+        return self._ensure_trimesh(sources)
+
     def _color_if_debug(self, tmesh: MeshType | None):
         if isinstance(tmesh, list):
             for tm, color in zip(tmesh, debug_color()):
@@ -266,11 +282,13 @@ class LoadWorker(Thread):
     def run_mesh_module(self) -> Generator[CreateMeshResultType, None, None]:
         module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
         set_enabled_feature_states(self.feature_states)
+        begin_feature_capture()
         t0 = time()
         try:
             for i, mesh in enumerate(module_loader.run_function(self.module_path)):
                 logger.info(f"Loading mesh #{i + 1}")
                 self._check_mesh_type(mesh)
+                self._feature_sources = get_feature_sources()
                 yield mesh
         finally:
             t1 = time()
@@ -411,6 +429,7 @@ class MeshLoaderProcess(Process):
                     command.module_path,
                     self._load_queue,
                     feature_states=command.feature_states,
+                    debug_features=command.debug_features,
                 )
                 self._worker.start()
             elif isinstance(command, CancelLoadCommand):

@@ -6,9 +6,9 @@
 
 ## 2. Loader and command pipeline
 
-- [ ] 2.1 Add the separate feature-debug flag to load command/worker stubs and define the per-yield debug-source selection seam; verify command construction preserves the flag
-- [ ] 2.2 Add failing loader tests for ordered feature-debug snapshots on every yielded result, duplicate registrations, disabled-feature omission, no-feature fallback, Manifold conversion, final completion output, and normal mode preservation; verify failures demonstrate missing pipeline behavior
-- [ ] 2.3 Implement feature-debug propagation and source-mesh selection at the loader boundary; verify targeted mesh-loader tests pass
+- [x] 2.1 Add the separate feature-debug flag to load command/worker stubs and define the per-yield debug-source selection seam; verify command construction preserves the flag
+- [x] 2.2 Add failing loader tests for ordered feature-debug snapshots on every yielded result, duplicate registrations, disabled-feature omission, no-feature fallback, Manifold conversion, final completion output, and normal mode preservation; verify failures demonstrate missing pipeline behavior
+- [x] 2.3 Implement feature-debug propagation and source-mesh selection at the loader boundary; verify targeted mesh-loader tests pass
 
 ## 3. Controller state and UI
 
