@@ -116,6 +116,19 @@ same default. If the UI has already toggled a feature, that UI state takes
 precedence over the script default. Repeating the same default is allowed, but
 declaring conflicting defaults for the same feature name raises `ValueError`.
 
+## Debug Features
+
+The Features section also has a **Debug features** toggle. It is off by default
+and remains selected for the current application session. When selected,
+{{ project_name }} shows each enabled feature's registered source geometry as
+translucent debug output instead of the final mesh. This is useful for inspecting
+subtractive tool volumes, which may not contribute triangles to the final model.
+
+Debug features does not change whether a feature is enabled. Clearing a feature
+checkbox omits that feature from the debug output; selecting Debug features again
+does not re-enable it. Because this is diagnostic output, Export is unavailable
+while it is displayed.
+
 ## Debug Mode: Return a `list`
 
 Returning a `list` of objects results in {{ project_name }}

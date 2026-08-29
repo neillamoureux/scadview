@@ -55,6 +55,15 @@ Shows the feature API in one compact model: `feature(...)` as a decorator,
 directly wrapping a mesh, `feature_default(...)`, and multiple meshes sharing the
 same feature name.
 
+### Debug features
+
+Load this example and select **Debug features** in the Features section to view
+the source geometry for its enabled features. `cable_cutout` is a subtractive
+cylindrical tool volume, so debug visualization shows the volume used by
+`difference(...)`, not final model material. Debug features is a global
+visualization mode: clearing the `cutout` feature checkbox removes its tool
+volume from the debug view, while leaving the Debug features toggle selected.
+
 <details>
 <summary>Source</summary>
 

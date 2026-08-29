@@ -13,8 +13,9 @@ you complete them.
 - If you want to re-run the last script after edits, use `File > Reload` or the
   `Reload` button.
 - If your script uses `scadview.feature(...)`, the right sidebar shows a
-  `Features` section with one checkbox per discovered feature. Toggle a feature
-  to reload the script with that optional geometry enabled or disabled.
+  `Features` section with a global `Debug features` checkbox and one checkbox per
+  discovered feature. Toggle a feature to reload the script with that optional
+  geometry enabled or disabled.
 - If you want to export the current mesh, use `File > Export...` or the `Export`
   button. Export is enabled only after a load completes.
 - If an export format reports a missing dependency, install the package named
@@ -27,6 +28,12 @@ Turning them off acts as if that mesh was not created and combined (union, subtr
 
 The "Features" section only appears if you name some features in your code.
 See the [`feature(...)` API call](./api.md#scadview.feature) for details on how to define features.
+
+`Debug features` is off by default and remains selected while the application is
+running. It shows source geometry for enabled features as translucent diagnostic
+output, including subtractive tool volumes. It does not change feature enabled
+state: disabling a feature removes it from the debug view, while leaving Debug
+features selected.
 
 ![Feature Example](images/features.png)
 

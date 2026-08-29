@@ -1,3 +1,10 @@
+"""Feature controls and Debug features example.
+
+Load this script, then select Debug features in the Features section to inspect
+enabled feature source geometry. The toggle is separate from each feature's
+enabled state.
+"""
+
 from trimesh.creation import box, cylinder
 
 from scadview import feature, feature_default
@@ -7,6 +14,7 @@ feature_default("handle", enabled=False)
 
 @feature("cutout")
 def cable_cutout():
+    """Create the subtractive cable-routing tool volume."""
     return cylinder(radius=4.0, height=24.0).apply_translation([0.0, 0.0, 6.0])
 
 

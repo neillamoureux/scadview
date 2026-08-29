@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import cast
 
 import wx
 from trimesh import Trimesh
@@ -272,8 +273,9 @@ class MainFrame(wx.Frame):
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 
-    def _on_debug_features_toggle(self, event: wx.CommandEvent):
-        self._controller.set_debug_features(event.IsChecked())
+    def _on_debug_features_toggle(self, event: wx.Event):
+        command_event = cast(wx.CommandEvent, event)
+        self._controller.set_debug_features(command_event.IsChecked())
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 

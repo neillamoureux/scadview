@@ -18,8 +18,8 @@
 
 ## 4. Integration and documentation
 
-- [ ] 4.1 Add integration coverage for progressive per-yield feature-debug snapshots, final completion output, and normal fallback when no enabled features are registered; verify the relevant test module passes
-- [ ] 4.2 Add a failing documentation/example check for the Debug features walkthrough: extend `examples/features.py` to identify its subtractive `cable_cutout` tool volume, and extend its `docs/examples.md` inclusion (with related feature/UI docs as needed) to instruct users to enable Debug features and distinguish it from enabled/disabled state; verify the check fails because the walkthrough is absent
-- [ ] 4.3 Implement the feature example and documentation walkthrough, preserving the existing example's screenshot usage and no-public-API contract; verify the example documentation and relevant docs checks pass
-- [ ] 4.4 After the UI and documentation work, run `mise run docs_check_screenshots_manifest`, regenerate the affected feature screenshot with `mise run docs_generate_screenshots`, and visually verify the updated `docs/images/features.png` shows the intended feature controls; verify the manifest check and generation succeed
-- [ ] 4.5 Run formatting, linting, type checks, and the relevant test suite with the repository's `uv run`/`mise` tooling; verify all required checks pass
+- [x] 4.1 Add integration coverage for progressive per-yield feature-debug snapshots, final completion output, and normal fallback when no enabled features are registered; verify the relevant test module passes
+- [x] 4.2 Add a failing documentation/example check for the Debug features walkthrough: extend `examples/features.py` to identify its subtractive `cable_cutout` tool volume, and extend its `docs/examples.md` inclusion (with related feature/UI docs as needed) to instruct users to enable Debug features and distinguish it from enabled/disabled state; verify the check fails because the walkthrough is absent
+- [x] 4.3 Implement the feature example and documentation walkthrough, preserving the existing example's screenshot usage and no-public-API contract; verify the example documentation and relevant docs checks pass
+- [x] 4.4 After the UI and documentation work, run `mise run docs_check_screenshots_manifest`, regenerate the affected feature screenshot with `mise run docs_generate_screenshots`, and visually verify the updated `docs/images/features.png` shows the intended feature controls; verify the manifest check and generation succeed
+- [x] 4.5 Run formatting, linting, type checks, and the relevant test suite with the repository's `uv run`/`mise` tooling; verify all required checks pass
