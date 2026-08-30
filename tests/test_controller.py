@@ -3,12 +3,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
 from trimesh.creation import box
 
 from scadview.controller import Controller
 from scadview.features import FeatureState
 from scadview.mesh_loader_process import LoadMeshCommand, LoadResult
-from scadview.ui.wx.main_frame import MainFrame
 
 
 class DummyQueue:
@@ -111,6 +111,9 @@ def test_controller_reloads_with_session_persistent_feature_debug(monkeypatch):
 
 
 def test_debug_features_toggle_starts_reload_polling():
+    pytest.importorskip("wx")
+    from scadview.ui.wx.main_frame import MainFrame
+
     controller = Mock()
     timer = Mock()
     gauge = Mock()
