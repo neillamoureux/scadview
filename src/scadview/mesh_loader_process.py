@@ -71,9 +71,12 @@ class MpQueue(Generic[T]):
             return item
         raise ValueError(f"The item is not of type {self._type}, it is a {type(item)}")
 
-    def close(self):
+    def close(self, discard: bool = False) -> None:
+        if discard:
+            self._queue.cancel_join_thread()
         self._queue.close()
-        self._queue.join_thread()
+        if not discard:
+            self._queue.join_thread()
 
 
 class Command:

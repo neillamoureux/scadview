@@ -85,6 +85,14 @@ def test_mp_queue_close(mock_queue, mp_queue_int):
     mock_queue.return_value.close.assert_called_once_with()
 
 
+def test_mp_queue_close_discards_pending_items(mock_queue, mp_queue_int):
+    mp_queue_int.close(discard=True)
+
+    mock_queue.return_value.cancel_join_thread.assert_called_once_with()
+    mock_queue.return_value.close.assert_called_once_with()
+    mock_queue.return_value.join_thread.assert_not_called()
+
+
 def test_load_result_debug():
     mesh = box()
     lr = LoadResult(1, 2, [mesh], None)
@@ -123,7 +131,9 @@ def mesh(request):
 
 @pytest.fixture
 def load_queue():
-    yield MpLoadQueue(maxsize=10, type_=LoadResult)
+    queue = MpLoadQueue(maxsize=10, type_=LoadResult)
+    yield queue
+    queue.close(discard=True)
 
 
 @pytest.fixture
