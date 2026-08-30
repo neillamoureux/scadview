@@ -234,6 +234,21 @@ axes = true
 edges = false
 gnomon = true
 
+# Debug features requires toggling the live UI after the module loads. Keep this
+# future capture disabled until issue #161 adds automated screenshot-workflow
+# support; do not generate a placeholder image.
+# [[screenshots]]
+# name = "features_debug"
+# output = "images/features_debug.png"
+# module = "examples/features.py"
+# window_size = [960, 720]
+# view = "frame"
+# camera = "perspective"
+# grid = false
+# axes = true
+# edges = false
+# gnomon = true
+
 
 [[screenshots]]
 name = "heart_vase"

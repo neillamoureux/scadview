@@ -27,6 +27,13 @@ class FeatureState:
     enabled: bool = True
 
 
+@dataclass(frozen=True)
+class FeatureSource:
+    name: str
+    mesh: FeatureNativeMesh
+    enabled: bool
+
+
 class NullFeatureMesh:
     def as_operand(self) -> NullFeatureMesh:
         return self
@@ -188,11 +195,14 @@ class _FeatureContext:
         self._states: dict[str, bool] = {}
         self._defaults: dict[str, bool] = {}
         self._order: list[str] = []
+        self._sources: list[FeatureSource] = []
 
     def set_enabled_states(self, states: dict[str, bool] | None) -> None:
         self._states = {} if states is None else dict(states)
         self._defaults = {}
         self._order = []
+        if states is None:
+            self._sources = []
 
     def set_default(self, name: str, enabled: bool) -> None:
         if name in self._defaults and self._defaults[name] != enabled:
@@ -210,6 +220,15 @@ class _FeatureContext:
             for name in self._order
         ]
 
+    def begin_capture(self) -> None:
+        self._sources = []
+
+    def capture(self, name: str, mesh: FeatureNativeMesh, enabled: bool) -> None:
+        self._sources.append(FeatureSource(name, mesh, enabled))
+
+    def sources(self) -> list[FeatureSource]:
+        return list(self._sources)
+
 
 _FEATURE_CONTEXT = _FeatureContext()
 _PATCHED_MEMBERS: set[tuple[type[Any], str]] = set()
@@ -225,6 +244,14 @@ def set_enabled_feature_states(states: dict[str, bool] | None) -> None:
 
 def get_feature_states() -> list[FeatureState]:
     return _FEATURE_CONTEXT.states()
+
+
+def begin_feature_capture() -> None:
+    _FEATURE_CONTEXT.begin_capture()
+
+
+def get_feature_sources() -> list[FeatureSource]:
+    return _FEATURE_CONTEXT.sources()
 
 
 def feature_default(name: str, enabled: bool = True) -> None:
@@ -284,6 +311,7 @@ def _feature_mesh(name: str, mesh: FeatureNativeMesh) -> FeatureMesh:
     if not _is_native_mesh(mesh):
         raise TypeError(f"feature mesh must be Trimesh or Manifold, got {type(mesh)}")
     enabled = _FEATURE_CONTEXT.register(name)
+    _FEATURE_CONTEXT.capture(name, mesh, enabled)
     return FeatureMesh(name, mesh, enabled)
 
 

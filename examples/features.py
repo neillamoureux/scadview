@@ -1,3 +1,10 @@
+"""Ordinary feature controls and Debug features example.
+
+With Debug features off, use the ordinary enabled/disabled feature controls to
+change the composed model. Enable Debug features separately to inspect enabled
+feature source geometry.
+"""
+
 from trimesh.creation import box, cylinder
 
 from scadview import feature, feature_default
@@ -7,6 +14,7 @@ feature_default("handle", enabled=False)
 
 @feature("cutout")
 def cable_cutout():
+    """Create the subtractive cable-routing tool volume."""
     return cylinder(radius=4.0, height=24.0).apply_translation([0.0, 0.0, 6.0])
 
 

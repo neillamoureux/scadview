@@ -7,6 +7,7 @@ from trimesh.creation import box, icosphere
 
 from scadview.features import FeatureState, feature
 from scadview.mesh_loader_process import (
+    LoadMeshCommand,
     LoadResult,
     LoadStatus,
     LoadWorker,
@@ -84,6 +85,14 @@ def test_mp_queue_close(mock_queue, mp_queue_int):
     mock_queue.return_value.close.assert_called_once_with()
 
 
+def test_mp_queue_close_discards_pending_items(mock_queue, mp_queue_int):
+    mp_queue_int.close(discard=True)
+
+    mock_queue.return_value.cancel_join_thread.assert_called_once_with()
+    mock_queue.return_value.close.assert_called_once_with()
+    mock_queue.return_value.join_thread.assert_not_called()
+
+
 def test_load_result_debug():
     mesh = box()
     lr = LoadResult(1, 2, [mesh], None)
@@ -108,6 +117,12 @@ def test_load_result_status():
     assert lr.status == LoadStatus.NONE
 
 
+def test_load_mesh_command_preserves_debug_features():
+    command = LoadMeshCommand("test/path", debug_features=True)
+
+    assert command.debug_features is True
+
+
 @pytest.fixture
 def mesh(request):
     m = getattr(request, "param", box())
@@ -116,7 +131,9 @@ def mesh(request):
 
 @pytest.fixture
 def load_queue():
-    yield MpLoadQueue(maxsize=10, type_=LoadResult)
+    queue = MpLoadQueue(maxsize=10, type_=LoadResult)
+    yield queue
+    queue.close(discard=True)
 
 
 @pytest.fixture
@@ -216,6 +233,153 @@ def test_load_worker_colors_mesh_list(load_queue):
     for tm in result.mesh:
         assert "scadview" in tm.metadata
         assert tm.metadata["scadview"]["color"][3] == 0.5
+
+
+def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
+    first_source = box()
+    second_source = icosphere()
+    first_result = box()
+    second_result = icosphere()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("support", first_source)
+            yield first_result
+            feature("support", second_source)
+            yield second_result
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    first_load = load_queue.get(timeout=1.0)
+    second_load = load_queue.get(timeout=1.0)
+    final_load = load_queue.get(timeout=1.0)
+
+    assert isinstance(first_load.mesh, list)
+    assert isinstance(second_load.mesh, list)
+    assert isinstance(final_load.mesh, list)
+    npt.assert_array_equal(first_load.mesh[0].vertices, first_source.vertices)
+    npt.assert_array_equal(second_load.mesh[0].vertices, first_source.vertices)
+    npt.assert_array_equal(second_load.mesh[1].vertices, second_source.vertices)
+    npt.assert_array_equal(final_load.mesh[0].vertices, first_source.vertices)
+    npt.assert_array_equal(final_load.mesh[1].vertices, second_source.vertices)
+    assert first_load.mesh[0].metadata["scadview"]["color"][3] == 0.5
+    assert final_load.complete
+
+
+def test_load_worker_debug_omits_disabled_feature_sources(load_queue):
+    source = box()
+    normal_mesh = icosphere()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("cutout", source)
+            feature("guide", box())
+            yield normal_mesh
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker(
+            "test/path",
+            load_queue,
+            feature_states={"cutout": False},
+            debug_features=True,
+        )
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    assert isinstance(result.mesh, list)
+    assert len(result.mesh) == 1
+    assert result.mesh[0].metadata["scadview"]["color"][3] == 0.5
+
+
+def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
+    source = manifold3d.Manifold.cube()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("cutout", source)
+            yield box()
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    assert isinstance(result.mesh, list)
+    assert len(result.mesh) == 1
+    assert isinstance(result.mesh[0], type(box()))
+    assert result.mesh[0].metadata["scadview"]["color"][3] == 0.5
+
+
+def test_load_worker_debug_omits_unregistered_meshes_from_feature_entries(
+    load_queue,
+):
+    base = box()
+    unregistered = icosphere()
+    source = box()
+    normal_mesh = base.union(unregistered)
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("guide", source)
+            yield normal_mesh
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    assert isinstance(result.mesh, list)
+    assert len(result.mesh) == 1
+    npt.assert_array_equal(result.mesh[0].vertices, source.vertices)
+
+
+def test_load_worker_debug_falls_back_to_normal_mesh_without_feature_sources(
+    load_queue,
+):
+    normal_mesh = icosphere()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+        ml_instance.run_function.return_value = iter([normal_mesh])
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    npt.assert_array_equal(result.mesh.vertices, normal_mesh.vertices)
+
+
+def test_load_worker_preserves_normal_mesh_when_feature_debug_is_off(load_queue):
+    source = box()
+    normal_mesh = icosphere()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("cutout", source)
+            yield normal_mesh
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=False)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    npt.assert_array_equal(result.mesh.vertices, normal_mesh.vertices)
 
 
 def test_load_worker_tracks_feature_states_and_filters_disabled_features(load_queue):

@@ -55,6 +55,29 @@ Shows the feature API in one compact model: `feature(...)` as a decorator,
 directly wrapping a mesh, `feature_default(...)`, and multiple meshes sharing the
 same feature name.
 
+### Feature controls
+
+With **Debug features** off, this example displays the normal composed model.
+Use the feature checkboxes to control ordinary enabled/disabled behavior: enabled
+features participate in the model's boolean composition, while disabled features
+do not. The `handle` feature starts disabled; enable it to add the handle to the
+composed model.
+
+![Features](images/features.png)
+
+### Debug features
+
+Select **Debug features** in the Features section to replace the composed model
+with translucent source geometry for enabled named features. `cable_cutout()` is
+the subtractive cylindrical tool volume registered as `cutout`, so debug
+visualization shows the volume passed to `difference(...)`, not final model
+material. Debug features is a global visualization mode: clearing the `cutout`
+feature checkbox removes its tool volume from the debug view while leaving the
+Debug features toggle selected. Unregistered meshes are not shown in this
+visualization.
+
+![Debug features](images/features_debug.png)
+
 <details>
 <summary>Source</summary>
 
@@ -64,7 +87,6 @@ same feature name.
 
 ```
 </details>
-![Features](images/features.png)
 
 ## heart_vase.py
 
