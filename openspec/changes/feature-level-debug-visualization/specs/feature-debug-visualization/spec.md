@@ -100,10 +100,9 @@ normal composed mesh with translucent source/tool geometry. It SHALL explain tha
 the global visualization toggle is independent of each feature's enabled or
 disabled state and that unregistered meshes do not appear in feature debug
 visualization. Until issue #161 automates the UI state, the documentation image
-reference and screenshot-manifest entry SHALL remain commented out, and the debug
-view SHALL be manually verified rather than represented by a fabricated image.
-The feature API documentation SHALL also state that Debug features shows only
-named feature sources and omits unmarked meshes.
+SHALL be manually captured and verified, while the screenshot-manifest entry
+SHALL remain commented out. The feature API documentation SHALL also state that
+Debug features shows only named feature sources and omits unmarked meshes.
 
 #### Scenario: A user follows the feature example walkthrough
 - **WHEN** a user loads `examples/features.py`
@@ -116,9 +115,9 @@ named feature sources and omits unmarked meshes.
   view without changing the Debug features toggle
 - **AND THEN** it explains that unregistered meshes are not shown in feature debug
   visualization
-- **AND THEN** the separate Debug features section reserves `features_debug.png`
-  as a commented image reference while the corresponding manifest entry remains
-  commented out pending issue #161
+- **AND THEN** the separate Debug features section shows the manually captured
+  `features_debug.png` while the corresponding manifest entry remains commented
+  out pending issue #161
 
 #### Scenario: A user reads the feature API documentation
 - **WHEN** a user reads the documentation for `feature(...)`

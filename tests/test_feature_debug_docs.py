@@ -13,7 +13,8 @@ def test_feature_example_and_docs_explain_debug_features():
     assert "![Features](images/features.png)" in examples_docs
     assert "Debug features" in example
     assert "### Debug features" in examples_docs
-    assert "<!-- ![Debug features](images/features_debug.png) -->" in examples_docs
+    assert "![Debug features](images/features_debug.png)" in examples_docs
+    assert Path("docs/images/features_debug.png").is_file()
     assert "cable_cutout" in examples_docs
     assert "Unregistered meshes" in examples_docs
     assert "Debug features" in ui_docs

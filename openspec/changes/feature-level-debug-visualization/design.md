@@ -64,11 +64,10 @@ composed mesh. It will distinguish the global visualization state from the
 `cable_cutout` enabled state and explain that unregistered meshes are not shown in
 feature debug visualization. `features.png` remains the normal non-debug
 feature-controls image. A separate Debug features section will reference
-`features_debug.png` in a commented image reference and the manifest will preserve
+`features_debug.png` captured from the verified live UI. The manifest will preserve
 its intended capture settings as a commented-out entry with an issue #161
-explanation; automated capture cannot yet toggle the live UI, so no placeholder
-image will be generated. Manual live-GUI verification is the temporary validation
-for that future screenshot. The
+explanation because automated capture cannot yet toggle the live UI. Manual
+live-GUI verification is the temporary validation for that screenshot. The
 `feature(...)` API documentation will make the named-source-only boundary explicit
 so users know that unmarked meshes are omitted from feature debug visualization.
 
@@ -87,5 +86,6 @@ The debug toggle belongs near the feature checkboxes because it changes their vi
 - [A Python example cannot enable a UI-only mode] -> Pair the source example with
   explicit rendered-documentation steps instead of adding a public API or implying
   that the script itself turns on Debug features; retain the debug screenshot's
-  manifest entry as a comment until issue #161 enables automated capture.
+  manifest entry as a comment until issue #161 enables automated capture, while
+  including a manually captured and verified debug screenshot in the interim.
 - [Feature debug mode changes the displayed result] -> Make it opt-in and fall back to the normal mesh when no feature sources are available.

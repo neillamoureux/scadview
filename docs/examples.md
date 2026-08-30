@@ -76,8 +76,7 @@ feature checkbox removes its tool volume from the debug view while leaving the
 Debug features toggle selected. Unregistered meshes are not shown in this
 visualization.
 
-<!-- ![Debug features](images/features_debug.png) -->
-<!-- Screenshot capture is pending issue #161's automated UI workflow. -->
+![Debug features](images/features_debug.png)
 
 <details>
 <summary>Source</summary>
