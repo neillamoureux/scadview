@@ -1,8 +1,8 @@
-"""Feature controls and Debug features example.
+"""Ordinary feature controls and Debug features example.
 
-Load this script, then select Debug features in the Features section to inspect
-enabled feature source geometry. The toggle is separate from each feature's
-enabled state.
+With Debug features off, use the ordinary enabled/disabled feature controls to
+change the composed model. Enable Debug features separately to inspect enabled
+feature source geometry.
 """
 
 from trimesh.creation import box, cylinder

@@ -256,6 +256,7 @@ def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
     npt.assert_array_equal(second_load.mesh[1].vertices, second_source.vertices)
     npt.assert_array_equal(final_load.mesh[0].vertices, first_source.vertices)
     npt.assert_array_equal(final_load.mesh[1].vertices, second_source.vertices)
+    assert first_load.mesh[0].metadata["scadview"]["color"][3] == 0.5
     assert final_load.complete
 
 
@@ -284,6 +285,7 @@ def test_load_worker_debug_omits_disabled_feature_sources(load_queue):
 
     assert isinstance(result.mesh, list)
     assert len(result.mesh) == 1
+    assert result.mesh[0].metadata["scadview"]["color"][3] == 0.5
 
 
 def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
@@ -303,7 +305,35 @@ def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
     result = load_queue.get(timeout=1.0)
 
     assert isinstance(result.mesh, list)
+    assert len(result.mesh) == 1
     assert isinstance(result.mesh[0], type(box()))
+    assert result.mesh[0].metadata["scadview"]["color"][3] == 0.5
+
+
+def test_load_worker_debug_omits_unregistered_meshes_from_feature_entries(
+    load_queue,
+):
+    base = box()
+    unregistered = icosphere()
+    source = box()
+    normal_mesh = base.union(unregistered)
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("guide", source)
+            yield normal_mesh
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    assert isinstance(result.mesh, list)
+    assert len(result.mesh) == 1
+    npt.assert_array_equal(result.mesh[0].vertices, source.vertices)
 
 
 def test_load_worker_debug_falls_back_to_normal_mesh_without_feature_sources(

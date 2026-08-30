@@ -9,17 +9,25 @@ Named features currently control whether optional geometry participates in the g
   lifetime of the application session.
 - Capture each named feature's source mesh when it is registered, preserving feature name and registration order.
 - Keep feature enabled/disabled state independent from feature-debug visualization.
-- When feature debug is active, visualize the source meshes of enabled features using the existing debug-list rendering behavior.
+- When feature debug is active, replace the displayed normal mesh with translucent
+  source meshes of enabled features using the existing debug-list rendering
+  behavior.
 - Emit the enabled feature-source snapshot captured so far for every yielded mesh
   during progressive module loads.
 - Preserve normal final-mesh loading and rendering when feature debug is inactive.
 - Show the normal final mesh when debug mode is active but no feature meshes are registered.
 - Keep duplicate registrations of a feature name as separate debug meshes.
+- Do not show unregistered meshes in feature debug visualization.
 - Convert supported `Manifold` feature sources to `Trimesh` for rendering.
 - Document that debug geometry represents source geometry or tool volumes, not necessarily final model material.
 - Extend `examples/features.py` and its rendered documentation with a Debug features
-  walkthrough using its subtractive `cable_cutout` tool volume, and explain that
-  debug visualization is separate from each feature's enabled state.
+  walkthrough that first shows ordinary feature behavior with Debug features off,
+  then shows the subtractive `cable_cutout` tool volume with Debug features on.
+  Explain that debug visualization is separate from each feature's enabled state
+  and does not show unregistered meshes. Keep `features.png` as the ordinary
+  non-debug screenshot, document the future `features_debug.png` debug view, and
+  retain a commented-out screenshot-manifest entry until issue #161 supports
+  automating that UI state.
 
 ## Capabilities
 
@@ -38,6 +46,9 @@ Named features currently control whether optional geometry participates in the g
 - Documents the mode alongside feature and debug-mode documentation, including its
   source/tool-volume meaning and non-exportable diagnostic status.
 - Updates the existing feature example and its documentation inclusion; no new user
-  module API or separate example file is introduced.
+  module API or separate example file is introduced. The debug screenshot is
+  manually verified for now rather than generated or added as a placeholder image.
+- Updates feature API documentation to state that only named feature sources are
+  shown by Debug features; unmarked meshes are omitted.
 - Adds internal load/debug state and test coverage for feature capture, progressive loads, controller reloads, and UI behavior.
 - No new dependencies or changes to the `create_mesh` return contract.

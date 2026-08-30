@@ -7,8 +7,8 @@
 ## 2. Loader and command pipeline
 
 - [x] 2.1 Add the separate feature-debug flag to load command/worker stubs and define the per-yield debug-source selection seam; verify command construction preserves the flag
-- [x] 2.2 Add failing loader tests for ordered feature-debug snapshots on every yielded result, duplicate registrations, disabled-feature omission, no-feature fallback, Manifold conversion, final completion output, and normal mode preservation; verify failures demonstrate missing pipeline behavior
-- [x] 2.3 Implement feature-debug propagation and source-mesh selection at the loader boundary; verify targeted mesh-loader tests pass
+- [x] 2.2 Add failing loader tests for ordered feature-debug snapshots on every yielded result, duplicate registrations, disabled-feature omission, unregistered-mesh omission, no-feature fallback, Manifold conversion, final completion output, and normal mode preservation; verify failures demonstrate missing pipeline behavior
+- [x] 2.3 Implement feature-debug propagation and source-mesh selection at the loader boundary, replacing the normal result with translucent enabled sources; verify targeted mesh-loader tests pass
 
 ## 3. Controller state and UI
 
@@ -18,8 +18,9 @@
 
 ## 4. Integration and documentation
 
-- [x] 4.1 Add integration coverage for progressive per-yield feature-debug snapshots, final completion output, and normal fallback when no enabled features are registered; verify the relevant test module passes
-- [x] 4.2 Add a failing documentation/example check for the Debug features walkthrough: extend `examples/features.py` to identify its subtractive `cable_cutout` tool volume, and extend its `docs/examples.md` inclusion (with related feature/UI docs as needed) to instruct users to enable Debug features and distinguish it from enabled/disabled state; verify the check fails because the walkthrough is absent
-- [x] 4.3 Implement the feature example and documentation walkthrough, preserving the existing example's screenshot usage and no-public-API contract; verify the example documentation and relevant docs checks pass
-- [x] 4.4 After the UI and documentation work, run `mise run docs_check_screenshots_manifest`, regenerate the affected feature screenshot with `mise run docs_generate_screenshots`, and visually verify the updated `docs/images/features.png` shows the intended feature controls; verify the manifest check and generation succeed
-- [x] 4.5 Run formatting, linting, type checks, and the relevant test suite with the repository's `uv run`/`mise` tooling; verify all required checks pass
+- [x] 4.1 Add integration coverage for progressive per-yield source-only debug lists, final completion output, unregistered-mesh omission, and normal fallback when no enabled features are registered; verify the relevant test module passes
+- [x] 4.2 Add a failing documentation/example check for separate non-debug and Debug features walkthroughs: retain `features.png` for ordinary enabled/disabled feature behavior with Debug features off; reserve `features_debug.png` as a commented reference for source-only `cable_cutout` debug visualization; explain enabled-state independence and unregistered-mesh omission in both walkthrough and `feature(...)` API docs; verify the check fails before the separate sections and commented issue #161 manifest entry exist
+- [x] 4.3 Implement the feature example, walkthrough, and feature API documentation, preserving the existing example's screenshot usage and no-public-API contract; document the future `features_debug.png` as a commented reference without creating a placeholder image; verify the example documentation and relevant docs checks pass
+- [x] 4.4 After the UI and documentation work, run `mise run docs_check_screenshots_manifest`, regenerate and visually verify only the non-debug `docs/images/features.png` screenshot, and retain the `features_debug.png` manifest entry as a commented issue #161 follow-up; verify the manifest check and generation succeed
+- [x] 4.5 Temporarily, pending issue #161's automated screenshot-workflow support, manually launch `examples/features.py`, enable Debug features, wait for the reload, capture the screen, and visually verify that the viewport shows translucent enabled feature source geometry in place of the final composed mesh
+- [x] 4.6 Run formatting, linting, type checks, and the relevant test suite with the repository's `uv run`/`mise` tooling; verify all required checks pass

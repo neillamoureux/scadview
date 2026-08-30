@@ -31,9 +31,10 @@ See the [`feature(...)` API call](./api.md#scadview.feature) for details on how 
 
 `Debug features` is off by default and remains selected while the application is
 running. It shows source geometry for enabled features as translucent diagnostic
-output, including subtractive tool volumes. It does not change feature enabled
-state: disabling a feature removes it from the debug view, while leaving Debug
-features selected.
+output instead of the normal composed mesh, including subtractive tool volumes.
+It does not change feature enabled state: disabling a feature removes it from the
+debug view, while leaving Debug features selected. Unregistered meshes are
+omitted from feature debug visualization.
 
 ![Feature Example](images/features.png)
 

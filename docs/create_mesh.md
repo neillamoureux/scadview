@@ -127,7 +127,8 @@ subtractive tool volumes, which may not contribute triangles to the final model.
 Debug features does not change whether a feature is enabled. Clearing a feature
 checkbox omits that feature from the debug output; selecting Debug features again
 does not re-enable it. Because this is diagnostic output, Export is unavailable
-while it is displayed.
+while it is displayed. Debug features shows only source meshes registered with
+`feature(...)`; meshes not marked as features are omitted from this visualization.
 
 ## Debug Mode: Return a `list`
 

@@ -42,10 +42,12 @@ discovered, consistent with the existing feature-controls behavior.
 
 The worker will run the module normally and snapshot the ordered registered
 sources at each yield. When debug mode is active and a snapshot contains enabled
-sources, it returns those sources as the debug mesh list for that yield. If the
-snapshot contains no enabled sources, it retains the normal yielded result. The
-same selection is used for the final completion result so it cannot lose captured
-sources during module-execution cleanup.
+sources, it returns those sources as the debug list for that yield. The final
+completion result uses the same selection, so it cannot lose capture state during
+module-execution cleanup. Source meshes receive the existing translucent debug
+colors. If no enabled sources exist, the worker retains the normal yielded result
+without creating a debug list. Meshes that are not registered through
+`feature(...)` are never shown in feature debug visualization.
 
 Native `Manifold` sources will be converted to `Trimesh` at the loader boundary.
 The existing list-debug color, alpha, renderer, status, and export-disable
@@ -56,10 +58,19 @@ Documentation will extend the existing `examples/features.py` rather than add a
 second feature-debug script. Its `cable_cutout` feature is already a named
 subtractive cylinder used as a tool volume, so the example will identify that
 role and the rendered `docs/examples.md` inclusion will add a concise walkthrough:
-load the example, enable Debug features, observe the tool volume, and distinguish
-the global visualization state from the `cable_cutout` enabled state. The existing
-example screenshot may remain a normal feature-controls image; the behavior is
-explained in text rather than requiring a new UI-state screenshot.
+load the example with Debug features off to observe ordinary feature behavior, then
+enable Debug features to observe the translucent tool volume in place of the final
+composed mesh. It will distinguish the global visualization state from the
+`cable_cutout` enabled state and explain that unregistered meshes are not shown in
+feature debug visualization. `features.png` remains the normal non-debug
+feature-controls image. A separate Debug features section will reference
+`features_debug.png` in a commented image reference and the manifest will preserve
+its intended capture settings as a commented-out entry with an issue #161
+explanation; automated capture cannot yet toggle the live UI, so no placeholder
+image will be generated. Manual live-GUI verification is the temporary validation
+for that future screenshot. The
+`feature(...)` API documentation will make the named-source-only boundary explicit
+so users know that unmarked meshes are omitted from feature debug visualization.
 
 The debug toggle belongs near the feature checkboxes because it changes their visualization, but it is not represented as a `FeatureState`. This preserves the distinction between model inclusion and visualization mode.
 
@@ -70,7 +81,11 @@ The debug toggle belongs near the feature checkboxes because it changes their vi
   source-registration log until after the final load result is selected and emitted.
 - [Repeated registrations can produce many debug meshes] -> Preserve them deliberately for semantic correctness and rely on the existing debug renderer behavior.
 - [Debug source meshes are not final material] -> Document the source/tool-volume meaning and keep debug output ineligible for export.
+- [Feature debug hides the normal result] -> Make the mode opt-in, explain the
+  replacement behavior in documentation, and fall back to the normal result when
+  no enabled sources are available.
 - [A Python example cannot enable a UI-only mode] -> Pair the source example with
   explicit rendered-documentation steps instead of adding a public API or implying
-  that the script itself turns on Debug features.
+  that the script itself turns on Debug features; retain the debug screenshot's
+  manifest entry as a comment until issue #161 enables automated capture.
 - [Feature debug mode changes the displayed result] -> Make it opt-in and fall back to the normal mesh when no feature sources are available.

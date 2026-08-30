@@ -29,11 +29,14 @@ request a reload without changing feature enabled state.
   the newly selected debug mode
 
 ### Requirement: Enabled feature source geometry is visualized
-When Debug features is enabled, the application SHALL visualize the source geometry registered for each enabled named feature as separate translucent debug geometry with automatically selected colors. The diagnostic list SHALL replace, rather than overlay, the normal result.
+When Debug features is enabled, the application SHALL replace the normal result
+with the source geometry registered for each enabled named feature as separate
+translucent debug geometry with automatically selected colors.
 
 #### Scenario: A feature is registered and enabled
 - **WHEN** a named feature registers source geometry and Debug features is enabled
-- **THEN** that source geometry is included in the debug visualization
+- **THEN** that source geometry is included as a translucent debug mesh
+- **AND THEN** the normal composed mesh is not shown
 
 #### Scenario: A feature is disabled
 - **WHEN** a named feature is disabled and Debug features is enabled
@@ -42,6 +45,11 @@ When Debug features is enabled, the application SHALL visualize the source geome
 #### Scenario: A subtractive feature is debugged
 - **WHEN** an enabled feature is used as a subtractive or tool volume
 - **THEN** its captured source geometry is visualized as a debug volume, regardless of whether it contributes triangles to the final model
+
+#### Scenario: A mesh is not registered as a feature
+- **WHEN** a mesh is used by the module without being decorated or registered as a
+  named feature and Debug features is enabled
+- **THEN** it is not included in the feature-debug visualization
 
 ### Requirement: Source registration semantics are preserved
 The application SHALL capture feature source geometry at registration time, preserve registration order, and preserve duplicate registrations of the same feature name as separate debug geometry.
@@ -62,14 +70,13 @@ execution.
 
 #### Scenario: A module yields multiple mesh results
 - **WHEN** Debug features is enabled while the module yields successive results
-- **THEN** each result is represented by the enabled feature source geometry captured
-  before that yield
+- **THEN** each result is represented by the enabled feature source geometry
+  captured before that yield
 - **AND THEN** later registrations do not appear in earlier yielded results
 
 #### Scenario: No feature source geometry is registered
 - **WHEN** Debug features is enabled but the module registers no features
-- **THEN** the normal result representation remains visible instead of an empty
-  feature-debug list
+- **THEN** the normal result remains visible without a feature-debug list
 
 ### Requirement: Normal loading remains unchanged when debug mode is off
 The application SHALL preserve existing final-mesh behavior, feature filtering, export eligibility, and rendering when Debug features is disabled.
@@ -84,14 +91,37 @@ The application SHALL preserve existing final-mesh behavior, feature filtering, 
 
 ### Requirement: Feature debug usage is documented with the existing feature example
 The project SHALL extend `examples/features.py` and its rendered documentation with
-a Debug features usage walkthrough. The walkthrough SHALL use the example's named
-subtractive `cable_cutout` tool volume to explain that Debug features visualizes
-source/tool geometry, and that the global visualization toggle is independent of
-each feature's enabled or disabled state.
+a feature-controls and Debug features usage walkthrough. The ordinary
+feature-controls section SHALL use `features.png` to show Debug features off and
+explain how ordinary enabled/disabled feature state changes the composed model. A
+separate Debug features section SHALL reserve `features_debug.png` at the debug
+image location for the named subtractive `cable_cutout` tool volume replacing the
+normal composed mesh with translucent source/tool geometry. It SHALL explain that
+the global visualization toggle is independent of each feature's enabled or
+disabled state and that unregistered meshes do not appear in feature debug
+visualization. Until issue #161 automates the UI state, the documentation image
+reference and screenshot-manifest entry SHALL remain commented out, and the debug
+view SHALL be manually verified rather than represented by a fabricated image.
+The feature API documentation SHALL also state that Debug features shows only
+named feature sources and omits unmarked meshes.
 
 #### Scenario: A user follows the feature example walkthrough
-- **WHEN** a user loads `examples/features.py` and enables Debug features
-- **THEN** the documentation explains that the subtractive `cable_cutout` source is
-  visualized as a tool volume while it is enabled
+- **WHEN** a user loads `examples/features.py`
+- **THEN** the documentation first explains ordinary enabled/disabled feature
+  behavior with Debug features off and shows `features.png`
+- **WHEN** the user enables Debug features
+- **AND THEN** it explains that the translucent subtractive `cable_cutout` tool
+  volume replaces the composed model while it is enabled
 - **AND THEN** it explains that disabling `cable_cutout` omits it from the debug
   view without changing the Debug features toggle
+- **AND THEN** it explains that unregistered meshes are not shown in feature debug
+  visualization
+- **AND THEN** the separate Debug features section reserves `features_debug.png`
+  as a commented image reference while the corresponding manifest entry remains
+  commented out pending issue #161
+
+#### Scenario: A user reads the feature API documentation
+- **WHEN** a user reads the documentation for `feature(...)`
+- **THEN** it explains that Debug features can visualize named feature sources
+- **AND THEN** it states that meshes not marked as features are omitted from that
+  debug visualization
