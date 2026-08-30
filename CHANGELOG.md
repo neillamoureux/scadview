@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.9](https://github.com/neillamoureux/scadview/compare/v0.2.8...v0.2.9) (2026-08-30)
+
+
+### Features
+
+* add feature-level debug visualization ([#160](https://github.com/neillamoureux/scadview/issues/160)) ([8e2c3c4](https://github.com/neillamoureux/scadview/commit/8e2c3c46b9681419cdcd5dde3887b98bb13d13d9))
+
+
+### Documentation
+
+* document agent contribution workflow ([#159](https://github.com/neillamoureux/scadview/issues/159)) ([5a8bb88](https://github.com/neillamoureux/scadview/commit/5a8bb88863baa9093b85da36ee334aa4729dabe7))
+
+
+### Chores
+
+* Add OpenSpec support ([#157](https://github.com/neillamoureux/scadview/issues/157)) ([550295a](https://github.com/neillamoureux/scadview/commit/550295a803c9d9c7f5d387f64b92d4804df452f3))
+
 ## [0.2.8](https://github.com/neillamoureux/scadview/compare/v0.2.7...v0.2.8) (2026-05-31)
 
 
