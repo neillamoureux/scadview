@@ -29,7 +29,11 @@ from scadview.features import (
 )
 from scadview.load_status import LoadStatus
 from scadview.logging_worker import configure_worker_logging
-from scadview.module_loader import ModuleLoader
+from scadview.module_loader import (
+    CreateMeshParameter,
+    ModuleLoader,
+    ScalarParameterValue,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +93,14 @@ class LoadMeshCommand(Command):
         module_path: str,
         feature_states: dict[str, bool] | None = None,
         debug_features: bool = False,
+        parameter_values: dict[str, ScalarParameterValue] | None = None,
+        generation: int = 0,
     ):
         self.module_path = module_path
         self.feature_states = feature_states or {}
         self.debug_features = debug_features
+        self.parameter_values = parameter_values or {}
+        self.generation = generation
 
 
 class CancelLoadCommand(Command):
@@ -116,6 +124,8 @@ class LoadResult:
     error: Exception | None
     complete: bool = False
     features: list[FeatureState] | None = None
+    parameters: list[CreateMeshParameter] | None = None
+    generation: int = 0
 
     @property
     def debug(self) -> bool:
@@ -158,6 +168,8 @@ class LoadWorker(Thread):
         load_queue: MpLoadQueue,
         feature_states: dict[str, bool] | None = None,
         debug_features: bool = False,
+        parameter_values: dict[str, ScalarParameterValue] | None = None,
+        generation: int = 0,
     ):
         super().__init__()
         self.module_path = module_path
@@ -165,6 +177,9 @@ class LoadWorker(Thread):
         self.cancelled = False
         self.feature_states = feature_states or {}
         self.debug_features = debug_features
+        self.parameter_values = parameter_values or {}
+        self.generation = generation
+        self._parameters: list[CreateMeshParameter] | None = None
         self._loaded_feature_states: list[FeatureState] = []
         self._feature_sources = []
 
@@ -209,6 +224,8 @@ class LoadWorker(Thread):
                 error=error,
                 complete=final,
                 features=self._current_feature_states(),
+                parameters=self._parameters,
+                generation=self.generation,
             )
         )
 
@@ -277,10 +294,18 @@ class LoadWorker(Thread):
                 self.load_queue.put(result, timeout=self.PUT_QUEUE_TIMEOUT)
                 result_put = True
             except queue.Full:
-                try:
-                    _ = self.load_queue.get_nowait()
-                except queue.Empty:
-                    pass
+                if not self._discard_older_queued_result(result):
+                    return
+
+    def _discard_older_queued_result(self, result: LoadResult) -> bool:
+        try:
+            queued_result = self.load_queue.get_nowait()
+        except queue.Empty:
+            return True
+        if queued_result.generation <= result.generation:
+            return True
+        self.load_queue.put(queued_result, timeout=self.PUT_QUEUE_TIMEOUT)
+        return False
 
     def run_mesh_module(self) -> Generator[CreateMeshResultType, None, None]:
         module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
@@ -288,7 +313,9 @@ class LoadWorker(Thread):
         begin_feature_capture()
         t0 = time()
         try:
-            for i, mesh in enumerate(module_loader.run_function(self.module_path)):
+            function_results = self._function_results(module_loader)
+            self._parameters = self._module_parameters(module_loader)
+            for i, mesh in enumerate(function_results):
                 logger.info(f"Loading mesh #{i + 1}")
                 self._check_mesh_type(mesh)
                 self._feature_sources = get_feature_sources()
@@ -297,6 +324,19 @@ class LoadWorker(Thread):
             t1 = time()
             logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
             set_enabled_feature_states(None)
+
+    def _function_results(self, module_loader: ModuleLoader) -> Generator[Any, None, None]:
+        if self.parameter_values:
+            return module_loader.run_function(self.module_path, self.parameter_values)
+        return module_loader.run_function(self.module_path)
+
+    def _module_parameters(
+        self, module_loader: ModuleLoader
+    ) -> list[CreateMeshParameter]:
+        parameters = module_loader.parameters
+        if isinstance(parameters, list):
+            return parameters
+        return []
 
     def _current_feature_states(self) -> list[FeatureState]:
         feature_states = get_feature_states()
@@ -433,6 +473,8 @@ class MeshLoaderProcess(Process):
                     self._load_queue,
                     feature_states=command.feature_states,
                     debug_features=command.debug_features,
+                    parameter_values=command.parameter_values,
+                    generation=command.generation,
                 )
                 self._worker.start()
             elif isinstance(command, CancelLoadCommand):

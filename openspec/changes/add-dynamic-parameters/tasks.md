@@ -6,9 +6,9 @@
 
 ## 2. Loader process protocol
 
-- [ ] 2.1 Add command/result fields and loader-worker plumbing stubs for parameter values, parameter metadata, and request generations; verify existing command/result construction remains compatible
-- [ ] 2.2 Add failing mesh-loader tests for parameter propagation, metadata delivery on successful and post-discovery failed loads, generation values, and bounded-queue handling that preserves newer results; verify the tests fail for the missing protocol behavior
-- [ ] 2.3 Implement process-boundary parameter propagation, metadata reporting, and generation-aware queue insertion that never evicts a newer queued result while preserving feature capture and accepted mesh return types; verify `uv run pytest tests/test_mesh_loader_process.py` passes
+- [x] 2.1 Add command/result fields and loader-worker plumbing stubs for parameter values, parameter metadata, and request generations; verify existing command/result construction remains compatible
+- [x] 2.2 Add failing mesh-loader tests for parameter propagation, metadata delivery on successful and post-discovery failed loads, generation values, and bounded-queue handling that preserves newer results; verify the tests fail for the missing protocol behavior
+- [x] 2.3 Implement process-boundary parameter propagation, metadata reporting, and generation-aware queue insertion that never evicts a newer queued result while preserving feature capture and accepted mesh return types; verify `uv run pytest tests/test_mesh_loader_process.py` passes
 
 ## 3. Controller state and stale-result handling
 

@@ -38,6 +38,7 @@ class ModuleLoader:
 
     def __init__(self, function_name: str):
         self._function_name = function_name
+        self.parameters: list[CreateMeshParameter] = []
 
     def get_parameters(self, file_path: str) -> list[CreateMeshParameter]:
         function = self._load_function(file_path)
@@ -49,9 +50,17 @@ class ModuleLoader:
         parameter_values: dict[str, ScalarParameterValue] | None = None,
     ) -> Generator[Any, None, None]:
         function = self._load_function(file_path)
-        values = parameter_values or {}
+        self.parameters = self._discover_parameters(function)
+        return self._run_function(function, parameter_values or {}, file_path)
+
+    def _run_function(
+        self,
+        function: Any,
+        parameter_values: dict[str, ScalarParameterValue],
+        file_path: str,
+    ) -> Generator[Any, None, None]:
         try:
-            yield from yield_if_return(function(**values))
+            yield from yield_if_return(function(**parameter_values))
         except Exception as error:
             logger.exception(
                 "Error while running %s in %s: %s",
