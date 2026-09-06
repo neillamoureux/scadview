@@ -1,6 +1,6 @@
 import pytest
 
-from scadview.module_loader import ModuleLoader, yield_if_return
+from scadview.module_loader import CreateMeshParameter, ModuleLoader, yield_if_return
 
 
 def test_yield_if_return():
@@ -101,3 +101,57 @@ def func_that_returns():
     loader = ModuleLoader("func_that_returns")
     assert list(loader.run_function(file_path1)) == [10]
     assert list(loader.run_function(file_path2)) == [20]
+
+
+def test_discovers_supported_defaulted_parameters_in_signature_order(tmp_path):
+    file_path = tmp_path / "parameterized.py"
+    file_path.write_text(
+        """
+def create_mesh(enabled=True, count=2, width=2.5, label="part", *, detail=3):
+    return enabled, count, width, label, detail
+"""
+    )
+
+    loader = ModuleLoader("create_mesh")
+
+    assert loader.get_parameters(file_path) == [
+        CreateMeshParameter("enabled", "bool", True),
+        CreateMeshParameter("count", "int", 2),
+        CreateMeshParameter("width", "float", 2.5),
+        CreateMeshParameter("label", "str", "part"),
+        CreateMeshParameter("detail", "int", 3),
+    ]
+
+
+def test_ignores_unsupported_parameter_kinds_and_defaults(tmp_path):
+    file_path = tmp_path / "unsupported.py"
+    file_path.write_text(
+        """
+class IntSubclass(int):
+    pass
+
+def create_mesh(positional_only=1, /, *values, required, optional=None,
+                items=[], custom=IntSubclass(2), **keywords):
+    return 1
+"""
+    )
+
+    loader = ModuleLoader("create_mesh")
+
+    assert loader.get_parameters(file_path) == []
+
+
+def test_run_function_passes_keyword_parameter_values(tmp_path):
+    file_path = tmp_path / "keyword_values.py"
+    file_path.write_text(
+        """
+def create_mesh(width=2.5, *, label="part"):
+    return width, label
+"""
+    )
+
+    loader = ModuleLoader("create_mesh")
+
+    assert list(loader.run_function(file_path, {"width": 3.75, "label": "lid"})) == [
+        (3.75, "lid")
+    ]

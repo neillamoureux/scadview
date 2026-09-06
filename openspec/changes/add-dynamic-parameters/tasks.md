@@ -1,8 +1,8 @@
 ## 1. Parameter discovery and invocation
 
-- [ ] 1.1 Add serializable parameter descriptor types and module-loader method stubs for signature discovery and keyword invocation; verify the new interfaces are importable without changing zero-argument behavior
-- [ ] 1.2 Add failing module-loader tests for supported defaults, signature order, positional-only and variadic parameters, unsupported defaults, required parameters, and invocation with keyword values; verify the tests fail for the missing discovery/invocation behavior
-- [ ] 1.3 Implement signature discovery and typed keyword invocation for supported `bool`, `int`, `float`, and `str` defaults; verify `uv run pytest tests/test_module_loader.py` passes
+- [x] 1.1 Add serializable parameter descriptor types and module-loader method stubs for signature discovery and keyword invocation; verify the new interfaces are importable without changing zero-argument behavior
+- [x] 1.2 Add failing module-loader tests for supported defaults, signature order, positional-only and variadic parameters, unsupported defaults, required parameters, and invocation with keyword values; verify the tests fail for the missing discovery/invocation behavior
+- [x] 1.3 Implement signature discovery and typed keyword invocation for supported `bool`, `int`, `float`, and `str` defaults; verify `uv run pytest tests/test_module_loader.py` passes
 
 ## 2. Loader process protocol
 
