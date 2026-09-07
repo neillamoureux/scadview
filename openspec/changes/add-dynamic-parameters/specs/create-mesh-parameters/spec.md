@@ -62,6 +62,21 @@ checkbox that emits an actual `bool` value rather than parsing arbitrary text.
 - **THEN** SCADview displays the load error while retaining the discovered
   parameter controls and their last accepted values
 
+#### Scenario: Reset restores loaded-module defaults
+
+- **WHEN** the user changes one or more parameter values and activates Reset
+  Parameters
+- **THEN** the controls return to the defaults discovered from the currently
+  loaded `create_mesh` signature
+
+### Requirement: Reset parameter values
+
+SCADview SHALL provide a Reset Parameters control when the loaded module has
+supported parameters. Activating it SHALL restore every accepted parameter
+value to the corresponding default from the current parameter metadata and
+SHALL rebuild the mesh when any value changed. Activating it when all values
+already equal their defaults SHALL not enqueue a load request.
+
 ### Requirement: Rebuild geometry from changed parameters
 
 SCADview SHALL invoke `create_mesh` with the current parameter values whenever a

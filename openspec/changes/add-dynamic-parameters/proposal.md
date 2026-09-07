@@ -11,6 +11,8 @@ exposing them in the UI would make iterative geometry exploration much faster.
   function.
 - Display those parameters as controls in the SCADview UI, initialized from
   their Python defaults.
+- Add a Reset Parameters control that restores the loaded module's original
+  default values.
 - Regenerate the mesh when a valid control value changes.
 - Preserve parameter values across feature toggles and reloads of the same
   module, while resetting them for a different module.

@@ -270,6 +270,7 @@ changing the script.
 
 ```
 </details>
+![Stack of Balls](images/stack_of_balls.png)
 
 ## star_linear_extrude.py
 

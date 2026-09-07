@@ -91,6 +91,15 @@ When a source edit changes the signature, values are retained only when the
 parameter name and supported type still match; new parameters use defaults and
 removed or incompatible parameters are discarded.
 
+### Reset values from current parameter metadata
+
+The controller will expose a reset operation that derives values from the
+currently published parameter descriptors rather than re-importing the module.
+It will replace accepted values with each descriptor's default and enqueue one
+reload only when the value map changes. The UI will keep the Reset Parameters
+control with the parameter section and start polling only when the controller
+actually queues that reload.
+
 ### Add request generations to load protocol
 
 Each controller-issued load gets a monotonically increasing request generation.

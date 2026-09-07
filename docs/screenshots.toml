@@ -359,6 +359,18 @@ edges = false
 gnomon = true
 
 [[screenshots]]
+name = "stack_of_balls"
+output = "images/stack_of_balls.png"
+module = "examples/stack_of_balls.py"
+window_size = [960, 720]
+view = "frame"
+camera = "perspective"
+grid = false
+axes = true
+edges = false
+gnomon = true
+
+[[screenshots]]
 name = "star_linear_extrude"
 output = "images/star_linear_extrude.png"
 module = "examples/star_linear_extrude.py"

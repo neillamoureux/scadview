@@ -22,9 +22,11 @@
 - [x] 4.2 Add failing UI-focused tests for numeric/string commit validation, boolean updates using actual `bool` values, invalid-input retention, reload routing, control replacement, post-discovery error metadata, and ignoring stale results without stopping the current timer; verify the tests fail for the missing UI behavior
 - [x] 4.3 Implement the Parameters section and commit event handling, then document the supported signature and UI behavior in `docs/create_mesh.md`, `docs/user_interface.md`, and `docs/cli_export.md`; verify the targeted UI tests and documentation checks pass
 - [x] 4.4 Add a documented pyramid-of-balls example using `create_mesh(levels: int = 3, ball_radius: float = 1.0, level_height: float = 2.0, label: str = "Stack", show_label: bool = True)`; keep the top ball centered at `(0, 0, 0)`, use fixed `2.0` center spacing on each layer, and verify the bottom corner separation is `2 * (levels - 1)`
+- [ ] 4.5 Add a Reset Parameters button that restores the current module's discovered defaults, routes through controller-owned state, avoids a no-op reload when already reset, and verifies UI replacement, reload, and default-restoration behavior
 
 ## 5. Integration validation
 
 - [x] 5.1 Run the focused loader, process, controller, and UI tests together and verify the full parameterized-module flow from control edit to rendered mesh
 - [ ] 5.2 Run `uv run ruff check`, `uv run ty check`, and the repository preflight task; resolve any regressions without changing the documented scope
 - [ ] 5.3 Manually load a module defining `create_mesh(width: float = 2.5)`, change the control, toggle a feature if present, and confirm the newest geometry remains visible after rapid edits
+- [x] 5.4 Automate the default `stack_of_balls.py` documentation screenshot through `docs/screenshots.toml`, generate `docs/images/stack_of_balls.png`, and verify it is referenced from the examples documentation

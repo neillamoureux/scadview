@@ -13,7 +13,7 @@ def create_mesh(
     level_height: float = 2.0,
     label: str = "Stack",
     show_label: bool = True,
-) -> list[Trimesh]:
+) -> Trimesh:
     """Create a centered square pyramid of balls and an optional label."""
     if levels < 1:
         raise ValueError("levels must be at least 1")
@@ -43,4 +43,8 @@ def create_mesh(
             [0.0, 0.0, ball_radius + 0.25 - label_mesh.bounds[0][2]]
         )
         meshes.append(label_mesh)
-    return meshes
+
+    unioned = meshes[0]
+    for mesh in meshes[1:]:
+        unioned = unioned.union(mesh)
+    return unioned

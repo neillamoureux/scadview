@@ -49,6 +49,12 @@ parameters. Text fields accept intermediate edits until you press Enter or move
 focus away; invalid values stay visible so you can correct them and do not start
 a rebuild. Checkbox values are sent as booleans immediately.
 
+Use **Reset Parameters** to restore all controls to the defaults from the
+currently loaded `create_mesh` function. Resetting starts one rebuild when a
+value changed; pressing it when the controls already match the defaults does
+not start another load. See the [create_mesh parameter contract](./api.md#create_mesh-parameter-contract)
+in the API reference for the supported signature and default-value rules.
+
 Accepted parameter values remain selected when a feature toggle, debug toggle,
 or reload rebuilds the same script. Loading a different script uses that
 script's defaults. If a script raises after its signature is discovered, its
