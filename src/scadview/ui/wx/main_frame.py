@@ -231,6 +231,16 @@ class MainFrame(wx.Frame):
             wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
             BORDER_SIZE,
         )
+        self._reset_parameters_button = wx.Button(
+            self._parameter_box.GetStaticBox(), label="Reset Parameters"
+        )
+        self._reset_parameters_button.Bind(wx.EVT_BUTTON, self._on_reset_parameters)
+        self._parameter_box.Add(
+            self._reset_parameters_button,
+            0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+            BORDER_SIZE,
+        )
         self._parameter_box.ShowItems(False)
         self._panel_sizer.Add(
             self._parameter_box,
@@ -320,6 +330,12 @@ class MainFrame(wx.Frame):
         if self._controller.parameter_values.get(name) == value:
             return
         self._controller.set_parameter_value(name, value)
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
+
+    def _on_reset_parameters(self, _: wx.Event) -> None:
+        if not self._controller.reset_parameter_values():
+            return
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 

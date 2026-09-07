@@ -183,6 +183,42 @@ def test_boolean_parameter_toggle_routes_actual_bool_and_starts_reload():
     gauge.Pulse.assert_called_once()
 
 
+def test_reset_parameters_routes_reload_and_starts_polling():
+    controller = Mock()
+    controller.reset_parameter_values.return_value = True
+    timer = Mock()
+    gauge = Mock()
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+    )
+
+    MainFrame._on_reset_parameters(frame, Mock())
+
+    controller.reset_parameter_values.assert_called_once_with()
+    timer.Start.assert_called_once_with(main_frame.LOAD_CHECK_INTERVAL_MS)
+    gauge.Pulse.assert_called_once()
+
+
+def test_reset_parameters_does_not_poll_when_controller_is_already_at_defaults():
+    controller = Mock()
+    controller.reset_parameter_values.return_value = False
+    timer = Mock()
+    gauge = Mock()
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+    )
+
+    MainFrame._on_reset_parameters(frame, Mock())
+
+    controller.reset_parameter_values.assert_called_once_with()
+    timer.Start.assert_not_called()
+    gauge.Pulse.assert_not_called()
+
+
 def test_parameter_controls_replace_when_error_result_publishes_new_metadata():
     parameter_sizer = Mock()
     parameter_box = FakeParameterBox()

@@ -22,7 +22,7 @@
 - [x] 4.2 Add failing UI-focused tests for numeric/string commit validation, boolean updates using actual `bool` values, invalid-input retention, reload routing, control replacement, post-discovery error metadata, and ignoring stale results without stopping the current timer; verify the tests fail for the missing UI behavior
 - [x] 4.3 Implement the Parameters section and commit event handling, then document the supported signature and UI behavior in `docs/create_mesh.md`, `docs/user_interface.md`, and `docs/cli_export.md`; verify the targeted UI tests and documentation checks pass
 - [x] 4.4 Add a documented pyramid-of-balls example using `create_mesh(levels: int = 3, ball_radius: float = 1.0, level_height: float = 2.0, label: str = "Stack", show_label: bool = True)`; keep the top ball centered at `(0, 0, 0)`, use fixed `2.0` center spacing on each layer, and verify the bottom corner separation is `2 * (levels - 1)`
-- [ ] 4.5 Add a Reset Parameters button that restores the current module's discovered defaults, routes through controller-owned state, avoids a no-op reload when already reset, and verifies UI replacement, reload, and default-restoration behavior
+- [x] 4.5 Add a Reset Parameters button that restores the current module's discovered defaults, routes through controller-owned state, avoids a no-op reload when already reset, and verifies UI replacement, reload, and default-restoration behavior
 
 ## 5. Integration validation
 

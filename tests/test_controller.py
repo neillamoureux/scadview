@@ -193,3 +193,52 @@ def test_parameter_value_change_does_not_rebuild_parameter_controls(monkeypatch)
         on_parameters_change.notify.assert_not_called()
     finally:
         controller.close()
+
+
+def test_controller_reset_parameter_values_restores_defaults_and_reloads(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._command_queue.items.clear()
+        parameters = [
+            CreateMeshParameter("width", "float", 2.5),
+            CreateMeshParameter("enabled", "bool", True),
+        ]
+        controller._load_queue.items.append(
+            LoadResult(1, 1, box(), None, parameters=parameters, generation=1)
+        )
+        controller.check_load_queue()
+        controller.set_parameter_value("width", 3.5)
+        controller.set_parameter_value("enabled", False)
+        controller._command_queue.items.clear()
+        on_parameters_change = Mock()
+        controller.on_parameters_change.subscribe(on_parameters_change)
+
+        assert controller.reset_parameter_values() is True
+
+        assert controller.parameter_values == {"width": 2.5, "enabled": True}
+        on_parameters_change.assert_called_once_with(parameters)
+        commands = controller._command_queue.items
+        assert len(commands) == 1
+        assert commands[0].parameter_values == {"width": 2.5, "enabled": True}
+    finally:
+        controller.close()
+
+
+def test_controller_reset_parameter_values_is_noop_at_defaults(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        parameter = CreateMeshParameter("width", "float", 2.5)
+        controller._parameters = [parameter]
+        controller._parameter_values = {"width": 2.5}
+
+        assert controller.reset_parameter_values() is False
+        assert controller._command_queue.items == []
+    finally:
+        controller.close()

@@ -180,6 +180,17 @@ class Controller:
         self._parameter_values[name] = value
         self._queue_feature_reload(self._feature_state_map())
 
+    def reset_parameter_values(self) -> bool:
+        defaults = {
+            parameter.name: parameter.default for parameter in self.parameters
+        }
+        if defaults == self._parameter_values:
+            return False
+        self._parameter_values = defaults
+        self.on_parameters_change.notify(self._parameters)
+        self._queue_feature_reload(self._feature_state_map())
+        return True
+
     def export(self, file_path: str):
         # Cache the property so type narrowing is stable for the selected mesh.
         current_mesh = self.current_mesh
