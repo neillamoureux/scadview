@@ -268,7 +268,8 @@ class MainFrame(wx.Frame):
     def _create_parameter_control(self, parameter: CreateMeshParameter) -> wx.Sizer:
         value = self._controller.parameter_values[parameter.name]
         row = wx.BoxSizer(wx.HORIZONTAL)
-        label = wx.StaticText(self._button_panel, label=f"{parameter.name}:")
+        parameter_parent = self._parameter_box.GetStaticBox()
+        label = wx.StaticText(parameter_parent, label=f"{parameter.name}:")
         control = self._create_parameter_input(parameter, value)
         row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, BORDER_SIZE)
         row.Add(control, 1, wx.EXPAND)
@@ -277,8 +278,9 @@ class MainFrame(wx.Frame):
     def _create_parameter_input(
         self, parameter: CreateMeshParameter, value: ScalarParameterValue
     ) -> wx.Control:
+        parameter_parent = self._parameter_box.GetStaticBox()
         if parameter.type == "bool":
-            checkbox = wx.CheckBox(self._button_panel)
+            checkbox = wx.CheckBox(parameter_parent)
             checkbox.SetValue(cast(bool, value))
             checkbox.Bind(
                 wx.EVT_CHECKBOX,
@@ -288,7 +290,7 @@ class MainFrame(wx.Frame):
             )
             return checkbox
         control = wx.TextCtrl(
-            self._button_panel,
+            parameter_parent,
             value=str(value),
             style=wx.TE_PROCESS_ENTER,
         )

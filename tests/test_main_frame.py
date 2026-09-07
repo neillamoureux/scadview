@@ -19,8 +19,19 @@ class FakeSizer:
 
 
 class FakeStaticText:
-    def __init__(self, _parent, *, label: str):
+    def __init__(self, parent, *, label: str):
+        self.parent = parent
         self.label = label
+
+
+class FakeTextCtrl:
+    def __init__(self, parent, *, value: str, style: int):
+        self.parent = parent
+        self.value = value
+        self.style = style
+
+    def Bind(self, *_args):
+        return None
 
 
 class FakeParameterBox:
@@ -34,10 +45,14 @@ class FakeParameterBox:
 def test_parameter_control_uses_parameter_name_and_current_value(monkeypatch):
     parameter = CreateMeshParameter("width", "float", 2.5)
     input_control = object()
+    parameter_parent = object()
     monkeypatch.setattr(main_frame.wx, "BoxSizer", FakeSizer)
     monkeypatch.setattr(main_frame.wx, "StaticText", FakeStaticText)
     frame = SimpleNamespace(
         _button_panel=object(),
+        _parameter_box=SimpleNamespace(
+            GetStaticBox=lambda: parameter_parent,
+        ),
         _controller=SimpleNamespace(parameter_values={"width": 3.5}),
         _create_parameter_input=lambda item, value: (
             input_control if (item, value) == (parameter, 3.5) else None
@@ -47,7 +62,23 @@ def test_parameter_control_uses_parameter_name_and_current_value(monkeypatch):
     row = MainFrame._create_parameter_control(frame, parameter)
 
     assert row.items[0].label == "width:"
+    assert row.items[0].parent is parameter_parent
     assert row.items[1] is input_control
+
+
+def test_parameter_text_control_uses_parameters_static_box_parent(monkeypatch):
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    parameter_parent = object()
+    monkeypatch.setattr(main_frame.wx, "TextCtrl", FakeTextCtrl)
+    frame = SimpleNamespace(
+        _parameter_box=SimpleNamespace(
+            GetStaticBox=lambda: parameter_parent,
+        ),
+    )
+
+    control = MainFrame._create_parameter_input(frame, parameter, 2.5)
+
+    assert control.parent is parameter_parent
 
 
 @pytest.mark.parametrize(
