@@ -253,6 +253,24 @@ to set the row and column counts.
 </details>
 ![Sphere](images/spice_rack.png)
 
+## stack_of_balls.py
+
+Builds a centered pyramid of balls with dynamic parameters for the number of
+levels, ball size, level height, and an optional label above the top ball. The
+label baseline runs parallel to Y and its front face faces a viewer looking
+along +X. Load it in the UI and edit the controls to explore the layout without
+changing the script.
+
+<details>
+<summary>Source</summary>
+
+```python
+
+{% include "../examples/stack_of_balls.py" %}
+
+```
+</details>
+
 ## star_linear_extrude.py
 
 Constructs a 2D star polygon with an inner hole and extrudes it with twist and taper. Demonstrates `linear_extrude` parameters like `twist`, `slices`, and `scale`.

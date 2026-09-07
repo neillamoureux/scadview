@@ -325,7 +325,9 @@ class LoadWorker(Thread):
             logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
             set_enabled_feature_states(None)
 
-    def _function_results(self, module_loader: ModuleLoader) -> Generator[Any, None, None]:
+    def _function_results(
+        self, module_loader: ModuleLoader
+    ) -> Generator[Any, None, None]:
         if self.parameter_values:
             return module_loader.run_function(self.module_path, self.parameter_values)
         return module_loader.run_function(self.module_path)

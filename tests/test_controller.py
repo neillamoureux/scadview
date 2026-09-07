@@ -9,6 +9,7 @@ from trimesh.creation import box
 from scadview.controller import Controller
 from scadview.features import FeatureState
 from scadview.mesh_loader_process import LoadMeshCommand, LoadResult
+from scadview.module_loader import CreateMeshParameter
 
 
 class DummyQueue:
@@ -65,6 +66,7 @@ def test_controller_reloads_with_updated_feature_state(monkeypatch):
                 None,
                 False,
                 [FeatureState("cutout", True)],
+                generation=controller.current_generation,
             )
         )
         controller.check_load_queue()
@@ -73,6 +75,48 @@ def test_controller_reloads_with_updated_feature_state(monkeypatch):
         second_command = controller._command_queue.items.pop()
         assert isinstance(second_command, LoadMeshCommand)
         assert second_command.feature_states == {"cutout": False}
+    finally:
+        controller.close()
+
+
+def test_controller_reconciles_parameters_and_reloads_with_values(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._command_queue.items.clear()
+        parameter = CreateMeshParameter("width", "float", 2.5)
+        controller._load_queue.items.append(
+            LoadResult(1, 1, box(), None, parameters=[parameter], generation=1)
+        )
+        controller.check_load_queue()
+
+        controller.set_parameter_value("width", 3.5)
+
+        command = controller._command_queue.items.pop()
+        assert isinstance(command, LoadMeshCommand)
+        assert command.parameter_values == {"width": 3.5}
+    finally:
+        controller.close()
+
+
+def test_controller_ignores_stale_result(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller.load_mesh("/tmp/model.py")
+        stale = LoadResult(1, 1, box(), None, generation=1)
+        controller._load_queue.items.append(stale)
+
+        result = controller.check_load_queue()
+
+        assert result.mesh is None
+        assert controller.current_mesh is None
     finally:
         controller.close()
 
@@ -130,3 +174,22 @@ def test_debug_features_toggle_starts_reload_polling():
     controller.set_debug_features.assert_called_once_with(True)
     timer.Start.assert_called_once()
     gauge.Pulse.assert_called_once()
+
+
+def test_parameter_value_change_does_not_rebuild_parameter_controls(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        parameter = CreateMeshParameter("width", "float", 2.5)
+        controller._parameters = [parameter]
+        controller._parameter_values = {"width": 2.5}
+        on_parameters_change = Mock()
+        controller.on_parameters_change.subscribe(on_parameters_change)
+
+        controller.set_parameter_value("width", 3.5)
+
+        on_parameters_change.notify.assert_not_called()
+    finally:
+        controller.close()

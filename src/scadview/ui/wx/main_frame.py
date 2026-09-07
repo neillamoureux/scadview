@@ -12,6 +12,7 @@ from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
+from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.ui.view_state import ViewState
 from scadview.ui.wx.action import (
@@ -28,6 +29,22 @@ logger = logging.getLogger(__name__)
 LOAD_CHECK_INTERVAL_MS = 10
 INITIAL_FRAME_SIZE = (900, 600)
 BORDER_SIZE = 6
+
+
+def convert_parameter_value(
+    parameter: CreateMeshParameter, value: str | bool
+) -> ScalarParameterValue:
+    if parameter.type == "bool":
+        if type(value) is not bool:
+            raise ValueError(f"Parameter '{parameter.name}' requires a boolean value")
+        return value
+    if type(value) is not str:
+        raise ValueError(f"Parameter '{parameter.name}' requires text input")
+    if parameter.type == "int":
+        return int(value)
+    if parameter.type == "float":
+        return float(value)
+    return value
 
 
 class MainFrame(wx.Frame):
@@ -56,6 +73,7 @@ class MainFrame(wx.Frame):
         )
 
         self._add_file_buttons()
+        self._add_parameter_controls()
         self._add_feature_controls()
         self._add_view_buttons()
 
@@ -81,6 +99,7 @@ class MainFrame(wx.Frame):
         self._loader_last_sequence_number = 0
         self._controller.on_load_status_change.subscribe(self._indicate_load_status)
         self._controller.on_features_change.subscribe(self._update_feature_controls)
+        self._controller.on_parameters_change.subscribe(self._update_parameter_controls)
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
@@ -198,6 +217,111 @@ class MainFrame(wx.Frame):
             wx.ALL | wx.EXPAND,
             BORDER_SIZE,
         )
+
+    def _add_parameter_controls(self) -> None:
+        self._parameter_box = wx.StaticBoxSizer(
+            wx.VERTICAL,
+            self._button_panel,
+            "Parameters",
+        )
+        self._parameter_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._parameter_box.Add(
+            self._parameter_sizer,
+            0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+            BORDER_SIZE,
+        )
+        self._parameter_box.ShowItems(False)
+        self._panel_sizer.Add(
+            self._parameter_box,
+            0,
+            wx.ALL | wx.EXPAND,
+            BORDER_SIZE,
+        )
+
+    def _update_parameter_controls(self, parameters: list[CreateMeshParameter]) -> None:
+        self._parameter_sizer.Clear(delete_windows=True)
+        if not parameters:
+            self._parameter_box.ShowItems(False)
+            self._button_panel.Layout()
+            return
+        self._parameter_box.ShowItems(True)
+        for parameter in parameters:
+            self._parameter_sizer.Add(
+                self._create_parameter_control(parameter),
+                0,
+                wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+                BORDER_SIZE,
+            )
+        self._button_panel.Layout()
+
+    def _create_parameter_control(self, parameter: CreateMeshParameter) -> wx.Sizer:
+        value = self._controller.parameter_values[parameter.name]
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        label = wx.StaticText(self._button_panel, label=f"{parameter.name}:")
+        control = self._create_parameter_input(parameter, value)
+        row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, BORDER_SIZE)
+        row.Add(control, 1, wx.EXPAND)
+        return row
+
+    def _create_parameter_input(
+        self, parameter: CreateMeshParameter, value: ScalarParameterValue
+    ) -> wx.Control:
+        if parameter.type == "bool":
+            checkbox = wx.CheckBox(self._button_panel)
+            checkbox.SetValue(cast(bool, value))
+            checkbox.Bind(
+                wx.EVT_CHECKBOX,
+                lambda event, name=parameter.name: self._on_parameter_toggle(
+                    event, name
+                ),
+            )
+            return checkbox
+        control = wx.TextCtrl(
+            self._button_panel,
+            value=str(value),
+            style=wx.TE_PROCESS_ENTER,
+        )
+        control.Bind(
+            wx.EVT_TEXT_ENTER,
+            lambda event, name=parameter.name: self._on_parameter_text_commit(
+                event, name
+            ),
+        )
+        control.Bind(
+            wx.EVT_KILL_FOCUS,
+            lambda event, name=parameter.name: self._on_parameter_text_commit(
+                event, name
+            ),
+        )
+        return control
+
+    def _on_parameter_text_commit(self, event: wx.Event, name: str) -> None:
+        control = cast(wx.TextCtrl, event.GetEventObject())
+        parameter = next(
+            (item for item in self._controller.parameters if item.name == name), None
+        )
+        if parameter is None:
+            event.Skip()
+            return
+        try:
+            value = convert_parameter_value(parameter, control.GetValue())
+        except ValueError:
+            logger.error("Invalid value for parameter '%s'", name)
+            event.Skip()
+            return
+        event.Skip()
+        self._set_parameter_value(name, value)
+
+    def _on_parameter_toggle(self, event: wx.CommandEvent, name: str) -> None:
+        self._set_parameter_value(name, event.IsChecked())
+
+    def _set_parameter_value(self, name: str, value: ScalarParameterValue) -> None:
+        if self._controller.parameter_values.get(name) == value:
+            return
+        self._controller.set_parameter_value(name, value)
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
 
     def _on_module_path_set(self, path: str) -> bool:
         return path != ""
@@ -337,6 +461,8 @@ class MainFrame(wx.Frame):
         self._handle_load_result(load_result)
 
     def _handle_load_result(self, load_result: LoadResult) -> None:
+        if load_result.generation != self._controller.current_generation:
+            return
         mesh = load_result.mesh
         if load_result.complete:
             self._loader_timer.Stop()

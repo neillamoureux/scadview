@@ -16,6 +16,9 @@ you complete them.
   `Features` section with a global `Debug features` checkbox and one checkbox per
   discovered feature. Toggle a feature to reload the script with that optional
   geometry enabled or disabled.
+- If `create_mesh` has supported defaulted scalar parameters, the sidebar shows
+  a `Parameters` section. Change a text field and press Enter or move focus away
+  to rebuild the mesh. Checkbox parameters rebuild immediately.
 - If you want to export the current mesh, use `File > Export...` or the `Export`
   button. Export is enabled only after a load completes.
 - If an export format reports a missing dependency, install the package named
@@ -37,6 +40,19 @@ debug view, while leaving Debug features selected. Unregistered meshes are
 omitted from feature debug visualization.
 
 ![Feature Example](images/features.png)
+
+## Parameters
+
+The `Parameters` section appears after a successful parameter discovery for
+`create_mesh`. It supports defaulted `bool`, `int`, `float`, and `str`
+parameters. Text fields accept intermediate edits until you press Enter or move
+focus away; invalid values stay visible so you can correct them and do not start
+a rebuild. Checkbox values are sent as booleans immediately.
+
+Accepted parameter values remain selected when a feature toggle, debug toggle,
+or reload rebuilds the same script. Loading a different script uses that
+script's defaults. If a script raises after its signature is discovered, its
+parameter controls remain available while the error is shown.
 
 ## View and Inspect
 

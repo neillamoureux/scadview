@@ -1,0 +1,229 @@
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+
+pytest.importorskip("wx")
+
+from scadview.module_loader import CreateMeshParameter
+from scadview.ui.wx import main_frame
+from scadview.ui.wx.main_frame import MainFrame, convert_parameter_value
+
+
+class FakeSizer:
+    def __init__(self, *_args):
+        self.items: list[object] = []
+
+    def Add(self, item, *_args):
+        self.items.append(item)
+
+
+class FakeStaticText:
+    def __init__(self, _parent, *, label: str):
+        self.label = label
+
+
+class FakeParameterBox:
+    def __init__(self):
+        self.visible: list[bool] = []
+
+    def ShowItems(self, value: bool):
+        self.visible.append(value)
+
+
+def test_parameter_control_uses_parameter_name_and_current_value(monkeypatch):
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    input_control = object()
+    monkeypatch.setattr(main_frame.wx, "BoxSizer", FakeSizer)
+    monkeypatch.setattr(main_frame.wx, "StaticText", FakeStaticText)
+    frame = SimpleNamespace(
+        _button_panel=object(),
+        _controller=SimpleNamespace(parameter_values={"width": 3.5}),
+        _create_parameter_input=lambda item, value: (
+            input_control if (item, value) == (parameter, 3.5) else None
+        ),
+    )
+
+    row = MainFrame._create_parameter_control(frame, parameter)
+
+    assert row.items[0].label == "width:"
+    assert row.items[1] is input_control
+
+
+@pytest.mark.parametrize(
+    ("parameter", "value", "expected"),
+    [
+        (CreateMeshParameter("count", "int", 1), "2", 2),
+        (CreateMeshParameter("width", "float", 2.5), "3.75", 3.75),
+        (CreateMeshParameter("name", "str", "cube"), "base", "base"),
+    ],
+)
+def test_convert_parameter_value_converts_text(parameter, value, expected):
+    assert convert_parameter_value(parameter, value) == expected
+
+
+def test_convert_parameter_value_requires_bool_value_for_boolean_parameter():
+    parameter = CreateMeshParameter("enabled", "bool", True)
+
+    assert convert_parameter_value(parameter, False) is False
+    with pytest.raises(ValueError, match="boolean"):
+        convert_parameter_value(parameter, "false")
+
+
+def test_parameter_text_commit_retains_invalid_input_without_reloading(caplog):
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    controller = Mock(parameters=[parameter])
+    timer = Mock()
+    gauge = Mock()
+    control = Mock()
+    control.GetValue.return_value = "not-a-number"
+    event = Mock()
+    event.GetEventObject.return_value = control
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _set_parameter_value=lambda *_args: pytest.fail("invalid input was routed"),
+    )
+
+    with caplog.at_level("ERROR"):
+        MainFrame._on_parameter_text_commit(frame, event, "width")
+
+    controller.set_parameter_value.assert_not_called()
+    timer.Start.assert_not_called()
+    gauge.Pulse.assert_not_called()
+    assert control.GetValue.called
+    assert "Invalid value for parameter 'width'" in caplog.text
+
+
+def test_parameter_text_commit_skips_event_before_control_replacement():
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    order: list[str] = []
+    controller = Mock(parameters=[parameter])
+    controller.set_parameter_value.side_effect = lambda *_args: order.append(
+        "replace-controls"
+    )
+    control = Mock()
+    control.GetValue.return_value = "3.75"
+    event = Mock()
+    event.GetEventObject.return_value = control
+    event.Skip.side_effect = lambda: order.append("skip-event")
+    timer = Mock()
+    gauge = Mock()
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+    )
+    frame._set_parameter_value = lambda name, value: MainFrame._set_parameter_value(
+        frame, name, value
+    )
+
+    MainFrame._on_parameter_text_commit(frame, event, "width")
+
+    assert order == ["skip-event", "replace-controls"]
+
+
+def test_repeated_focus_commit_does_not_restart_completed_load_timer():
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    values = {"width": 2.5}
+
+    class FakeController:
+        parameters = [parameter]
+
+        @property
+        def parameter_values(self):
+            return values.copy()
+
+        def set_parameter_value(self, name, value):
+            values[name] = value
+
+    controller = FakeController()
+    timer = Mock()
+    gauge = Mock()
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+    )
+    frame._set_parameter_value = lambda name, value: MainFrame._set_parameter_value(
+        frame, name, value
+    )
+
+    for _ in range(2):
+        control = Mock()
+        control.GetValue.return_value = "3.75"
+        event = Mock()
+        event.GetEventObject.return_value = control
+        MainFrame._on_parameter_text_commit(frame, event, "width")
+
+    timer.Start.assert_called_once_with(10)
+    gauge.Pulse.assert_called_once()
+
+
+def test_boolean_parameter_toggle_routes_actual_bool_and_starts_reload():
+    controller = Mock()
+    timer = Mock()
+    gauge = Mock()
+    event = Mock()
+    event.IsChecked.return_value = True
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+    )
+    frame._set_parameter_value = lambda name, value: MainFrame._set_parameter_value(
+        frame, name, value
+    )
+
+    MainFrame._on_parameter_toggle(frame, event, "enabled")
+
+    controller.set_parameter_value.assert_called_once_with("enabled", True)
+    timer.Start.assert_called_once()
+    gauge.Pulse.assert_called_once()
+
+
+def test_parameter_controls_replace_when_error_result_publishes_new_metadata():
+    parameter_sizer = Mock()
+    parameter_box = FakeParameterBox()
+    panel = Mock()
+    old_parameter = CreateMeshParameter("width", "float", 2.5)
+    new_parameter = CreateMeshParameter("name", "str", "base")
+    frame = SimpleNamespace(
+        _parameter_sizer=parameter_sizer,
+        _parameter_box=parameter_box,
+        _button_panel=panel,
+        _create_parameter_control=lambda parameter: parameter,
+    )
+
+    MainFrame._update_parameter_controls(frame, [old_parameter])
+    MainFrame._update_parameter_controls(frame, [new_parameter])
+
+    assert parameter_sizer.Clear.call_count == 2
+    assert parameter_sizer.Add.call_args.args[0] == new_parameter
+    assert parameter_box.visible == [True, True]
+    assert panel.Layout.call_count == 2
+
+
+def test_stale_load_result_does_not_stop_current_timer_or_update_view():
+    controller = SimpleNamespace(current_generation=2)
+    timer = Mock()
+    gauge = Mock()
+    gl_widget = Mock()
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _gl_widget=gl_widget,
+        _loader_last_load_number=0,
+        _loader_last_sequence_number=0,
+    )
+    from scadview.mesh_loader_process import LoadResult
+
+    result = LoadResult(1, 1, None, None, complete=True, generation=1)
+
+    MainFrame._handle_load_result(frame, result)
+
+    timer.Stop.assert_not_called()
+    gauge.SetValue.assert_not_called()
+    gl_widget.load_mesh.assert_not_called()

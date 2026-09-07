@@ -12,18 +12,19 @@
 
 ## 3. Controller state and stale-result handling
 
-- [ ] 3.1 Add controller parameter-state, metadata-observable, and request-generation method stubs; verify the controller still initializes and closes with existing queue seams
-- [ ] 3.2 Add failing controller tests for defaults, valid parameter updates, persistence across feature/debug reloads, normalized-path identity, signature reconciliation, no-op stale success/error/final-result rejection, and UI-facing current-generation state; verify the tests fail for the missing state behavior
-- [ ] 3.3 Implement controller-owned parameter state, reload commands, metadata publication, validation boundaries, and authoritative generation filtering before any state mutation; verify `uv run pytest tests/test_controller.py` passes
+- [x] 3.1 Add controller parameter-state, metadata-observable, and request-generation method stubs; verify the controller still initializes and closes with existing queue seams
+- [x] 3.2 Add failing controller tests for defaults, valid parameter updates, persistence across feature/debug reloads, normalized-path identity, signature reconciliation, no-op stale success/error/final-result rejection, and UI-facing current-generation state; verify the tests fail for the missing state behavior
+- [x] 3.3 Implement controller-owned parameter state, reload commands, metadata publication, validation boundaries, and authoritative generation filtering before any state mutation; verify `uv run pytest tests/test_controller.py` passes
 
 ## 4. UI controls and documentation
 
-- [ ] 4.1 Add parameter-control construction and value-conversion stubs alongside the existing feature-control helpers; verify mocked control creation has the expected parameter labels and initial values
-- [ ] 4.2 Add failing UI-focused tests for numeric/string commit validation, boolean updates using actual `bool` values, invalid-input retention, reload routing, control replacement, post-discovery error metadata, and ignoring stale results without stopping the current timer; verify the tests fail for the missing UI behavior
-- [ ] 4.3 Implement the Parameters section and commit event handling, then document the supported signature and UI behavior in `docs/create_mesh.md`, `docs/user_interface.md`, and `docs/cli_export.md`; verify the targeted UI tests and documentation checks pass
+- [x] 4.1 Add parameter-control construction and value-conversion stubs alongside the existing feature-control helpers; verify mocked control creation has the expected parameter labels and initial values
+- [x] 4.2 Add failing UI-focused tests for numeric/string commit validation, boolean updates using actual `bool` values, invalid-input retention, reload routing, control replacement, post-discovery error metadata, and ignoring stale results without stopping the current timer; verify the tests fail for the missing UI behavior
+- [x] 4.3 Implement the Parameters section and commit event handling, then document the supported signature and UI behavior in `docs/create_mesh.md`, `docs/user_interface.md`, and `docs/cli_export.md`; verify the targeted UI tests and documentation checks pass
+- [x] 4.4 Add a documented pyramid-of-balls example using `create_mesh(levels: int = 3, ball_radius: float = 1.0, level_height: float = 2.0, label: str = "Stack", show_label: bool = True)`; keep the top ball centered at `(0, 0, 0)`, use fixed `2.0` center spacing on each layer, and verify the bottom corner separation is `2 * (levels - 1)`
 
 ## 5. Integration validation
 
-- [ ] 5.1 Run the focused loader, process, controller, and UI tests together and verify the full parameterized-module flow from control edit to rendered mesh
+- [x] 5.1 Run the focused loader, process, controller, and UI tests together and verify the full parameterized-module flow from control edit to rendered mesh
 - [ ] 5.2 Run `uv run ruff check`, `uv run ty check`, and the repository preflight task; resolve any regressions without changing the documented scope
 - [ ] 5.3 Manually load a module defining `create_mesh(width: float = 2.5)`, change the control, toggle a feature if present, and confirm the newest geometry remains visible after rapid edits

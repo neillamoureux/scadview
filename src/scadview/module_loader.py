@@ -104,9 +104,8 @@ class ModuleLoader:
         return [
             parameter
             for signature_parameter in inspect.signature(function).parameters.values()
-            if (
-                parameter := self._create_parameter_descriptor(signature_parameter)
-            ) is not None
+            if (parameter := self._create_parameter_descriptor(signature_parameter))
+            is not None
         ]
 
     def _create_parameter_descriptor(
@@ -124,9 +123,7 @@ class ModuleLoader:
             return None
         return CreateMeshParameter(parameter.name, parameter_type, parameter.default)
 
-    def _supported_parameter_type(
-        self, value: Any
-    ) -> ScalarParameterType | None:
+    def _supported_parameter_type(self, value: Any) -> ScalarParameterType | None:
         value_type = type(value)
         if value_type is bool:
             return "bool"
