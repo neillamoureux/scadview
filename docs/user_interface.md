@@ -60,6 +60,8 @@ or reload rebuilds the same script. Loading a different script uses that
 script's defaults. If a script raises after its signature is discovered, its
 parameter controls remain available while the error is shown.
 
+![Parameterized stack of balls](images/stack_of_balls.png)
+
 ## View and Inspect
 
 - If you want to refit the camera to the mesh, use `View > Frame` or the `Frame`
