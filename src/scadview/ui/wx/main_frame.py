@@ -59,6 +59,11 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self._button_panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(self._button_panel, gl_widget_adapter)
+        self._sidebar_scroll = wx.ScrolledWindow(
+            self._button_panel,
+            style=wx.VSCROLL,
+        )
+        self._sidebar_scroll.SetScrollRate(0, 10)
 
         self._create_file_actions()
         self._create_view_actions()
@@ -66,7 +71,8 @@ class MainFrame(wx.Frame):
 
         self._panel_sizer = wx.BoxSizer(wx.VERTICAL)
         self._load_progress_gauge = wx.Gauge(
-            self._button_panel, style=wx.GA_HORIZONTAL | wx.GA_SMOOTH | wx.GA_PROGRESS
+            self._sidebar_scroll,
+            style=wx.GA_HORIZONTAL | wx.GA_SMOOTH | wx.GA_PROGRESS,
         )
         self._panel_sizer.Add(
             self._load_progress_gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, BORDER_SIZE
@@ -83,7 +89,8 @@ class MainFrame(wx.Frame):
             1,
             wx.EXPAND | wx.ALL,
         )
-        root.Add(self._panel_sizer, 0, wx.EXPAND | wx.ALL, BORDER_SIZE)
+        self._sidebar_scroll.SetSizer(self._panel_sizer)
+        root.Add(self._sidebar_scroll, 0, wx.EXPAND | wx.ALL, BORDER_SIZE)
         self._button_panel.SetSizer(root)
 
         menu_bar = wx.MenuBar()
@@ -174,17 +181,17 @@ class MainFrame(wx.Frame):
         dlg.Destroy()
 
     def _add_file_buttons(self):
-        load_btn = self._load_action.button(self._button_panel)
+        load_btn = self._load_action.button(self._sidebar_scroll)
         self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
-        self._reload_btn = self._reload_action.button(self._button_panel)
+        self._reload_btn = self._reload_action.button(self._sidebar_scroll)
         self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
-        self._export_btn = self._export_action.button(self._button_panel)
+        self._export_btn = self._export_action.button(self._sidebar_scroll)
         self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
     def _add_feature_controls(self):
         self._feature_box = wx.StaticBoxSizer(
             wx.VERTICAL,
-            self._button_panel,
+            self._sidebar_scroll,
             "Features",
         )
         self._feature_scroll = wx.ScrolledWindow(
@@ -221,7 +228,7 @@ class MainFrame(wx.Frame):
     def _add_parameter_controls(self) -> None:
         self._parameter_box = wx.StaticBoxSizer(
             wx.VERTICAL,
-            self._button_panel,
+            self._sidebar_scroll,
             "Parameters",
         )
         self._parameter_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -253,7 +260,7 @@ class MainFrame(wx.Frame):
         self._parameter_sizer.Clear(delete_windows=True)
         if not parameters:
             self._parameter_box.ShowItems(False)
-            self._button_panel.Layout()
+            self._layout_sidebar()
             return
         self._parameter_box.ShowItems(True)
         for parameter in parameters:
@@ -263,7 +270,7 @@ class MainFrame(wx.Frame):
                 wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
                 BORDER_SIZE,
             )
-        self._button_panel.Layout()
+        self._layout_sidebar()
 
     def _create_parameter_control(self, parameter: CreateMeshParameter) -> wx.Sizer:
         value = self._controller.parameter_values[parameter.name]
@@ -357,13 +364,13 @@ class MainFrame(wx.Frame):
             self._view_from_y_action,
             self._view_from_z_action,
         ]:
-            btn = action.button(self._button_panel)
+            btn = action.button(self._sidebar_scroll)
             self._panel_sizer.Add(btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
-        chk = self._toggle_grid_action.checkbox(self._button_panel)
+        chk = self._toggle_grid_action.checkbox(self._sidebar_scroll)
         self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
-        for rb in self._select_camera_action.radio_buttons(self._button_panel):
+        for rb in self._select_camera_action.radio_buttons(self._sidebar_scroll):
             self._panel_sizer.Add(rb, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
         for action in [
@@ -371,14 +378,14 @@ class MainFrame(wx.Frame):
             self._toggle_edges_action,
             self._toggle_gnonom_action,
         ]:
-            chk = action.checkbox(self._button_panel)
+            chk = action.checkbox(self._sidebar_scroll)
             self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
     def _update_feature_controls(self, features: list[FeatureState]):
         self._clear_feature_controls()
         if not features:
             self._feature_box.ShowItems(False)
-            self._button_panel.Layout()
+            self._layout_sidebar()
             return
         self._feature_box.ShowItems(True)
         for feature in features:
@@ -392,7 +399,12 @@ class MainFrame(wx.Frame):
             self._feature_checkboxes.append(checkbox)
         self._feature_scroll.Layout()
         self._feature_scroll.FitInside()
+        self._layout_sidebar()
+
+    def _layout_sidebar(self) -> None:
         self._button_panel.Layout()
+        self._sidebar_scroll.Layout()
+        self._sidebar_scroll.FitInside()
 
     def _clear_feature_controls(self):
         self._feature_sizer.Clear(delete_windows=True)

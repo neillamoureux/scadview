@@ -253,13 +253,20 @@ def test_reset_parameters_does_not_poll_when_controller_is_already_at_defaults()
 def test_parameter_controls_replace_when_error_result_publishes_new_metadata():
     parameter_sizer = Mock()
     parameter_box = FakeParameterBox()
-    panel = Mock()
+    button_panel = Mock()
+    sidebar = Mock()
+    layout_calls: list[str] = []
+    button_panel.Layout.side_effect = lambda: layout_calls.append("parent")
+    sidebar.Layout.side_effect = lambda: layout_calls.append("sidebar")
+    sidebar.FitInside.side_effect = lambda: layout_calls.append("fit")
     old_parameter = CreateMeshParameter("width", "float", 2.5)
     new_parameter = CreateMeshParameter("name", "str", "base")
     frame = SimpleNamespace(
         _parameter_sizer=parameter_sizer,
         _parameter_box=parameter_box,
-        _button_panel=panel,
+        _button_panel=button_panel,
+        _sidebar_scroll=sidebar,
+        _layout_sidebar=lambda: MainFrame._layout_sidebar(frame),
         _create_parameter_control=lambda parameter: parameter,
     )
 
@@ -269,7 +276,10 @@ def test_parameter_controls_replace_when_error_result_publishes_new_metadata():
     assert parameter_sizer.Clear.call_count == 2
     assert parameter_sizer.Add.call_args.args[0] == new_parameter
     assert parameter_box.visible == [True, True]
-    assert panel.Layout.call_count == 2
+    assert button_panel.Layout.call_count == 2
+    assert sidebar.Layout.call_count == 2
+    assert sidebar.FitInside.call_count == 2
+    assert layout_calls == ["parent", "sidebar", "fit"] * 2
 
 
 def test_stale_load_result_does_not_stop_current_timer_or_update_view():
