@@ -23,6 +23,30 @@ def create_mesh() -> Trimesh | Manifold | list[Trimesh | Manifold]:
     ...
 ```
 
+## Interactive Parameters
+
+Defaulted `bool`, `int`, `float`, and `str` parameters appear in the
+**Parameters** section after the script loads. Their values are passed to
+`create_mesh` by keyword when the mesh is rebuilt:
+
+```python
+from trimesh.creation import box
+
+
+def create_mesh(width: float = 2.5, include_lid: bool = True):
+    mesh = box([width, width, 1])
+    return mesh if include_lid else box([width, width, 0.5])
+```
+
+Only ordinary named and keyword-only parameters with one of those exact built-in
+default types are controllable. Positional-only and variadic parameters,
+required parameters, and defaults such as `None`, paths, containers, enums,
+NumPy scalars, and custom subclasses do not get controls. Required parameters
+still cause the normal load error when `create_mesh` is invoked.
+
+The [`stack_of_balls.py` example](examples.md#stack_of_ballspy) demonstrates
+all five supported control types in a deterministic model.
+
 ## `Trimesh` vs `Manifold`
 
 You can choose to return either `Trimesh` or `Manifold` types,
@@ -189,7 +213,7 @@ building incrementatlly is generally slower than a single build.
 If you yield very quickly (many times per second),
 some renders may be skipped to keep the speed up.
 
-As with `create_mesh` as a "regular" function, 
+As with `create_mesh` as a "regular" function,
 you can yield a singular mesh or a list of them.
 As above, yielding a list also puts {{ project_name }} into debug mode.
 

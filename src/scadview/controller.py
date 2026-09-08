@@ -17,6 +17,7 @@ from scadview.mesh_loader_process import (
     MpLoadQueue,
     ShutDownCommand,
 )
+from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.observable import Observable
 
 logger = logging.getLogger(__name__)
@@ -37,12 +38,16 @@ class Controller:
         self.on_module_path_set = Observable()
         self.on_features_change = Observable()
         self.on_debug_features_change = Observable()
+        self.on_parameters_change = Observable()
         self.module_path = ""
         self._last_export_path = ""
         self._closed = False
         self._current_mesh: list[Trimesh] | Trimesh | None = None
         self._feature_states: list[FeatureState] = []
         self._debug_features = False
+        self._parameters: list[CreateMeshParameter] = []
+        self._parameter_values: dict[str, ScalarParameterValue] = {}
+        self._current_generation = 0
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(
@@ -79,6 +84,18 @@ class Controller:
         return self._debug_features
 
     @property
+    def parameters(self) -> list[CreateMeshParameter]:
+        return self._parameters
+
+    @property
+    def parameter_values(self) -> dict[str, ScalarParameterValue]:
+        return self._parameter_values.copy()
+
+    @property
+    def current_generation(self) -> int:
+        return self._current_generation
+
+    @property
     def module_path(self) -> str:
         return self._module_path
 
@@ -101,20 +118,17 @@ class Controller:
     def load_mesh(self, module_path: str):
         self.current_mesh = None
         self.load_status = LoadStatus.START
-        if module_path != self.module_path:
+        if not self._same_module(module_path):
             self._last_export_path = (
                 ""  # Reset last export path if loading a new module
             )
             self.module_path = module_path
             self.feature_states = []
+            self._parameters = []
+            self._parameter_values = {}
+            self.on_parameters_change.notify([])
         logger.info(f"Starting load of {module_path}")
-        self._command_queue.put(
-            LoadMeshCommand(
-                module_path,
-                self._feature_state_map(),
-                debug_features=self.debug_features,
-            )
-        )
+        self._queue_load(self._feature_state_map())
 
     def reload_mesh(self):
         if self.module_path == "":
@@ -124,6 +138,9 @@ class Controller:
     def check_load_queue(self) -> LoadResult:
         try:
             load_result = self._load_queue.get_nowait()
+            if load_result.generation != self.current_generation:
+                return LoadResult(0, 0, None, None, generation=load_result.generation)
+            self._reconcile_parameters(load_result.parameters or [])
             if load_result.mesh is not None:
                 logger.debug("check_load_queue got mesh")
                 self.current_mesh = load_result.mesh
@@ -148,11 +165,31 @@ class Controller:
 
     def set_debug_features(self, enabled: bool):
         if self._debug_features == enabled:
-            return
+            return False
         self._debug_features = enabled
         self.on_debug_features_change.notify(enabled)
-        if self.module_path != "":
-            self._queue_feature_reload(self._feature_state_map())
+        if self.module_path == "":
+            return False
+        self._queue_feature_reload(self._feature_state_map())
+        return True
+
+    def set_parameter_value(self, name: str, value: ScalarParameterValue) -> None:
+        parameter = next((item for item in self.parameters if item.name == name), None)
+        if parameter is None or type(value).__name__ != parameter.type:
+            raise ValueError(f"Invalid value for parameter '{name}'")
+        if self._parameter_values.get(name) == value:
+            return
+        self._parameter_values[name] = value
+        self._queue_feature_reload(self._feature_state_map())
+
+    def reset_parameter_values(self) -> bool:
+        defaults = {parameter.name: parameter.default for parameter in self.parameters}
+        if defaults == self._parameter_values:
+            return False
+        self._parameter_values = defaults
+        self.on_parameters_change.notify(self._parameters)
+        self._queue_feature_reload(self._feature_state_map())
+        return True
 
     def export(self, file_path: str):
         # Cache the property so type narrowing is stable for the selected mesh.
@@ -217,15 +254,44 @@ class Controller:
         return updated_feature_states
 
     def _queue_feature_reload(self, feature_states: dict[str, bool]):
+        self._queue_load(feature_states)
+
+    def _queue_load(self, feature_states: dict[str, bool]):
         self.current_mesh = None
         self.load_status = LoadStatus.START
+        self._current_generation += 1
         self._command_queue.put(
             LoadMeshCommand(
                 self.module_path,
                 feature_states,
                 debug_features=self.debug_features,
+                parameter_values=self.parameter_values,
+                generation=self.current_generation,
             )
         )
+
+    def _reconcile_parameters(self, parameters: list[CreateMeshParameter]) -> None:
+        values = {
+            parameter.name: self._parameter_values.get(
+                parameter.name, parameter.default
+            )
+            for parameter in parameters
+            if self._parameter_type_is_compatible(parameter)
+        }
+        if parameters == self._parameters and values == self._parameter_values:
+            return
+        self._parameters = parameters
+        self._parameter_values = values
+        self.on_parameters_change.notify(parameters)
+
+    def _parameter_type_is_compatible(self, parameter: CreateMeshParameter) -> bool:
+        old = next(
+            (item for item in self._parameters if item.name == parameter.name), None
+        )
+        return old is None or old.type == parameter.type
+
+    def _same_module(self, module_path: str) -> bool:
+        return os.path.abspath(module_path) == os.path.abspath(self.module_path)
 
     def __del__(self):
         try:

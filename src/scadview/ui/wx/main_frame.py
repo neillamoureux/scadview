@@ -12,6 +12,7 @@ from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
+from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.ui.view_state import ViewState
 from scadview.ui.wx.action import (
@@ -30,6 +31,22 @@ INITIAL_FRAME_SIZE = (900, 600)
 BORDER_SIZE = 6
 
 
+def convert_parameter_value(
+    parameter: CreateMeshParameter, value: str | bool
+) -> ScalarParameterValue:
+    if parameter.type == "bool":
+        if type(value) is not bool:
+            raise ValueError(f"Parameter '{parameter.name}' requires a boolean value")
+        return value
+    if type(value) is not str:
+        raise ValueError(f"Parameter '{parameter.name}' requires text input")
+    if parameter.type == "int":
+        return int(value)
+    if parameter.type == "float":
+        return float(value)
+    return value
+
+
 class MainFrame(wx.Frame):
     def __init__(
         self,
@@ -42,6 +59,11 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self._button_panel = wx.Panel(self)
         self._gl_widget = create_graphics_widget(self._button_panel, gl_widget_adapter)
+        self._sidebar_scroll = wx.ScrolledWindow(
+            self._button_panel,
+            style=wx.VSCROLL,
+        )
+        self._sidebar_scroll.SetScrollRate(0, 10)
 
         self._create_file_actions()
         self._create_view_actions()
@@ -49,13 +71,15 @@ class MainFrame(wx.Frame):
 
         self._panel_sizer = wx.BoxSizer(wx.VERTICAL)
         self._load_progress_gauge = wx.Gauge(
-            self._button_panel, style=wx.GA_HORIZONTAL | wx.GA_SMOOTH | wx.GA_PROGRESS
+            self._sidebar_scroll,
+            style=wx.GA_HORIZONTAL | wx.GA_SMOOTH | wx.GA_PROGRESS,
         )
         self._panel_sizer.Add(
             self._load_progress_gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, BORDER_SIZE
         )
 
         self._add_file_buttons()
+        self._add_parameter_controls()
         self._add_feature_controls()
         self._add_view_buttons()
 
@@ -65,7 +89,8 @@ class MainFrame(wx.Frame):
             1,
             wx.EXPAND | wx.ALL,
         )
-        root.Add(self._panel_sizer, 0, wx.EXPAND | wx.ALL, BORDER_SIZE)
+        self._sidebar_scroll.SetSizer(self._panel_sizer)
+        root.Add(self._sidebar_scroll, 0, wx.EXPAND | wx.ALL, BORDER_SIZE)
         self._button_panel.SetSizer(root)
 
         menu_bar = wx.MenuBar()
@@ -81,6 +106,7 @@ class MainFrame(wx.Frame):
         self._loader_last_sequence_number = 0
         self._controller.on_load_status_change.subscribe(self._indicate_load_status)
         self._controller.on_features_change.subscribe(self._update_feature_controls)
+        self._controller.on_parameters_change.subscribe(self._update_parameter_controls)
 
     def _create_file_actions(self):
         self._load_action = Action("Load .py...", self.on_load, "L")
@@ -155,17 +181,17 @@ class MainFrame(wx.Frame):
         dlg.Destroy()
 
     def _add_file_buttons(self):
-        load_btn = self._load_action.button(self._button_panel)
+        load_btn = self._load_action.button(self._sidebar_scroll)
         self._panel_sizer.Add(load_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
-        self._reload_btn = self._reload_action.button(self._button_panel)
+        self._reload_btn = self._reload_action.button(self._sidebar_scroll)
         self._panel_sizer.Add(self._reload_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
-        self._export_btn = self._export_action.button(self._button_panel)
+        self._export_btn = self._export_action.button(self._sidebar_scroll)
         self._panel_sizer.Add(self._export_btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
     def _add_feature_controls(self):
         self._feature_box = wx.StaticBoxSizer(
             wx.VERTICAL,
-            self._button_panel,
+            self._sidebar_scroll,
             "Features",
         )
         self._feature_scroll = wx.ScrolledWindow(
@@ -199,6 +225,135 @@ class MainFrame(wx.Frame):
             BORDER_SIZE,
         )
 
+    def _add_parameter_controls(self) -> None:
+        self._parameter_box = wx.StaticBoxSizer(
+            wx.VERTICAL,
+            self._sidebar_scroll,
+            "Parameters",
+        )
+        self._parameter_sizer = wx.BoxSizer(wx.VERTICAL)
+        self._parameter_box.Add(
+            self._parameter_sizer,
+            0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+            BORDER_SIZE,
+        )
+        self._reset_parameters_button = wx.Button(
+            self._parameter_box.GetStaticBox(), label="Reset Parameters"
+        )
+        self._reset_parameters_button.Bind(wx.EVT_BUTTON, self._on_reset_parameters)
+        self._parameter_box.Add(
+            self._reset_parameters_button,
+            0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+            BORDER_SIZE,
+        )
+        self._parameter_box.ShowItems(False)
+        self._panel_sizer.Add(
+            self._parameter_box,
+            0,
+            wx.ALL | wx.EXPAND,
+            BORDER_SIZE,
+        )
+
+    def _update_parameter_controls(self, parameters: list[CreateMeshParameter]) -> None:
+        self._parameter_sizer.Clear(delete_windows=True)
+        if not parameters:
+            self._parameter_box.ShowItems(False)
+            self._layout_sidebar()
+            return
+        self._parameter_box.ShowItems(True)
+        for parameter in parameters:
+            self._parameter_sizer.Add(
+                self._create_parameter_control(parameter),
+                0,
+                wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND,
+                BORDER_SIZE,
+            )
+        self._layout_sidebar()
+
+    def _create_parameter_control(self, parameter: CreateMeshParameter) -> wx.Sizer:
+        value = self._controller.parameter_values[parameter.name]
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        parameter_parent = self._parameter_box.GetStaticBox()
+        label = wx.StaticText(parameter_parent, label=f"{parameter.name}:")
+        control = self._create_parameter_input(parameter, value)
+        row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, BORDER_SIZE)
+        row.Add(control, 1, wx.EXPAND)
+        return row
+
+    def _create_parameter_input(
+        self, parameter: CreateMeshParameter, value: ScalarParameterValue
+    ) -> wx.Control:
+        parameter_parent = self._parameter_box.GetStaticBox()
+        if parameter.type == "bool":
+            checkbox = wx.CheckBox(parameter_parent)
+            checkbox.SetValue(cast(bool, value))
+            checkbox.Bind(
+                wx.EVT_CHECKBOX,
+                lambda event, name=parameter.name: self._on_parameter_toggle(
+                    event, name
+                ),
+            )
+            return checkbox
+        control = wx.TextCtrl(
+            parameter_parent,
+            value=str(value),
+            style=wx.TE_PROCESS_ENTER,
+        )
+        control.Bind(
+            wx.EVT_TEXT_ENTER,
+            lambda event, name=parameter.name: self._on_parameter_text_commit(
+                event, name
+            ),
+        )
+        control.Bind(
+            wx.EVT_KILL_FOCUS,
+            lambda event, name=parameter.name: self._on_parameter_focus_loss(
+                event, name
+            ),
+        )
+        return control
+
+    def _on_parameter_focus_loss(self, event: wx.FocusEvent, name: str) -> None:
+        if event.GetWindow() is self._reset_parameters_button:
+            event.Skip()
+            return
+        self._on_parameter_text_commit(event, name)
+
+    def _on_parameter_text_commit(self, event: wx.Event, name: str) -> None:
+        control = cast(wx.TextCtrl, event.GetEventObject())
+        parameter = next(
+            (item for item in self._controller.parameters if item.name == name), None
+        )
+        if parameter is None:
+            event.Skip()
+            return
+        try:
+            value = convert_parameter_value(parameter, control.GetValue())
+        except ValueError:
+            logger.error("Invalid value for parameter '%s'", name)
+            event.Skip()
+            return
+        event.Skip()
+        self._set_parameter_value(name, value)
+
+    def _on_parameter_toggle(self, event: wx.CommandEvent, name: str) -> None:
+        self._set_parameter_value(name, event.IsChecked())
+
+    def _set_parameter_value(self, name: str, value: ScalarParameterValue) -> None:
+        if self._controller.parameter_values.get(name) == value:
+            return
+        self._controller.set_parameter_value(name, value)
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
+
+    def _on_reset_parameters(self, _: wx.Event) -> None:
+        if not self._controller.reset_parameter_values():
+            return
+        self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
+        self._load_progress_gauge.Pulse()
+
     def _on_module_path_set(self, path: str) -> bool:
         return path != ""
 
@@ -215,13 +370,13 @@ class MainFrame(wx.Frame):
             self._view_from_y_action,
             self._view_from_z_action,
         ]:
-            btn = action.button(self._button_panel)
+            btn = action.button(self._sidebar_scroll)
             self._panel_sizer.Add(btn, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
-        chk = self._toggle_grid_action.checkbox(self._button_panel)
+        chk = self._toggle_grid_action.checkbox(self._sidebar_scroll)
         self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
-        for rb in self._select_camera_action.radio_buttons(self._button_panel):
+        for rb in self._select_camera_action.radio_buttons(self._sidebar_scroll):
             self._panel_sizer.Add(rb, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
         for action in [
@@ -229,14 +384,14 @@ class MainFrame(wx.Frame):
             self._toggle_edges_action,
             self._toggle_gnonom_action,
         ]:
-            chk = action.checkbox(self._button_panel)
+            chk = action.checkbox(self._sidebar_scroll)
             self._panel_sizer.Add(chk, 0, wx.ALL | wx.EXPAND, BORDER_SIZE)
 
     def _update_feature_controls(self, features: list[FeatureState]):
         self._clear_feature_controls()
         if not features:
             self._feature_box.ShowItems(False)
-            self._button_panel.Layout()
+            self._layout_sidebar()
             return
         self._feature_box.ShowItems(True)
         for feature in features:
@@ -250,7 +405,12 @@ class MainFrame(wx.Frame):
             self._feature_checkboxes.append(checkbox)
         self._feature_scroll.Layout()
         self._feature_scroll.FitInside()
+        self._layout_sidebar()
+
+    def _layout_sidebar(self) -> None:
         self._button_panel.Layout()
+        self._sidebar_scroll.Layout()
+        self._sidebar_scroll.FitInside()
 
     def _clear_feature_controls(self):
         self._feature_sizer.Clear(delete_windows=True)
@@ -275,7 +435,8 @@ class MainFrame(wx.Frame):
 
     def _on_debug_features_toggle(self, event: wx.Event):
         command_event = cast(wx.CommandEvent, event)
-        self._controller.set_debug_features(command_event.IsChecked())
+        if not self._controller.set_debug_features(command_event.IsChecked()):
+            return
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 
@@ -337,6 +498,8 @@ class MainFrame(wx.Frame):
         self._handle_load_result(load_result)
 
     def _handle_load_result(self, load_result: LoadResult) -> None:
+        if load_result.generation != self._controller.current_generation:
+            return
         mesh = load_result.mesh
         if load_result.complete:
             self._loader_timer.Stop()

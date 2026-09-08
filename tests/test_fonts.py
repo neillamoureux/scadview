@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from scadview import fonts
 
 
@@ -19,17 +21,18 @@ def test_list_system_fonts_mocks_findSystemFonts(monkeypatch):
 
         @property
         def family_name(self):
-            if "3" in self.font_path:
+            font_name = Path(self.font_path).name
+            if font_name == "font3.ttf":
                 raise ValueError("Corrupted font file")
             if self.font_path == fonts.DEFAULT_FONT_PATH:
                 return "Default Font"
-            return "FakeFont" + self.font_path[-5]
+            return "FakeFont" + Path(self.font_path).stem[-1]
 
         @property
         def style_name(self):
             if self.font_path == fonts.DEFAULT_FONT_PATH:
                 return "default"
-            if "1" in self.font_path:
+            if Path(self.font_path).name == "font1.ttf":
                 return "Regular"
             return "Italic"
 

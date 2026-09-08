@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import queue
+from unittest.mock import Mock, patch
 
 import manifold3d
 import numpy.testing as npt
@@ -7,6 +8,7 @@ from trimesh.creation import box, icosphere
 
 from scadview.features import FeatureState, feature
 from scadview.mesh_loader_process import (
+    CreateMeshParameter,
     LoadMeshCommand,
     LoadResult,
     LoadStatus,
@@ -121,6 +123,67 @@ def test_load_mesh_command_preserves_debug_features():
     command = LoadMeshCommand("test/path", debug_features=True)
 
     assert command.debug_features is True
+
+
+def test_load_mesh_command_preserves_parameter_values_and_generation():
+    command = LoadMeshCommand("test/path", {"cutout": False}, True, {"width": 3.5}, 4)
+
+    assert command.parameter_values == {"width": 3.5}
+    assert command.generation == 4
+
+
+def test_load_worker_reports_parameters_and_generation(load_queue):
+    parameters = [CreateMeshParameter("width", "float", 2.5)]
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.parameters = parameters
+        loader.run_function.return_value = iter([box()])
+        worker = LoadWorker(
+            "test/path",
+            load_queue,
+            parameter_values={"width": 3.5},
+            generation=4,
+        )
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+    assert result.parameters == parameters
+    assert result.generation == 4
+    loader.run_function.assert_called_once_with("test/path", {"width": 3.5})
+
+
+def test_load_worker_reports_parameters_when_execution_fails(load_queue):
+    parameters = [CreateMeshParameter("width", "float", 2.5)]
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.parameters = parameters
+        loader.run_function.return_value = _raise_mesh_error()
+        worker = LoadWorker("test/path", load_queue, generation=4)
+        LoadWorker.load_number = 0
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+    assert result.error is not None
+    assert result.parameters == parameters
+    assert result.generation == 4
+
+
+def _raise_mesh_error():
+    raise RuntimeError("mesh failed")
+    yield
+
+
+def test_load_worker_does_not_evict_newer_queued_result():
+    load_queue = Mock()
+    newer_result = LoadResult(1, 1, None, None, generation=4)
+    load_queue.put.side_effect = [queue.Full, None]
+    load_queue.get_nowait.return_value = newer_result
+    worker = LoadWorker("test/path", load_queue, generation=3)
+
+    worker.put_in_queue(LoadResult(1, 1, None, None, generation=3))
+
+    assert load_queue.put.call_args_list[-1].args[0] == newer_result
 
 
 @pytest.fixture

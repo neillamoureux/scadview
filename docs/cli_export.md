@@ -6,8 +6,10 @@ for batch runs and for stepping through mesh creation in a debugger.
 
 ## Pattern: keep `create_mesh` UI-friendly
 
-To keep the {{ project_name }} UI working, make sure `create_mesh` takes no required
-parameters. You can still accept CLI arguments by adding a separate `main()`.
+To keep the {{ project_name }} UI working, make sure `create_mesh` takes no
+required parameters. The UI can expose defaulted built-in `bool`, `int`,
+`float`, and `str` parameters, but command-line arguments remain the
+responsibility of a separate `main()`.
 
 ```python
 {% include "../examples/cli_export.py" %}
