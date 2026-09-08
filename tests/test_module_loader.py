@@ -155,3 +155,33 @@ def create_mesh(width=2.5, *, label="part"):
     assert list(loader.run_function(file_path, {"width": 3.75, "label": "lid"})) == [
         (3.75, "lid")
     ]
+
+
+def test_run_function_drops_removed_and_renamed_parameter_values(monkeypatch):
+    def create_mesh(depth=1.25):
+        return depth
+
+    loader = ModuleLoader("create_mesh")
+    monkeypatch.setattr(loader, "_load_function", lambda _: create_mesh)
+
+    assert list(loader.run_function("unused.py", {"width": 3.75})) == [1.25]
+
+
+def test_run_function_uses_defaults_for_changed_parameter_types(monkeypatch):
+    def create_mesh(width="new", count=4):
+        return width, count
+
+    loader = ModuleLoader("create_mesh")
+    monkeypatch.setattr(loader, "_load_function", lambda _: create_mesh)
+
+    assert list(loader.run_function("unused.py", {"width": 3.75})) == [("new", 4)]
+
+
+def test_run_function_preserves_values_for_matching_parameter_types(monkeypatch):
+    def create_mesh(width=9.0):
+        return width
+
+    loader = ModuleLoader("create_mesh")
+    monkeypatch.setattr(loader, "_load_function", lambda _: create_mesh)
+
+    assert list(loader.run_function("unused.py", {"width": 3.75})) == [3.75]

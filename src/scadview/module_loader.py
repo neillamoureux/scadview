@@ -51,7 +51,8 @@ class ModuleLoader:
     ) -> Generator[Any, None, None]:
         function = self._load_function(file_path)
         self.parameters = self._discover_parameters(function)
-        return self._run_function(function, parameter_values or {}, file_path)
+        reconciled_values = self._reconcile_parameter_values(parameter_values or {})
+        return self._run_function(function, reconciled_values, file_path)
 
     def _run_function(
         self,
@@ -107,6 +108,18 @@ class ModuleLoader:
             if (parameter := self._create_parameter_descriptor(signature_parameter))
             is not None
         ]
+
+    def _reconcile_parameter_values(
+        self, parameter_values: dict[str, ScalarParameterValue]
+    ) -> dict[str, ScalarParameterValue]:
+        return {
+            parameter.name: parameter_values[parameter.name]
+            if parameter.name in parameter_values
+            and self._supported_parameter_type(parameter_values[parameter.name])
+            == parameter.type
+            else parameter.default
+            for parameter in self.parameters
+        }
 
     def _create_parameter_descriptor(
         self, parameter: inspect.Parameter
