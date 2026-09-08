@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/neillamoureux/scadview/compare/v0.2.9...v0.2.10) (2026-09-08)
+
+
+### Features
+
+* add dynamic create_mesh parameters ([#165](https://github.com/neillamoureux/scadview/issues/165)) ([d0759a2](https://github.com/neillamoureux/scadview/commit/d0759a22bf11fa72d9b9bce8e9989b269921cbf1))
+
 ## [0.2.9](https://github.com/neillamoureux/scadview/compare/v0.2.8...v0.2.9) (2026-08-30)
 
 
