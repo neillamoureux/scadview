@@ -27,6 +27,6 @@
 ## 5. Integration validation
 
 - [x] 5.1 Run the focused loader, process, controller, and UI tests together and verify the full parameterized-module flow from control edit to rendered mesh
-- [ ] 5.2 Run `uv run ruff check`, `uv run ty check`, and the repository preflight task; resolve any regressions without changing the documented scope
-- [ ] 5.3 Manually load a module defining `create_mesh(width: float = 2.5)`, change the control, toggle a feature if present, and confirm the newest geometry remains visible after rapid edits
+- [x] 5.2 Run `uv run ruff check`, `uv run ty check`, and the repository preflight task; resolve any regressions without changing the documented scope
+- [x] 5.3 Manually load a module defining `create_mesh(width: float = 2.5)`, change the control, toggle a feature if present, and confirm the newest geometry remains visible after rapid edits
 - [x] 5.4 Automate the default `stack_of_balls.py` documentation screenshot through `docs/screenshots.toml`, generate `docs/images/stack_of_balls.png`, and verify it is referenced from the examples documentation

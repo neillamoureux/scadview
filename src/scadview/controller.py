@@ -47,7 +47,7 @@ class Controller:
         self._debug_features = False
         self._parameters: list[CreateMeshParameter] = []
         self._parameter_values: dict[str, ScalarParameterValue] = {}
-        self._request_generation = 0
+        self._current_generation = 0
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._loader_process = MeshLoaderProcess(
@@ -93,7 +93,7 @@ class Controller:
 
     @property
     def current_generation(self) -> int:
-        return self._request_generation
+        return self._current_generation
 
     @property
     def module_path(self) -> str:
@@ -259,7 +259,7 @@ class Controller:
     def _queue_load(self, feature_states: dict[str, bool]):
         self.current_mesh = None
         self.load_status = LoadStatus.START
-        self._request_generation += 1
+        self._current_generation += 1
         self._command_queue.put(
             LoadMeshCommand(
                 self.module_path,
