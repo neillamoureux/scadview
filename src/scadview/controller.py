@@ -165,11 +165,13 @@ class Controller:
 
     def set_debug_features(self, enabled: bool):
         if self._debug_features == enabled:
-            return
+            return False
         self._debug_features = enabled
         self.on_debug_features_change.notify(enabled)
-        if self.module_path != "":
-            self._queue_feature_reload(self._feature_state_map())
+        if self.module_path == "":
+            return False
+        self._queue_feature_reload(self._feature_state_map())
+        return True
 
     def set_parameter_value(self, name: str, value: ScalarParameterValue) -> None:
         parameter = next((item for item in self.parameters if item.name == name), None)
@@ -181,9 +183,7 @@ class Controller:
         self._queue_feature_reload(self._feature_state_map())
 
     def reset_parameter_values(self) -> bool:
-        defaults = {
-            parameter.name: parameter.default for parameter in self.parameters
-        }
+        defaults = {parameter.name: parameter.default for parameter in self.parameters}
         if defaults == self._parameter_values:
             return False
         self._parameter_values = defaults

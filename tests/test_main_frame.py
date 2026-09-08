@@ -155,6 +155,26 @@ def test_parameter_text_commit_skips_event_before_control_replacement():
     assert order == ["skip-event", "replace-controls"]
 
 
+def test_parameter_focus_loss_to_reset_button_does_not_commit():
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    controller = Mock(parameters=[parameter])
+    reset_button = object()
+    control = Mock()
+    control.GetValue.return_value = "3.75"
+    event = Mock()
+    event.GetEventObject.return_value = control
+    event.GetWindow.return_value = reset_button
+    frame = SimpleNamespace(
+        _controller=controller,
+        _reset_parameters_button=reset_button,
+    )
+
+    MainFrame._on_parameter_focus_loss(frame, event, "width")
+
+    controller.set_parameter_value.assert_not_called()
+    event.Skip.assert_called_once_with()
+
+
 def test_repeated_focus_commit_does_not_restart_completed_load_timer():
     parameter = CreateMeshParameter("width", "float", 2.5)
     values = {"width": 2.5}
@@ -212,6 +232,26 @@ def test_boolean_parameter_toggle_routes_actual_bool_and_starts_reload():
     controller.set_parameter_value.assert_called_once_with("enabled", True)
     timer.Start.assert_called_once()
     gauge.Pulse.assert_called_once()
+
+
+def test_debug_toggle_does_not_poll_when_no_reload_is_queued():
+    controller = Mock()
+    controller.set_debug_features.return_value = False
+    timer = Mock()
+    gauge = Mock()
+    event = Mock()
+    event.IsChecked.return_value = True
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+    )
+
+    MainFrame._on_debug_features_toggle(frame, event)
+
+    controller.set_debug_features.assert_called_once_with(True)
+    timer.Start.assert_not_called()
+    gauge.Pulse.assert_not_called()
 
 
 def test_reset_parameters_routes_reload_and_starts_polling():

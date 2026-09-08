@@ -137,7 +137,7 @@ def test_controller_reloads_with_session_persistent_feature_debug(monkeypatch):
         assert first_command.debug_features is False
 
         controller.feature_states = [FeatureState("cutout", True)]
-        controller.set_debug_features(True)
+        assert controller.set_debug_features(True) is True
 
         debug_command = controller._command_queue.items.pop()
         assert isinstance(debug_command, LoadMeshCommand)
@@ -150,6 +150,18 @@ def test_controller_reloads_with_session_persistent_feature_debug(monkeypatch):
         second_command = controller._command_queue.items.pop()
         assert isinstance(second_command, LoadMeshCommand)
         assert second_command.debug_features is True
+    finally:
+        controller.close()
+
+
+def test_controller_debug_toggle_before_module_load_does_not_queue_reload(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        assert controller.set_debug_features(True) is False
+        assert controller._command_queue.items == []
     finally:
         controller.close()
 

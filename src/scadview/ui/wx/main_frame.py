@@ -309,11 +309,17 @@ class MainFrame(wx.Frame):
         )
         control.Bind(
             wx.EVT_KILL_FOCUS,
-            lambda event, name=parameter.name: self._on_parameter_text_commit(
+            lambda event, name=parameter.name: self._on_parameter_focus_loss(
                 event, name
             ),
         )
         return control
+
+    def _on_parameter_focus_loss(self, event: wx.FocusEvent, name: str) -> None:
+        if event.GetWindow() is self._reset_parameters_button:
+            event.Skip()
+            return
+        self._on_parameter_text_commit(event, name)
 
     def _on_parameter_text_commit(self, event: wx.Event, name: str) -> None:
         control = cast(wx.TextCtrl, event.GetEventObject())
@@ -429,7 +435,8 @@ class MainFrame(wx.Frame):
 
     def _on_debug_features_toggle(self, event: wx.Event):
         command_event = cast(wx.CommandEvent, event)
-        self._controller.set_debug_features(command_event.IsChecked())
+        if not self._controller.set_debug_features(command_event.IsChecked()):
+            return
         self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
         self._load_progress_gauge.Pulse()
 
