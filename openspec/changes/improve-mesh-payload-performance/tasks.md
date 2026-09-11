@@ -37,6 +37,6 @@
 ## 7. Validate and Apply the Indexed-Renderer Gate
 
 - [ ] 7.1 Run formatting, linting, type checks, targeted scene-asset/loader/controller/renderer tests, and the full project preflight; verify every command passes and inspect the final diff for architectural boundary violations or unrelated changes.
-- [ ] 7.2 Repeat the baseline benchmark cases on the compact path and record comparable before-and-after results; verify the report identifies whether serialization, payload conversion, renderer expansion, upload, or retained buffers dominate remaining cost.
+- [x] 7.2 Repeat the baseline benchmark cases on the compact path and record comparable before-and-after results; verify the report identifies whether serialization, payload conversion, renderer expansion, upload, or retained buffers dominate remaining cost.
 - [ ] 7.3 Manually compare startup, loading, base-axis, opaque, transparent multi-mesh, feature-debug, incremental, edge-on/off, and framing scenes on supported GUI/OpenGL environments; verify visual parity and record the tested platforms because automated checks cannot establish visual correctness.
 - [ ] 7.4 Record the indexed-renderer gate decision from benchmark and visual evidence; verify fully indexed shader work remains deferred, or open a separately reviewable OpenSpec change with explicit portability and visual-acceptance criteria if renderer expansion/upload remains a material bottleneck.

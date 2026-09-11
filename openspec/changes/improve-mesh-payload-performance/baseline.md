@@ -31,3 +31,69 @@ array preparation. `Upload` and `First frame` use the existing VAO helper and
 the first VAO draw, each synchronized with `Context.finish()`. The first
 small-case draw includes cold-context overhead, so timing values are evidence,
 not CI thresholds.
+
+## Compact payload comparison
+
+Command, run 1:
+
+```console
+uv run --no-sync python -m tools.mesh_transfer_benchmark --path payload --output compact-run1.json
+```
+
+Command, run 2:
+
+```console
+uv run --no-sync python -m tools.mesh_transfer_benchmark --path payload --output compact-run2.json
+```
+
+Both runs used the same environment recorded above, the same deterministic
+cases, standalone ModernGL, and Python `tracemalloc` peak allocation. The
+compact path serializes `MeshPayload` values and expands them into the same
+triangle-corner GPU inputs used by the renderer.
+
+| Case | Run | Pickle | Payload conversion | Encode | Decode | Queue | Peak | Prepare | Upload | First frame |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| high-sharing-small | 1 | 62,675 | 1.681 | 0.202 | 0.276 | 0.960 | 1,190,172 | 0.631 | 0.327 | 7.753 |
+| high-sharing-small | 2 | 62,675 | 1.730 | 0.202 | 0.276 | 0.960 | 1,192,975 | 0.636 | 0.320 | 8.189 |
+| high-sharing-large | 1 | 986,606 | 7.967 | 0.282 | 0.085 | 1.279 | 12,353,728 | 3.054 | 0.918 | 5.502 |
+| high-sharing-large | 2 | 986,606 | 7.816 | 0.282 | 0.085 | 1.279 | 12,352,130 | 2.658 | 1.012 | 5.545 |
+| mixed-transparency | 1 | 106,299 | 2.099 | 0.169 | 0.110 | 0.600 | 1,302,278 | 0.538 | 0.294 | 5.050 |
+| mixed-transparency | 2 | 106,299 | 1.935 | 0.169 | 0.110 | 0.600 | 1,302,554 | 0.470 | 0.270 | 5.718 |
+| representative-large-model | 1 | 4,931,991 | 40.618 | 1.105 | 0.942 | 5.030 | 56,909,007 | 14.837 | 3.702 | 5.802 |
+| representative-large-model | 2 | 4,931,991 | 37.562 | 1.105 | 0.942 | 5.030 | 56,901,319 | 14.089 | 3.411 | 5.310 |
+
+The compact pickle is 17.7%, 16.9%, 18.0%, and 16.9% smaller than the
+corresponding recorded Trimesh baseline for the four cases. Payload conversion
+is the new dominant measured cost for the large representative case; GPU
+upload and first-frame measurements do not indicate that a fully indexed
+renderer is currently the material bottleneck. These timings are evidence, not
+CI thresholds.
+
+## Human visual validation checklist
+
+Not run in this environment: no supported SCADview GUI session was available.
+On a supported GUI/OpenGL platform, compare the same startup and loaded scenes
+before and after the change, recording OS, Python, GPU, driver, and OpenGL
+version:
+
+- startup mesh: geometry, default color, framing, axes, labels, and gnomon;
+- loading placeholder: geometry, background color, axes, and transition;
+- base axes: visibility, scale while framing small and large meshes, and labels;
+- opaque single mesh: flat shading, color, framing, and depth behavior;
+- transparent multi-mesh list: multiple mesh colors, global triangle ordering,
+  and depth/blend behavior;
+- feature-debug list: ordering, per-mesh colors, background, and export state;
+- incremental generator results: replacement and final completion behavior;
+- edge display on and off: every triangle boundary, including shared vertices;
+- framing from each supported view direction and after resize/orbit operations.
+
+Until this checklist is completed by a human, visual parity remains unverified.
+
+## Indexed-renderer gate
+
+Based on the compact benchmark, fully indexed shader rendering remains deferred:
+serialized transfer improved materially, while upload and first-frame timings are
+small relative to payload conversion and retained temporary allocation. The
+human visual checklist above is still outstanding, so this is a provisional
+gate decision and does not authorize an indexed-renderer redesign or a separate
+change.

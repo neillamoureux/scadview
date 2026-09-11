@@ -14,6 +14,7 @@ from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+from typing import Literal
 
 import moderngl
 import numpy as np
@@ -28,6 +29,7 @@ METRIC_NAMES = (
     "mesh_count",
     "pickle_size_bytes",
     "trimesh_conversion_ms",
+    "payload_conversion_ms",
     "pickle_encode_ms",
     "pickle_decode_ms",
     "queue_round_trip_ms",
@@ -56,24 +58,29 @@ def main() -> None:
     report = run_benchmark(
         measure_gpu=not arguments.no_gpu,
         measure_peak_memory=not arguments.no_peak_memory,
+        path=arguments.path,
     )
     _write_report(report, arguments.output)
 
 
 def run_benchmark(
-    *, measure_gpu: bool = True, measure_peak_memory: bool = True
+    *,
+    measure_gpu: bool = True,
+    measure_peak_memory: bool = True,
+    path: Literal["trimesh", "payload"] = "trimesh",
 ) -> dict[str, Any]:
-    """Measure every baseline workload using the existing Trimesh path."""
+    """Measure every workload using the selected transfer representation."""
     return {
         "benchmark_version": 1,
         "command": "uv run python -m tools.mesh_transfer_benchmark",
         "environment": _environment_metadata(),
-        "path": "trimesh",
+        "path": path,
         "cases": [
             measure_case(
                 case,
                 measure_gpu=measure_gpu,
                 measure_peak_memory=measure_peak_memory,
+                path=path,
             )
             for case in discover_cases()
         ],
@@ -95,12 +102,13 @@ def measure_case(
     *,
     measure_gpu: bool = True,
     measure_peak_memory: bool = True,
+    path: Literal["trimesh", "payload"] = "trimesh",
 ) -> dict[str, Any]:
     """Measure one workload without making timing assertions."""
     if measure_peak_memory:
         tracemalloc.start()
     try:
-        measurement = _measure_case(case, measure_gpu)
+        measurement = _measure_case(case, measure_gpu, path)
         if measure_peak_memory:
             measurement["peak_memory_bytes"] = tracemalloc.get_traced_memory()[1]
             measurement["peak_memory_supported"] = True
@@ -113,14 +121,20 @@ def measure_case(
             tracemalloc.stop()
 
 
-def _measure_case(case: BenchmarkCase, measure_gpu: bool) -> dict[str, Any]:
+def _measure_case(
+    case: BenchmarkCase,
+    measure_gpu: bool,
+    path: Literal["trimesh", "payload"],
+) -> dict[str, Any]:
     start = perf_counter()
     meshes = case.meshes()
     trimesh_conversion_ms = _elapsed_ms(start)
-    serialized, encode_ms = _pickle_encode(meshes)
+    payloads, payload_conversion_ms = _to_payloads(meshes, path)
+    transfer_values: list[Any] = meshes if path == "trimesh" else payloads
+    serialized, encode_ms = _pickle_encode(transfer_values)
     _, decode_ms = _pickle_decode(serialized)
-    queue_round_trip_ms = _queue_round_trip(meshes)
-    prepared, preparation_ms = _prepare_renderer_data(meshes)
+    queue_round_trip_ms = _queue_round_trip(transfer_values)
+    prepared, preparation_ms = _prepare_renderer_data(payloads)
     gpu_measurements = _measure_gpu(prepared) if measure_gpu else _no_gpu_measurement()
     return {
         "case": case.name,
@@ -129,12 +143,23 @@ def _measure_case(case: BenchmarkCase, measure_gpu: bool) -> dict[str, Any]:
         "face_count": sum(len(mesh.faces) for mesh in meshes),
         "pickle_size_bytes": len(serialized),
         "trimesh_conversion_ms": trimesh_conversion_ms,
+        "payload_conversion_ms": payload_conversion_ms,
         "pickle_encode_ms": encode_ms,
         "pickle_decode_ms": decode_ms,
         "queue_round_trip_ms": queue_round_trip_ms,
         "renderer_preparation_ms": preparation_ms,
         **gpu_measurements,
     }
+
+
+def _to_payloads(
+    meshes: list[Trimesh], path: Literal["trimesh", "payload"]
+) -> tuple[list[Any], float]:
+    if path == "trimesh":
+        return [mesh_to_payload(mesh) for mesh in meshes], 0.0
+    start = perf_counter()
+    payloads = [mesh_to_payload(mesh) for mesh in meshes]
+    return payloads, _elapsed_ms(start)
 
 
 def _grid_mesh(
@@ -203,10 +228,10 @@ def _queue_round_trip(meshes: list[Trimesh]) -> float:
 
 
 def _prepare_renderer_data(
-    meshes: list[Trimesh],
+    payloads: list[Any],
 ) -> tuple[list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]], float]:
     start = perf_counter()
-    prepared = [expand_payload(mesh_to_payload(mesh)) for mesh in meshes]
+    prepared = [expand_payload(payload) for payload in payloads]
     return prepared, _elapsed_ms(start)
 
 
@@ -278,6 +303,7 @@ def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-gpu", action="store_true")
     parser.add_argument("--no-peak-memory", action="store_true")
+    parser.add_argument("--path", choices=("trimesh", "payload"), default="trimesh")
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
 

@@ -41,6 +41,14 @@ def test_run_benchmark_reports_environment_and_planned_metrics():
     assert set(METRIC_NAMES) <= report["cases"][0].keys()
 
 
+def test_run_benchmark_supports_compact_payload_path():
+    report = run_benchmark(path="payload", measure_gpu=False, measure_peak_memory=False)
+
+    assert report["path"] == "payload"
+    assert report["cases"][0]["payload_conversion_ms"] >= 0
+    assert report["cases"][0]["pickle_size_bytes"] < 100_000
+
+
 def test_measurement_reports_pickle_timing_and_optional_memory():
     measurement = measure_case(discover_cases()[0], measure_gpu=False)
 
