@@ -8,7 +8,7 @@ from multiprocessing import Process, Queue
 from multiprocessing import queues as mp_queues
 from threading import Thread
 from time import time
-from typing import Any, Generator, Generic, Type, TypeVar
+from typing import Any, Generator, Generic, Type, TypeVar, cast
 
 import numpy as np
 from manifold3d import Error as ManifoldError
@@ -29,6 +29,7 @@ from scadview.features import (
 )
 from scadview.load_status import LoadStatus
 from scadview.logging_worker import configure_worker_logging
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.module_loader import (
     CreateMeshParameter,
     ModuleLoader,
@@ -111,7 +112,8 @@ class ShutDownCommand(Command):
     pass
 
 
-MeshType = Trimesh | list[Trimesh]
+SourceMeshType = Trimesh | list[Trimesh]
+MeshType = MeshPayload | list[MeshPayload]
 CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
@@ -193,12 +195,12 @@ class LoadWorker(Thread):
         last_mesh = None
         try:
             for mesh in self.run_mesh_module():
-                last_mesh = mesh
                 sequence_number += 1
                 if self.cancelled:
                     logger.info("LoadWorker cancelled, stopping load")
                     return
                 self._update_mesh(sequence_number, mesh)
+                last_mesh = mesh
         except Exception as e:
             logger.exception("Failed to load mesh from %s", self.module_path)
             self._update_mesh(sequence_number, last_mesh, final=True, error=e)
@@ -215,12 +217,13 @@ class LoadWorker(Thread):
         tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
         tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
+        payload = self._payload_mesh(tmesh)
 
         self.put_in_queue(
             LoadResult(
                 self.load_number,
                 sequence_number,
-                tmesh,
+                payload,
                 error=error,
                 complete=final,
                 features=self._current_feature_states(),
@@ -229,7 +232,9 @@ class LoadWorker(Thread):
             )
         )
 
-    def _ensure_trimesh(self, mesh: CreateMeshResultType | None) -> MeshType | None:
+    def _ensure_trimesh(
+        self, mesh: CreateMeshResultType | None
+    ) -> SourceMeshType | None:
         if mesh is None:
             return None
         if isinstance(mesh, NullFeatureMesh):
@@ -270,7 +275,7 @@ class LoadWorker(Thread):
             f"Manifold, or list[Manifold], got {type(mesh)}"
         )
 
-    def _select_debug_mesh(self, mesh: MeshType | None) -> MeshType | None:
+    def _select_debug_mesh(self, mesh: SourceMeshType | None) -> SourceMeshType | None:
         if not self.debug_features:
             return mesh
         sources = [source.mesh for source in self._feature_sources if source.enabled]
@@ -278,11 +283,19 @@ class LoadWorker(Thread):
             return mesh
         return self._ensure_trimesh(sources)
 
-    def _color_if_debug(self, tmesh: MeshType | None):
+    def _color_if_debug(self, tmesh: SourceMeshType | None):
         if isinstance(tmesh, list):
             for tm, color in zip(tmesh, debug_color()):
                 if "scadview" not in tm.metadata:
                     set_mesh_color(tm, color, alpha=DEBUG_COLOR_ALPHA)
+
+    def _payload_mesh(self, mesh: SourceMeshType | None) -> MeshType | None:
+        if mesh is None:
+            return None
+        if isinstance(mesh, list):
+            source_meshes = cast(list[Trimesh], mesh)
+            return [mesh_to_payload(item) for item in source_meshes]
+        return mesh_to_payload(mesh)
 
     def put_in_queue(self, result: LoadResult):
         result_put = False

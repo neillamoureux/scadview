@@ -12,9 +12,9 @@
 
 ## 3. Change Loader Result Transport
 
-- [ ] 3.1 Update internal result and queue type stubs to carry one payload, a payload list, or no mesh while retaining load metadata and debug-status semantics; verify type checking reaches the intended incomplete conversion seam.
-- [ ] 3.2 Add failing loader and queue tests for single meshes, lists, feature-debug colors, generators, completion/error results, bounded-queue replacement, cancellation, and stale generations; run the targeted tests and confirm failures are caused by results still carrying `Trimesh` values.
-- [ ] 3.3 Convert normalized and validated meshes to payloads immediately before publication without changing normalization order or metadata; verify loader/queue tests pass, an actual multiprocessing round trip contains equivalent payload geometry with no complete `Trimesh` instance, and source objects do not enter controller ownership.
+- [x] 3.1 Update internal result and queue type stubs to carry one payload, a payload list, or no mesh while retaining load metadata and debug-status semantics; verify type checking reaches the intended incomplete conversion seam.
+- [x] 3.2 Add failing loader and queue tests for single meshes, lists, feature-debug colors, generators, completion/error results, bounded-queue replacement, cancellation, and stale generations; run the targeted tests and confirm failures are caused by results still carrying `Trimesh` values.
+- [x] 3.3 Convert normalized and validated meshes to payloads immediately before publication without changing normalization order or metadata; verify loader/queue tests pass, an actual multiprocessing round trip contains equivalent payload geometry with no complete `Trimesh` instance, and source objects do not enter controller ownership.
 
 ## 4. Retain Payloads and Preserve Export
 

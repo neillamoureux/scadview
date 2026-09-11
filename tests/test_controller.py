@@ -9,6 +9,7 @@ from trimesh.creation import box
 from scadview.controller import Controller
 from scadview.features import FeatureState
 from scadview.mesh_loader_process import LoadMeshCommand, LoadResult
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
 
 
@@ -58,11 +59,12 @@ def test_controller_reloads_with_updated_feature_state(monkeypatch):
         assert isinstance(first_command, LoadMeshCommand)
         assert first_command.feature_states == {}
 
+        payload = mesh_to_payload(box())
         controller._load_queue.items.append(
             LoadResult(
                 1,
                 1,
-                box(),
+                payload,
                 None,
                 False,
                 [FeatureState("cutout", True)],
@@ -70,6 +72,8 @@ def test_controller_reloads_with_updated_feature_state(monkeypatch):
             )
         )
         controller.check_load_queue()
+        assert controller.current_mesh is payload
+        assert isinstance(controller.current_mesh, MeshPayload)
         controller.set_feature_enabled("cutout", False)
 
         second_command = controller._command_queue.items.pop()
@@ -89,7 +93,14 @@ def test_controller_reconciles_parameters_and_reloads_with_values(monkeypatch):
         controller._command_queue.items.clear()
         parameter = CreateMeshParameter("width", "float", 2.5)
         controller._load_queue.items.append(
-            LoadResult(1, 1, box(), None, parameters=[parameter], generation=1)
+            LoadResult(
+                1,
+                1,
+                mesh_to_payload(box()),
+                None,
+                parameters=[parameter],
+                generation=1,
+            )
         )
         controller.check_load_queue()
 
@@ -110,7 +121,7 @@ def test_controller_ignores_stale_result(monkeypatch):
     try:
         controller.load_mesh("/tmp/model.py")
         controller.load_mesh("/tmp/model.py")
-        stale = LoadResult(1, 1, box(), None, generation=1)
+        stale = LoadResult(1, 1, mesh_to_payload(box()), None, generation=1)
         controller._load_queue.items.append(stale)
 
         result = controller.check_load_queue()
@@ -220,7 +231,14 @@ def test_controller_reset_parameter_values_restores_defaults_and_reloads(monkeyp
             CreateMeshParameter("enabled", "bool", True),
         ]
         controller._load_queue.items.append(
-            LoadResult(1, 1, box(), None, parameters=parameters, generation=1)
+            LoadResult(
+                1,
+                1,
+                mesh_to_payload(box()),
+                None,
+                parameters=parameters,
+                generation=1,
+            )
         )
         controller.check_load_queue()
         controller.set_parameter_value("width", 3.5)

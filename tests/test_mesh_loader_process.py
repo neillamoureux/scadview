@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import manifold3d
 import numpy.testing as npt
 import pytest
+from trimesh import Trimesh
 from trimesh.creation import box, icosphere
 
 from scadview.features import FeatureState, feature
@@ -16,6 +17,7 @@ from scadview.mesh_loader_process import (
     MpLoadQueue,
     MpQueue,
 )
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
 
 
 @pytest.fixture
@@ -96,7 +98,7 @@ def test_mp_queue_close_discards_pending_items(mock_queue, mp_queue_int):
 
 
 def test_load_result_debug():
-    mesh = box()
+    mesh = mesh_to_payload(box())
     lr = LoadResult(1, 2, [mesh], None)
     assert lr.debug
     lr = LoadResult(1, 2, mesh, None)
@@ -104,7 +106,7 @@ def test_load_result_debug():
 
 
 def test_load_result_status():
-    mesh = box()
+    mesh = mesh_to_payload(box())
     lr = LoadResult(1, 2, mesh, Exception())
     assert lr.status == LoadStatus.ERROR
     lr = LoadResult(1, 2, [mesh], None)
@@ -176,7 +178,7 @@ def _raise_mesh_error():
 
 def test_load_worker_does_not_evict_newer_queued_result():
     load_queue = Mock()
-    newer_result = LoadResult(1, 1, None, None, generation=4)
+    newer_result = LoadResult(1, 1, mesh_to_payload(box()), None, generation=4)
     load_queue.put.side_effect = [queue.Full, None]
     load_queue.get_nowait.return_value = newer_result
     worker = LoadWorker("test/path", load_queue, generation=3)
@@ -184,6 +186,16 @@ def test_load_worker_does_not_evict_newer_queued_result():
     worker.put_in_queue(LoadResult(1, 1, None, None, generation=3))
 
     assert load_queue.put.call_args_list[-1].args[0] == newer_result
+
+
+def test_cancelled_worker_does_not_publish_payload(load_queue):
+    worker = LoadWorker("test/path", load_queue)
+    worker.cancel()
+
+    worker.put_in_queue(LoadResult(1, 1, mesh_to_payload(box()), None))
+
+    with pytest.raises(queue.Empty):
+        load_queue.get_nowait()
 
 
 @pytest.fixture
@@ -229,8 +241,7 @@ def test_load_worker_put_in_queue(mesh, load_queue, started_load_worker):
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 1
-    npt.assert_array_equal(result.mesh.vertices, mesh.vertices)
-    npt.assert_array_equal(result.mesh.faces, mesh.faces)
+    _assert_payload_geometry(result.mesh, mesh)
     assert not result.error
     assert not result.complete  # Even though no more meshes, not set complete
 
@@ -240,8 +251,7 @@ def test_load_worker_put_in_queue(mesh, load_queue, started_load_worker):
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 1
-    npt.assert_array_equal(result.mesh.vertices, mesh.vertices)
-    npt.assert_array_equal(result.mesh.faces, mesh.faces)
+    _assert_payload_geometry(result.mesh, mesh)
     assert not result.error
     assert result.complete
 
@@ -253,16 +263,14 @@ def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_work
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 1
-    npt.assert_array_equal(result.mesh.vertices, mesh[0].vertices)
-    npt.assert_array_equal(result.mesh.faces, mesh[0].faces)
+    _assert_payload_geometry(result.mesh, mesh[0])
     assert not result.error
     assert not result.complete
 
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 2
-    npt.assert_array_equal(result.mesh.vertices, mesh[1].vertices)
-    npt.assert_array_equal(result.mesh.faces, mesh[1].faces)
+    _assert_payload_geometry(result.mesh, mesh[1])
     assert not result.error
     assert not result.complete  # Even though no more meshes, not set complete
 
@@ -272,8 +280,7 @@ def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_work
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 2
-    npt.assert_array_equal(result.mesh.vertices, mesh[1].vertices)
-    npt.assert_array_equal(result.mesh.faces, mesh[1].faces)
+    _assert_payload_geometry(result.mesh, mesh[1])
     assert not result.error
     assert result.complete
 
@@ -293,9 +300,10 @@ def test_load_worker_colors_mesh_list(load_queue):
     result = load_queue.get(timeout=1.0)
     assert isinstance(result.mesh, list)
     load_queue.get(timeout=1.0)  # Otherwise hangs on windows.
-    for tm in result.mesh:
-        assert "scadview" in tm.metadata
-        assert tm.metadata["scadview"]["color"][3] == 0.5
+    for payload in result.mesh:
+        assert isinstance(payload, MeshPayload)
+        assert payload.color is not None
+        assert payload.color[3] == 128
 
 
 def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
@@ -324,12 +332,13 @@ def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
     assert isinstance(first_load.mesh, list)
     assert isinstance(second_load.mesh, list)
     assert isinstance(final_load.mesh, list)
-    npt.assert_array_equal(first_load.mesh[0].vertices, first_source.vertices)
-    npt.assert_array_equal(second_load.mesh[0].vertices, first_source.vertices)
-    npt.assert_array_equal(second_load.mesh[1].vertices, second_source.vertices)
-    npt.assert_array_equal(final_load.mesh[0].vertices, first_source.vertices)
-    npt.assert_array_equal(final_load.mesh[1].vertices, second_source.vertices)
-    assert first_load.mesh[0].metadata["scadview"]["color"][3] == 0.5
+    _assert_payload_geometry(first_load.mesh[0], first_source)
+    _assert_payload_geometry(second_load.mesh[0], first_source)
+    _assert_payload_geometry(second_load.mesh[1], second_source)
+    _assert_payload_geometry(final_load.mesh[0], first_source)
+    _assert_payload_geometry(final_load.mesh[1], second_source)
+    assert first_load.mesh[0].color is not None
+    assert first_load.mesh[0].color[3] == 128
     assert final_load.complete
 
 
@@ -358,7 +367,8 @@ def test_load_worker_debug_omits_disabled_feature_sources(load_queue):
 
     assert isinstance(result.mesh, list)
     assert len(result.mesh) == 1
-    assert result.mesh[0].metadata["scadview"]["color"][3] == 0.5
+    assert result.mesh[0].color is not None
+    assert result.mesh[0].color[3] == 128
 
 
 def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
@@ -379,8 +389,9 @@ def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
 
     assert isinstance(result.mesh, list)
     assert len(result.mesh) == 1
-    assert isinstance(result.mesh[0], type(box()))
-    assert result.mesh[0].metadata["scadview"]["color"][3] == 0.5
+    assert isinstance(result.mesh[0], MeshPayload)
+    assert result.mesh[0].color is not None
+    assert result.mesh[0].color[3] == 128
 
 
 def test_load_worker_debug_omits_unregistered_meshes_from_feature_entries(
@@ -406,7 +417,7 @@ def test_load_worker_debug_omits_unregistered_meshes_from_feature_entries(
 
     assert isinstance(result.mesh, list)
     assert len(result.mesh) == 1
-    npt.assert_array_equal(result.mesh[0].vertices, source.vertices)
+    _assert_payload_geometry(result.mesh[0], source)
 
 
 def test_load_worker_debug_falls_back_to_normal_mesh_without_feature_sources(
@@ -422,7 +433,7 @@ def test_load_worker_debug_falls_back_to_normal_mesh_without_feature_sources(
 
     result = load_queue.get(timeout=1.0)
 
-    npt.assert_array_equal(result.mesh.vertices, normal_mesh.vertices)
+    _assert_payload_geometry(result.mesh, normal_mesh)
 
 
 def test_load_worker_preserves_normal_mesh_when_feature_debug_is_off(load_queue):
@@ -442,7 +453,7 @@ def test_load_worker_preserves_normal_mesh_when_feature_debug_is_off(load_queue)
 
     result = load_queue.get(timeout=1.0)
 
-    npt.assert_array_equal(result.mesh.vertices, normal_mesh.vertices)
+    _assert_payload_geometry(result.mesh, normal_mesh)
 
 
 def test_load_worker_tracks_feature_states_and_filters_disabled_features(load_queue):
@@ -511,3 +522,10 @@ def test_load_worker_cancel(started_load_worker):
     started_load_worker.cancel()
     started_load_worker.join(timeout=1.0)
     assert not started_load_worker.is_alive()
+
+
+def _assert_payload_geometry(payload, mesh):
+    assert isinstance(payload, MeshPayload)
+    assert not isinstance(payload, Trimesh)
+    npt.assert_allclose(payload.vertices, mesh.vertices)
+    npt.assert_array_equal(payload.faces, mesh.faces)
