@@ -30,9 +30,9 @@
 
 ## 6. Make Rendering Payload-only Without Changing Visual Semantics
 
-- [ ] 6.1 Create payload-only renderer, GL-adapter, and payload-neutral renderee stubs that accept payloads or derived arrays and expose payload bounds/scale while retaining the current triangle-corner buffer strategy; verify static analysis identifies every remaining production `Trimesh` reference under `scadview.render`.
-- [ ] 6.2 Add failing renderer tests for dependency isolation, indexed-to-triangle expansion, flat per-face normals, one mesh-level color, opaque lazy upload, global transparent sorting with multiple colors, framing/scale, empty lists, barycentric edge markers, and injected built-in drawables; run the targeted tests and confirm failures are due to the old renderer seam.
-- [ ] 6.3 Implement payload-based render preparation with bounded contiguous temporaries and unchanged alpha sorting and edge-marker semantics while retaining renderer ownership of GL resources, transforms, visibility, drawables, and draw ordering; verify renderer tests pass, production `scadview.render` modules contain no `Trimesh` import or reconstruction, and renderer-facing signatures are payload-only.
+- [x] 6.1 Create payload-only renderer, GL-adapter, and payload-neutral renderee stubs that accept payloads or derived arrays and expose payload bounds/scale while retaining the current triangle-corner buffer strategy; verify static analysis identifies every remaining production `Trimesh` reference under `scadview.render`.
+- [x] 6.2 Add failing renderer tests for dependency isolation, indexed-to-triangle expansion, flat per-face normals, one mesh-level color, opaque lazy upload, global transparent sorting with multiple colors, framing/scale, empty lists, barycentric edge markers, and injected built-in drawables; run the targeted tests and confirm failures are due to the old renderer seam.
+- [x] 6.3 Implement payload-based render preparation with bounded contiguous temporaries and unchanged alpha sorting and edge-marker semantics while retaining renderer ownership of GL resources, transforms, visibility, drawables, and draw ordering; verify renderer tests pass, production `scadview.render` modules contain no `Trimesh` import or reconstruction, and renderer-facing signatures are payload-only.
 
 ## 7. Validate and Apply the Indexed-Renderer Gate
 

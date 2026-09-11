@@ -19,11 +19,8 @@ import moderngl
 import numpy as np
 from trimesh import Trimesh
 
-from scadview.render.trimesh_renderee import (
-    create_colors_array_from_mesh,
-    create_edge_detect_array,
-    create_vao_from_arrays,
-)
+from scadview.mesh_payload import mesh_to_payload
+from scadview.render.mesh_renderee import create_vao_from_arrays, expand_payload
 
 METRIC_NAMES = (
     "vertex_count",
@@ -209,15 +206,7 @@ def _prepare_renderer_data(
     meshes: list[Trimesh],
 ) -> tuple[list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]], float]:
     start = perf_counter()
-    prepared = [
-        (
-            mesh.triangles,
-            mesh.triangles_cross,
-            create_colors_array_from_mesh(mesh),
-            create_edge_detect_array(mesh.triangles.shape[0]),
-        )
-        for mesh in meshes
-    ]
+    prepared = [expand_payload(mesh_to_payload(mesh)) for mesh in meshes]
     return prepared, _elapsed_ms(start)
 
 

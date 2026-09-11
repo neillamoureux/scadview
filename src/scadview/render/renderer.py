@@ -6,21 +6,20 @@ import moderngl
 import numpy as np
 from numpy.typing import NDArray
 from pyrr import Matrix44
-from trimesh import Trimesh
 
 from scadview.debug_info import DebugInfoService
 from scadview.load_status import LoadStatus
-from scadview.mesh_payload import MeshPayload, payload_to_trimesh
+from scadview.mesh_payload import MeshPayload
 from scadview.observable import Observable
 from scadview.render.camera import Camera, copy_camera_state
 from scadview.render.label_atlas import LabelAtlas
 from scadview.render.label_renderee import LabelSetRenderee
+from scadview.render.mesh_renderee import (
+    OpaqueMeshRenderee,
+    create_mesh_renderee,
+)
 from scadview.render.renderee import GnomonRenderee
 from scadview.render.shader_program import ShaderProgram, ShaderVar
-from scadview.render.trimesh_renderee import (
-    TrimeshOpaqueRenderee,
-    create_trimesh_renderee,
-)
 from scadview.scene_assets import SceneAssets
 
 logger = logging.getLogger(__name__)
@@ -69,7 +68,7 @@ class Renderer:
         self._clear_background = True
         self._last_background_color = self.ERROR_BACKGROUND_COLOR
         self.background_color = self.DEFAULT_BACKGROUND_COLOR
-        self.load_mesh(payload_to_trimesh(scene_assets.startup_mesh), "default_mesh")
+        self.load_mesh(scene_assets.startup_mesh, "default_mesh")
         direction = np.array([-1, 1, -1])
         up = np.array([0, 0, 1])
         self.frame(direction, up)
@@ -102,11 +101,9 @@ class Renderer:
             self._ctx, self._gnomon_prog.program, self.window_size, name="gnomon"
         )
 
-    def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
-        axes = payload_to_trimesh(
-            _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
-        )
-        axes_renderee = TrimeshOpaqueRenderee(
+    def _create_axes_renderee(self) -> OpaqueMeshRenderee:
+        axes = _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
+        axes_renderee = OpaqueMeshRenderee(
             self._ctx, self._axis_prog.program, axes, cull_back_face=True, name="axes"
         )
         axes_renderee.subscribe_to_updates(self.on_program_value_change)
@@ -256,10 +253,10 @@ class Renderer:
     def indicate_load_status(self, status: LoadStatus):
         if status == LoadStatus.START:
             self.background_color = self.LOADING_BACKGROUND_COLOR
-            self._main_renderee = create_trimesh_renderee(
+            self._main_renderee = create_mesh_renderee(
                 self._ctx,
                 self._main_prog.program,
-                payload_to_trimesh(self._scene_assets.loading_mesh),
+                self._scene_assets.loading_mesh,
                 self._m_model,
                 self._camera.view_matrix,
                 name="loading",
@@ -273,9 +270,11 @@ class Renderer:
         else:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR
 
-    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str = "Unknown load_mesh"):
+    def load_mesh(
+        self, mesh: MeshPayload | list[MeshPayload], name: str = "Unknown load_mesh"
+    ) -> None:
         logger.debug("load_mesh started")
-        self._main_renderee = create_trimesh_renderee(
+        self._main_renderee = create_mesh_renderee(
             self._ctx,
             self._main_prog.program,
             mesh,
@@ -284,10 +283,9 @@ class Renderer:
             name=name,
         )
         if isinstance(mesh, list):
-            # Trimesh stubs are list-like, so make this branch's contract explicit.
-            meshes = cast(list[Trimesh], mesh)
+            meshes = cast(list[MeshPayload], mesh)
             if meshes:
-                self.scale = max([m.scale for m in meshes])
+                self.scale = max(m.scale for m in meshes)
             else:
                 self.scale = 1.0
         else:

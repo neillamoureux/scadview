@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from trimesh.creation import box
 
-from scadview.mesh_payload import mesh_to_payload
 from scadview.load_status import LoadStatus
+from scadview.mesh_payload import mesh_to_payload
 from scadview.render.camera import Camera
 from scadview.render.renderer import Renderer, RendererFactory
 from scadview.scene_assets import SceneAssets
@@ -83,19 +83,13 @@ def test_renderer_factory_injects_scene_assets(monkeypatch, scene_assets):
 def test_loading_status_uses_injected_loading_asset(monkeypatch, scene_assets):
     context = MagicMock()
     camera = Camera()
-    loading_mesh = Mock()
     with patch("scadview.render.shader_program.isinstance") as mock_isinstance:
         mock_isinstance.return_value = True
         renderer = Renderer(context, camera, (320, 200), scene_assets)
-        monkeypatch.setattr(
-            "scadview.render.renderer.payload_to_trimesh", lambda payload: loading_mesh
-        )
-        with patch(
-            "scadview.render.renderer.create_trimesh_renderee"
-        ) as create_renderee:
+        with patch("scadview.render.renderer.create_mesh_renderee") as create_renderee:
             renderer.indicate_load_status(LoadStatus.START)
 
-    assert create_renderee.call_args.args[2] is loading_mesh
+    assert create_renderee.call_args.args[2] is scene_assets.loading_mesh
 
 
 def test_axes_scale_from_the_injected_unscaled_base_asset(monkeypatch, scene_assets):

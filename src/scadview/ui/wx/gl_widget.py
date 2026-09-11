@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 import wx
-from trimesh import Trimesh
 from wx.glcanvas import (
     WX_GL_CORE_PROFILE,
     WX_GL_DEPTH_SIZE,
@@ -17,6 +16,7 @@ from wx.glcanvas import (
 )
 
 from scadview.load_status import LoadStatus
+from scadview.mesh_payload import MeshPayload
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 
 logger = logging.getLogger(__name__)
@@ -194,7 +194,7 @@ class GlWidget(GLCanvas):
             return
         self.Refresh(False)
 
-    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
+    def load_mesh(self, mesh: MeshPayload | list[MeshPayload], name: str):
         self._gl_widget_adapter.load_mesh(mesh, name)
         self.Refresh(False)
 
