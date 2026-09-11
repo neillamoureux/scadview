@@ -24,9 +24,9 @@
 
 ## 5. Externalize and Inject Built-in Scene Assets
 
-- [ ] 5.1 Create typed stubs for an immutable `SceneAssets` aggregate, an external built-in asset provider, and constructor injection through application composition, renderer factory, and renderer; verify static analysis exposes every renderer-owned startup, loading, and axis geometry construction site.
-- [ ] 5.2 Add failing tests for complete scene-asset construction, source-to-payload normalization, factory/renderer injection, startup and loading selection, and base-axis scale/visibility behavior; run the targeted tests and confirm failures are caused by built-ins still being constructed inside the renderer.
-- [ ] 5.3 Implement built-in startup, loading, and unscaled base-axis construction outside `scadview.render`, normalize each source to a payload before injection, and move axis sizing to renderer-owned transforms or payload-neutral operations; verify scene-asset and renderer tests pass with no source geometry constructor crossing the renderer boundary.
+- [x] 5.1 Create typed stubs for an immutable `SceneAssets` aggregate, an external built-in asset provider, and constructor injection through application composition, renderer factory, and renderer; verify static analysis exposes every renderer-owned startup, loading, and axis geometry construction site.
+- [x] 5.2 Add failing tests for complete scene-asset construction, source-to-payload normalization, factory/renderer injection, startup and loading selection, and base-axis scale/visibility behavior; run the targeted tests and confirm failures are caused by built-ins still being constructed inside the renderer.
+- [x] 5.3 Implement built-in startup, loading, and unscaled base-axis construction outside `scadview.render`, normalize each source to a payload before injection, and move axis sizing to renderer-owned transforms or payload-neutral operations; verify scene-asset and renderer tests pass with no source geometry constructor crossing the renderer boundary.
 
 ## 6. Make Rendering Payload-only Without Changing Visual Semantics
 

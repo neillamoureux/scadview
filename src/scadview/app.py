@@ -5,6 +5,7 @@ from scadview.debug_info import DebugInfoService
 from scadview.render.camera import CameraPerspective
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.render.renderer import RendererFactory
+from scadview.scene_assets import create_scene_assets
 from scadview.ui.splash import SplashConnection, stop_splash_process
 from scadview.ui.wx.gl_ui import GlUi
 
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 def main(splash_conn: SplashConnection, debug_info_service: DebugInfoService):
     logger.info("SCADview app starting up")
-    renderer_factory = RendererFactory(CameraPerspective(), debug_info_service)
+    renderer_factory = RendererFactory(
+        CameraPerspective(), create_scene_assets(), debug_info_service
+    )
     gl_widget_adapter = GlWidgetAdapter(renderer_factory)
     controller = Controller()
     logger.warning("*** SCADview has initialized ***")

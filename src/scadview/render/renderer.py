@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 from typing import Any, cast
 
 import moderngl
@@ -6,12 +7,10 @@ import numpy as np
 from numpy.typing import NDArray
 from pyrr import Matrix44
 from trimesh import Trimesh
-from trimesh.creation import (
-    box,
-)
 
 from scadview.debug_info import DebugInfoService
 from scadview.load_status import LoadStatus
+from scadview.mesh_payload import MeshPayload, payload_to_trimesh
 from scadview.observable import Observable
 from scadview.render.camera import Camera, copy_camera_state
 from scadview.render.label_atlas import LabelAtlas
@@ -22,13 +21,10 @@ from scadview.render.trimesh_renderee import (
     TrimeshOpaqueRenderee,
     create_trimesh_renderee,
 )
-from scadview.resources.xyz_cube import create_mesh
+from scadview.scene_assets import SceneAssets
 
 logger = logging.getLogger(__name__)
 
-AXIS_LENGTH = 10000.0
-AXIS_WIDTH = 1.0
-AXIS_DEPTH = 1.0
 AXIS_SCALE_FACTOR = 0.005
 MESH_COLOR = np.array([0.5, 0.5, 0.5, 1.0], "f4")
 MAX_LABEL_FRAC_OF_STEP = 0.5
@@ -36,32 +32,15 @@ MAX_LABELS_PER_AXIS = 20
 PER_NUMBER_FRAC_OF_AXIS = 0.04
 
 
-def _make_default_mesh() -> Trimesh:
-    return box([1.0, 1.0, 1.0])
-
-
-def _make_initial_mesh() -> Trimesh:
-    return create_mesh()
-
-
-def _make_base_axes() -> Trimesh:
-    return (
-        box([AXIS_LENGTH, AXIS_DEPTH, AXIS_WIDTH])
-        .union(box([AXIS_LENGTH, AXIS_WIDTH, AXIS_DEPTH]))
-        .union(box([AXIS_WIDTH, AXIS_LENGTH, AXIS_DEPTH]))
-        .union(box([AXIS_DEPTH, AXIS_LENGTH, AXIS_WIDTH]))
-        .union(box([AXIS_DEPTH, AXIS_WIDTH, AXIS_LENGTH]))
-        .union(box([AXIS_WIDTH, AXIS_DEPTH, AXIS_LENGTH]))
+def _scale_axes(base_axes: MeshPayload, scale: float) -> MeshPayload:
+    vertices = np.ascontiguousarray(base_axes.vertices * np.float32(scale))
+    bounds = np.ascontiguousarray(base_axes.bounds * np.float32(scale))
+    return replace(
+        base_axes,
+        vertices=vertices,
+        bounds=bounds,
+        scale=base_axes.scale * scale,
     )
-
-
-def _scale_axes(base_axes: Trimesh, scale: float) -> Trimesh:
-    """
-    Scale the axes by the given scale factor.
-    """
-    axes = base_axes.copy()
-    axes.apply_scale(scale)
-    return axes
 
 
 class Renderer:
@@ -76,10 +55,12 @@ class Renderer:
         context: moderngl.Context,
         camera: Camera,
         window_size: tuple[int, int],
+        scene_assets: SceneAssets,
     ):
         self._window_size = window_size
         # self._aspect_ratio = aspect_rati
         self._ctx = context
+        self._scene_assets = scene_assets
         self._create_shaders()
         self.camera = camera
         self._init_shaders()
@@ -88,7 +69,7 @@ class Renderer:
         self._clear_background = True
         self._last_background_color = self.ERROR_BACKGROUND_COLOR
         self.background_color = self.DEFAULT_BACKGROUND_COLOR
-        self.load_mesh(_make_initial_mesh(), "default_mesh")
+        self.load_mesh(payload_to_trimesh(scene_assets.startup_mesh), "default_mesh")
         direction = np.array([-1, 1, -1])
         up = np.array([0, 0, 1])
         self.frame(direction, up)
@@ -105,7 +86,7 @@ class Renderer:
         )
 
     def _create_renderees(self):
-        self._base_axes = _make_base_axes()
+        self._base_axes = self._scene_assets.base_axes
         self._axes_renderee = self._create_axes_renderee()
         self._label_atlas = LabelAtlas(self._ctx)
         self._label_set_renderee = LabelSetRenderee(
@@ -122,7 +103,9 @@ class Renderer:
         )
 
     def _create_axes_renderee(self) -> TrimeshOpaqueRenderee:
-        axes = _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
+        axes = payload_to_trimesh(
+            _scale_axes(self._base_axes, self._scale * AXIS_SCALE_FACTOR)
+        )
         axes_renderee = TrimeshOpaqueRenderee(
             self._ctx, self._axis_prog.program, axes, cull_back_face=True, name="axes"
         )
@@ -276,7 +259,7 @@ class Renderer:
             self._main_renderee = create_trimesh_renderee(
                 self._ctx,
                 self._main_prog.program,
-                _make_default_mesh(),
+                payload_to_trimesh(self._scene_assets.loading_mesh),
                 self._m_model,
                 self._camera.view_matrix,
                 name="loading",
@@ -374,13 +357,17 @@ class Renderer:
 
 class RendererFactory:
     def __init__(
-        self, camera: Camera, debug_info_service: DebugInfoService | None = None
+        self,
+        camera: Camera,
+        scene_assets: SceneAssets,
+        debug_info_service: DebugInfoService | None = None,
     ):
         self._camera = camera
+        self._scene_assets = scene_assets
         self._debug_info_service = debug_info_service
 
     def make(self, window_size: tuple[int, int]) -> Renderer:
         ctx = moderngl.create_context()
         if self._debug_info_service is not None:
             self._debug_info_service.capture_gpu_opengl_stack(ctx)
-        return Renderer(ctx, self._camera, window_size)
+        return Renderer(ctx, self._camera, window_size, self._scene_assets)
