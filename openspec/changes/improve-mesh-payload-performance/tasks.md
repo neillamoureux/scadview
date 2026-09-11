@@ -6,9 +6,9 @@
 
 ## 2. Add the Compact Payload Model
 
-- [ ] 2.1 Create typed stubs in a neutral internal module for the single-mesh payload, source-to-payload conversion, and payload-to-export-mesh conversion; verify imports and static analysis resolve without adding a public top-level export.
-- [ ] 2.2 Add failing unit tests for array shapes, `float32`/`uint32` dtypes, C contiguity and copying, normals, default and explicit RGBA color, bounds, scale, empty geometry, round-trip geometry/color, invalid indices, overflow, and non-finite values; run the targeted tests and confirm the expected red state.
-- [ ] 2.3 Implement payload validation and conversions after the failing tests exist; verify all payload unit tests pass and pickle-size tests show that representative compact payloads contain no `Trimesh` object and are smaller than the measured source representation.
+- [x] 2.1 Create typed stubs in a neutral internal module for the single-mesh payload, source-to-payload conversion, and payload-to-export-mesh conversion; verify imports and static analysis resolve without adding a public top-level export.
+- [x] 2.2 Add failing unit tests for array shapes, `float32`/`uint32` dtypes, C contiguity and copying, normals, default and explicit RGBA color, bounds, scale, empty geometry, round-trip geometry/color, invalid indices, overflow, and non-finite values; run the targeted tests and confirm the expected red state.
+- [x] 2.3 Implement payload validation and conversions after the failing tests exist; verify all payload unit tests pass and pickle-size tests show that representative compact payloads contain no `Trimesh` object and are smaller than the measured source representation.
 
 ## 3. Change Loader Result Transport
 
