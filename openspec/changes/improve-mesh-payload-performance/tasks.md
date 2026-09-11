@@ -1,8 +1,8 @@
 ## 1. Establish Performance Baseline
 
-- [ ] 1.1 Create stubs for a repeatable mesh-transfer benchmark harness with deterministic high-sharing, mixed-transparency, and representative large-model cases; verify the runner discovers every case and exposes the planned metric names.
-- [ ] 1.2 Add benchmark-harness tests for case sizing, environment metadata, serialized-size reporting, timing fields, and optional peak-memory fields; run the targeted tests and confirm they fail for the unimplemented measurements.
-- [ ] 1.3 Implement measurement of the existing `Trimesh` path and record the baseline command, environment, vertex/face counts, pickle size, conversion and queue round-trip time, supported peak memory, renderer preparation/upload time, and first-frame time; verify a repeated run emits complete comparable results without enforcing noisy absolute timings in CI.
+- [x] 1.1 Create stubs for a repeatable mesh-transfer benchmark harness with deterministic high-sharing, mixed-transparency, and representative large-model cases; verify the runner discovers every case and exposes the planned metric names.
+- [x] 1.2 Add benchmark-harness tests for case sizing, environment metadata, serialized-size reporting, timing fields, and optional peak-memory fields; run the targeted tests and confirm they fail for the unimplemented measurements.
+- [x] 1.3 Implement measurement of the existing `Trimesh` path and record the baseline command, environment, vertex/face counts, pickle size, conversion and queue round-trip time, supported peak memory, renderer preparation/upload time, and first-frame time; verify a repeated run emits complete comparable results without enforcing noisy absolute timings in CI.
 
 ## 2. Add the Compact Payload Model
 
