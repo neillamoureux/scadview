@@ -14,6 +14,12 @@ redesign.
   renderer metadata needed after module execution.
 - Transfer compact payloads through the existing generation-aware result queue and
   consume them without changing the public `create_mesh` return contract.
+- Make renderer-facing inputs payload-only and remove `Trimesh` imports,
+  reconstruction, and geometry construction from production renderer modules.
+- Construct built-in startup, loading, and base-axis geometry outside the renderer
+  and inject it as payload-based scene assets.
+- Keep the renderer responsible for GL resource lifecycle, scene transforms,
+  visibility, drawable construction, and draw ordering.
 - Preserve current rendering semantics, including mesh-level color, transparency,
   framing, incremental results, feature-debug lists, and triangle-edge display.
 - Preserve GUI export behavior by safely converting the retained payload to an
@@ -36,9 +42,12 @@ None.
 
 ## Impact
 
-- Affects the internal loader result protocol, controller mesh ownership, renderer
-  input seam, and export conversion path.
+- Affects the internal loader result protocol, controller mesh ownership,
+  composition of built-in scene assets, renderer input seam, and export conversion
+  path.
 - Requires focused unit/integration coverage plus manual visual checks for edges,
-  transparency, colors, framing, and debug rendering.
+  transparency, colors, framing, built-in assets, and debug rendering.
 - Does not change public SCADview imports, accepted `create_mesh` return types,
   export availability, or add dependencies.
+- Keeps `Trimesh` in the geometry-authoring and normalization domain and at the
+  on-demand export boundary, but removes it from production renderer modules.

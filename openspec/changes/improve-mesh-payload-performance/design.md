@@ -13,6 +13,12 @@ combined and resorted by triangle whenever the view changes. These per-corner
 requirements mean that directly indexing shared positions cannot preserve current
 flat normals and edge markers without a shader or data-layout change.
 
+The renderer package also constructs its startup mesh, loading placeholder, and
+base axes with `Trimesh`. That use is independent of loaded-user-mesh transfer but
+would keep the renderer coupled to the source geometry library after its public
+load seam changes. Built-in geometry therefore needs the same one-way conversion
+at a boundary outside rendering.
+
 The process boundary must remain typed and isolated from wx and GL concerns. The
 public `create_mesh` contract remains `Trimesh`, `Manifold`, feature mesh, and the
 documented list and generator forms.
@@ -28,8 +34,13 @@ documented list and generator forms.
 - Move conversion work that does not require a GL context into the loader process.
 - Preserve existing queue freshness, rendering, framing, and on-demand export
   behavior.
-- Create a stable renderer input seam that permits a later indexed implementation
-  without exposing the payload as public API.
+- Make all production renderer inputs payload-only and keep production modules
+  under `scadview.render` independent of `Trimesh`.
+- Inject built-in geometry as a coherent scene-assets value while retaining
+  renderer ownership of GL resources, transforms, visibility, drawables, and draw
+  ordering.
+- Create a stable seam that permits a later indexed implementation without
+  exposing the payload as public API.
 
 **Non-Goals:**
 
@@ -37,6 +48,8 @@ documented list and generator forms.
 - GPU instancing or optimization of mesh construction and boolean operations.
 - Smooth shading, geometric edge extraction, materials, textures, or per-face and
   per-vertex colors not currently rendered by SCADview.
+- Removing `Trimesh` from public geometry-authoring APIs, feature operations,
+  source normalization, or explicit export conversion.
 - A fully indexed shader pipeline unless a separately reviewed follow-up is
   justified by the measurements from this change.
 
@@ -59,6 +72,25 @@ compacted; it does not assume the answer.
 
 Alternative: redesign the renderer first. Rejected because no current measurement
 identifies the renderer rather than serialization as the dominant cost.
+
+### Confine Trimesh to source normalization and export conversion
+
+Within the runtime load-display-export path, `Trimesh` is allowed only inside
+one-way source normalization and explicit export conversion. Source normalization
+includes user-module results, `Manifold` conversion, feature resolution, and
+built-in scene geometry supplied by resource builders. Each source mesh becomes a
+payload before it enters queue, controller, UI, adapter, renderer-factory, or
+renderer interfaces. Export performs the inverse conversion only for the duration
+of an explicit export request.
+
+The public geometry-authoring APIs continue returning and operating on `Trimesh`
+where documented; removing that project-wide dependency is unrelated to this
+change. Tests may also use Trimesh factories as fixture producers, provided they
+convert the result before exercising a production renderer seam.
+
+Alternative: tolerate `Trimesh` for renderer-owned utility meshes. Rejected
+because it leaves two geometry representations inside rendering and weakens the
+boundary the payload is intended to establish.
 
 ### Use a neutral internal payload model
 
@@ -115,14 +147,44 @@ Alternative: retain a second complete export mesh in the loader process and add 
 export command. Rejected because it increases process protocol and file-operation
 complexity and keeps the large object alive after every load.
 
-### Preserve the triangle-corner renderer in the initial stage
+### Inject built-in geometry as SceneAssets
 
-The renderer accepts payloads at its service boundary and initially derives
-triangle positions, repeated face normals, per-corner colors, and barycentric edge
-markers when creating GL buffers. Opaque buffer creation may remain lazy;
-transparent triangle sorting remains global and rebuilds sorted corner data as it
-does today. Bounds and scale come from payload summaries rather than rescanning or
-reconstructing a mesh.
+Introduce an immutable `SceneAssets` value containing payloads for the startup
+mesh, loading placeholder, and unscaled base axes. The application composition
+path constructs these assets once, normalizes any existing resource-builder output
+to payloads, and injects the complete value into `RendererFactory`, which passes it
+to each `Renderer`. Neither factory nor renderer constructs source geometry or
+accepts a fallback `Trimesh`.
+
+The renderer creates drawables and GL buffers from the injected payloads. It owns
+selection of the startup or loading drawable, axis visibility, and axis scaling.
+Scaling uses renderer-owned transforms or payload-neutral array operations rather
+than copying and mutating a `Trimesh`. Asset providers own geometry shape and
+source-library conversion; the renderer owns presentation and GPU lifecycle.
+
+Requiring a complete `SceneAssets` value makes missing built-ins fail during
+composition rather than midway through rendering and keeps tests explicit.
+
+Alternative: let the renderer call a scene-asset factory. Rejected because it
+hides construction and source-library dependencies behind the renderer boundary.
+Alternative: inject unrelated payload parameters. Rejected because a named,
+immutable aggregate makes asset completeness and ownership clear.
+
+### Keep the renderer payload-only in the initial stage
+
+Every production API under `scadview.render` accepts payloads, payload lists, or
+payload-derived arrays for mesh geometry. Payload-neutral renderee names and
+helpers replace Trimesh-specific interfaces, and bounds-to-corners calculations
+use local NumPy logic. No production renderer module imports, type-checks,
+constructs, or reconstructs `Trimesh`.
+
+The initial implementation still derives triangle positions, repeated face
+normals, per-corner colors, and barycentric edge markers when creating GL buffers.
+Opaque buffer creation may remain lazy; transparent triangle sorting remains
+global and rebuilds sorted corner data as it does today. Bounds and scale come
+from payload summaries rather than rescanning or reconstructing a mesh. Renderer
+continues to own GL context and buffer lifetime, transforms, visibility, drawable
+composition, and draw ordering.
 
 A naïve index buffer cannot share positions while retaining both flat face normals
 and barycentric corner attributes. If post-change evidence justifies a fully
@@ -152,6 +214,12 @@ reproduce corner markers for vertices shared by multiple triangles.
 - [Transparency or edge visuals can regress during seam changes] -> Cover ordering
   and buffer semantics with tests and perform screenshot/manual comparisons for
   representative opaque, transparent, and debug scenes.
+- [Injecting built-in assets can change startup, loading, or axis presentation] ->
+  Convert the existing resource geometry outside rendering, compare bounds and
+  topology, and include all built-ins in visual validation.
+- [Scene asset injection broadens constructor changes] -> Pass one immutable
+  aggregate through the composition root and update renderer tests to supply
+  explicit lightweight fixtures.
 - [Queue cancellation can retain obsolete payload memory briefly] -> Preserve and
   test the existing bounded queue and generation-discard rules.
 
@@ -161,9 +229,11 @@ reproduce corner markers for vertices shared by multiple triangles.
 2. Add the internal payload model and pure round-trip conversions behind tests.
 3. Change loader results, controller ownership, and export reconstruction together
    so no mixed process protocol is shipped.
-4. Adapt the renderer seam while retaining its established corner-buffer strategy.
-5. Run automated validation, repeat measurements, and complete human visual checks.
-6. Record the indexed-renderer gate outcome; pursue it only through a separately
+4. Build and inject payload-based `SceneAssets` from outside rendering.
+5. Adapt the adapter, renderer, and renderee seams to payload-only inputs while
+   retaining the established corner-buffer strategy and renderer responsibilities.
+6. Run automated validation, repeat measurements, and complete human visual checks.
+7. Record the indexed-renderer gate outcome; pursue it only through a separately
    reviewed follow-up if justified.
 
 The payload is internal and persisted only in memory, so no data migration or

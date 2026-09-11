@@ -55,6 +55,51 @@ validation.
 - **WHEN** `create_mesh` returns an unsupported value or invalid geometry
 - **THEN** the load fails through the existing error-result behavior rather than publishing a partial payload as successful
 
+### Requirement: Rendering accepts payload geometry only
+The system SHALL ensure that all loaded and built-in mesh geometry enters the
+production rendering subsystem only as compact payloads or payload-derived arrays.
+The rendering subsystem SHALL NOT accept, construct, reconstruct, import, or
+type-check complete `Trimesh` objects.
+
+#### Scenario: Loaded geometry reaches rendering
+- **WHEN** the current-generation loader result is presented to the renderer
+- **THEN** controller, UI, adapter, renderer, and drawable boundaries pass payload geometry without reconstructing a `Trimesh`
+
+#### Scenario: Built-in geometry reaches rendering
+- **WHEN** startup, loading, or base-axis geometry is presented to the renderer
+- **THEN** it uses the same payload-only renderer boundary as loaded geometry
+
+### Requirement: Built-in scene assets are supplied at composition
+The system SHALL construct and normalize the complete set of startup, loading,
+and base-axis geometry outside the rendering subsystem and SHALL inject that set
+before renderer creation. The renderer SHALL remain responsible for GL lifecycle,
+transforms, visibility, drawable composition, and draw ordering.
+
+#### Scenario: Renderer is created
+- **WHEN** application composition creates a renderer
+- **THEN** the renderer receives a complete payload-based scene-assets set without constructing source geometry itself
+
+#### Scenario: Loading state is displayed
+- **WHEN** load status changes to loading
+- **THEN** the renderer selects and draws the injected loading payload using its existing GL and visibility lifecycle
+
+#### Scenario: Axis scale or visibility changes
+- **WHEN** loaded-mesh scale or axis visibility changes
+- **THEN** the renderer transforms or shows the injected base-axis payload without creating or mutating a `Trimesh`
+
+### Requirement: Source mesh objects remain at conversion boundaries
+Within the load-display-export path, the system SHALL confine complete `Trimesh`
+objects to source-geometry normalization and temporary on-demand export
+conversion. This boundary SHALL NOT alter documented geometry-authoring APIs.
+
+#### Scenario: Source mesh is normalized
+- **WHEN** user-module or built-in source geometry is accepted
+- **THEN** it is converted to a payload before crossing into queue, controller, UI, adapter, or renderer ownership
+
+#### Scenario: Export is requested
+- **WHEN** a completed payload is exported
+- **THEN** a `Trimesh` exists only for the duration of conversion and exporter dispatch and does not become renderer state
+
 ### Requirement: Rendering behavior is preserved
 The compact-payload stage SHALL preserve the current observable rendering of
 geometry, default and explicit mesh-level colors, transparency ordering, framing,
@@ -89,10 +134,11 @@ formats or existing error reporting.
 
 ### Requirement: Fully indexed rendering is gated by evidence
 The initial compact-payload stage SHALL retain the established triangle-corner
-rendering behavior. A fully indexed GPU representation SHALL NOT be adopted by
-this change unless post-change measurements identify render expansion or upload
-as a material remaining bottleneck and visual validation demonstrates parity for
-edges, flat shading, transparency, colors, and framing.
+rendering behavior, and fully indexed GPU rendering SHALL remain deferred from
+this change. If post-change measurements identify render expansion or upload as a
+material remaining bottleneck, a separately reviewed follow-up SHALL define the
+indexed design and require visual parity for edges, flat shading, transparency,
+colors, and framing.
 
 #### Scenario: Compact transfer meets the measured objective
 - **WHEN** post-change measurements show that renderer indexing is not needed to address the measured bottleneck
