@@ -2,7 +2,6 @@ import logging
 import os
 import queue
 
-from trimesh import Trimesh
 from trimesh.exchange import export
 
 from scadview.features import FeatureState
@@ -18,6 +17,7 @@ from scadview.mesh_loader_process import (
     ShutDownCommand,
 )
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
+from scadview.mesh_payload import MeshPayload, payload_to_trimesh
 from scadview.observable import Observable
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class Controller:
         self.module_path = ""
         self._last_export_path = ""
         self._closed = False
-        self._current_mesh: list[Trimesh] | Trimesh | None = None
+        self._current_mesh: list[MeshPayload] | MeshPayload | None = None
         self._feature_states: list[FeatureState] = []
         self._debug_features = False
         self._parameters: list[CreateMeshParameter] = []
@@ -61,12 +61,21 @@ class Controller:
         self._load_status = LoadStatus.NONE
 
     @property
-    def current_mesh(self) -> list[Trimesh] | Trimesh | None:
+    def current_mesh(self) -> list[MeshPayload] | MeshPayload | None:
         return self._current_mesh
 
     @current_mesh.setter
-    def current_mesh(self, value: list[Trimesh] | Trimesh | None):
+    def current_mesh(self, value: list[MeshPayload] | MeshPayload | None):
         self._current_mesh = value
+
+    @property
+    def exportable_payload(self) -> MeshPayload | None:
+        """Return the completed single payload that can be exported."""
+        if self.load_status != LoadStatus.COMPLETE:
+            return None
+        if isinstance(self.current_mesh, MeshPayload):
+            return self.current_mesh
+        return None
 
     @property
     def feature_states(self) -> list[FeatureState]:
@@ -192,18 +201,19 @@ class Controller:
         return True
 
     def export(self, file_path: str):
-        # Cache the property so type narrowing is stable for the selected mesh.
-        current_mesh = self.current_mesh
-        if not current_mesh:
+        payload = self.exportable_payload
+        if payload is None:
             logger.info("No mesh to export")
             return
-        if isinstance(current_mesh, list):
-            export_mesh = current_mesh[-1]
-        else:
-            export_mesh = current_mesh
         self._last_export_path = file_path
-        # Trimesh exposes export at runtime, but its stubs do not model it.
-        export_mesh.export(file_path)  # ty: ignore[unresolved-attribute]
+        self._export_payload(payload, file_path)
+
+    def _export_payload(self, payload: MeshPayload, file_path: str) -> None:
+        export_mesh = payload_to_trimesh(payload)
+        try:
+            export_mesh.export(file_path)
+        finally:
+            del export_mesh
 
     def default_export_path(self) -> str:
         if self._last_export_path != "":

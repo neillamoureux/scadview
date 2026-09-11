@@ -2,10 +2,13 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from trimesh.creation import box
 
 pytest.importorskip("wx")
 
 from scadview.module_loader import CreateMeshParameter
+from scadview.load_status import LoadStatus
+from scadview.mesh_payload import mesh_to_payload
 from scadview.ui.wx import main_frame
 from scadview.ui.wx.main_frame import MainFrame, convert_parameter_value
 
@@ -344,3 +347,46 @@ def test_stale_load_result_does_not_stop_current_timer_or_update_view():
     timer.Stop.assert_not_called()
     gauge.SetValue.assert_not_called()
     gl_widget.load_mesh.assert_not_called()
+
+
+def test_export_is_enabled_only_for_completed_exportable_payload():
+    payload = mesh_to_payload(box())
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(exportable_payload=payload),
+    )
+
+    assert MainFrame._can_be_exported(frame, LoadStatus.COMPLETE)
+    assert not MainFrame._can_be_exported(frame, LoadStatus.DEBUG)
+
+
+def test_export_is_disabled_for_completed_debug_payload_list():
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(exportable_payload=None),
+    )
+
+    assert not MainFrame._can_be_exported(frame, LoadStatus.COMPLETE)
+
+
+def test_current_payload_result_reaches_the_view_without_reconstruction():
+    payload = mesh_to_payload(box())
+    timer = Mock()
+    gauge = Mock()
+    gl_widget = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(current_generation=1),
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _gl_widget=gl_widget,
+        _loader_last_load_number=0,
+        _loader_last_sequence_number=0,
+        _has_mesh_changed=lambda result: True,
+        _load_mesh_in_view=lambda mesh: gl_widget.load_mesh(mesh, "loaded mesh"),
+        _is_first_in_load=lambda result: False,
+    )
+    from scadview.mesh_loader_process import LoadResult
+
+    result = LoadResult(1, 1, payload, None, generation=1)
+
+    MainFrame._handle_load_result(frame, result)
+
+    gl_widget.load_mesh.assert_called_once_with(payload, "loaded mesh")

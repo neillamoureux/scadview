@@ -1,4 +1,6 @@
+import gc
 import queue
+import weakref
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -8,6 +10,7 @@ from trimesh.creation import box
 
 from scadview.controller import Controller
 from scadview.features import FeatureState
+from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadMeshCommand, LoadResult
 from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
@@ -46,6 +49,24 @@ class DummyProcess:
         return None
 
 
+class ExportMesh:
+    def __init__(self, error: OSError | None = None):
+        self.error = error
+        self.paths: list[str] = []
+
+    def export(self, path: str):
+        if self.error is not None:
+            raise self.error
+        self.paths.append(path)
+
+
+def _controller(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    return Controller()
+
+
 def test_controller_reloads_with_updated_feature_state(monkeypatch):
     monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
     monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
@@ -79,6 +100,138 @@ def test_controller_reloads_with_updated_feature_state(monkeypatch):
         second_command = controller._command_queue.items.pop()
         assert isinstance(second_command, LoadMeshCommand)
         assert second_command.feature_states == {"cutout": False}
+    finally:
+        controller.close()
+
+
+def test_controller_retains_only_current_completed_single_payload(monkeypatch):
+    controller = _controller(monkeypatch)
+    payload = mesh_to_payload(box())
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._load_queue.items.append(
+            LoadResult(1, 1, payload, None, complete=True, generation=1)
+        )
+
+        controller.check_load_queue()
+
+        assert controller.current_mesh is payload
+        assert controller.exportable_payload is payload
+    finally:
+        controller.close()
+
+
+def test_controller_rejects_stale_payload_without_replacing_current_payload(
+    monkeypatch,
+):
+    controller = _controller(monkeypatch)
+    current_payload = mesh_to_payload(box())
+    stale_payload = mesh_to_payload(box(extents=(2, 2, 2)))
+    try:
+        controller.current_mesh = current_payload
+        controller._current_generation = 2
+        controller._load_queue.items.append(
+            LoadResult(1, 1, stale_payload, None, complete=True, generation=1)
+        )
+
+        controller.check_load_queue()
+
+        assert controller.current_mesh is current_payload
+        assert controller.exportable_payload is None
+    finally:
+        controller.close()
+
+
+def test_controller_does_not_export_debug_payload_lists(monkeypatch):
+    controller = _controller(monkeypatch)
+    try:
+        controller.current_mesh = [mesh_to_payload(box())]
+        controller.load_status = LoadStatus.DEBUG
+
+        controller.export("/tmp/model.stl")
+
+        assert controller.exportable_payload is None
+        assert controller._last_export_path == ""
+    finally:
+        controller.close()
+
+
+def test_controller_exports_payload_geometry_and_scadview_color(monkeypatch):
+    controller = _controller(monkeypatch)
+    source = box()
+    source.metadata["scadview"] = {"color": [0.2, 0.4, 0.6, 0.8]}
+    payload = mesh_to_payload(source)
+    exported: list[object] = []
+
+    def capture_export(mesh, path):
+        exported.extend((mesh, path))
+
+    monkeypatch.setattr("trimesh.Trimesh.export", capture_export)
+    try:
+        controller.current_mesh = payload
+        controller.load_status = LoadStatus.COMPLETE
+
+        controller.export("/tmp/model.stl")
+
+        export_mesh, export_path = exported
+        assert export_path == "/tmp/model.stl"
+        assert isinstance(export_mesh, type(source))
+        assert export_mesh.metadata["scadview"]["color"] == [0.2, 0.4, 0.6, 0.8]
+        assert export_mesh.vertices.tolist() == source.vertices.tolist()
+        assert export_mesh.faces.tolist() == source.faces.tolist()
+    finally:
+        controller.close()
+
+
+@pytest.mark.parametrize("suffix", ["stl", "ply"])
+def test_controller_dispatches_supported_export_formats(monkeypatch, suffix):
+    controller = _controller(monkeypatch)
+    export_mesh = ExportMesh()
+    monkeypatch.setattr("scadview.controller.payload_to_trimesh", lambda _: export_mesh)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
+
+        controller.export(f"/tmp/model.{suffix}")
+
+        assert export_mesh.paths == [f"/tmp/model.{suffix}"]
+    finally:
+        controller.close()
+
+
+def test_controller_releases_temporary_export_mesh_after_dispatch(monkeypatch):
+    controller = _controller(monkeypatch)
+    reference: list[weakref.ReferenceType[ExportMesh]] = []
+
+    def make_export_mesh(_):
+        export_mesh = ExportMesh()
+        reference.append(weakref.ref(export_mesh))
+        return export_mesh
+
+    monkeypatch.setattr("scadview.controller.payload_to_trimesh", make_export_mesh)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
+
+        controller.export("/tmp/model.stl")
+        gc.collect()
+
+        assert reference[0]() is None
+        assert controller.current_mesh is not None
+    finally:
+        controller.close()
+
+
+def test_controller_propagates_exporter_errors(monkeypatch):
+    controller = _controller(monkeypatch)
+    export_mesh = ExportMesh(OSError("disk full"))
+    monkeypatch.setattr("scadview.controller.payload_to_trimesh", lambda _: export_mesh)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
+
+        with pytest.raises(OSError, match="disk full"):
+            controller.export("/tmp/model.stl")
     finally:
         controller.close()
 

@@ -18,9 +18,9 @@
 
 ## 4. Retain Payloads and Preserve Export
 
-- [ ] 4.1 Create controller and UI boundary stubs for retaining payload results, detecting exportable final payloads, and reconstructing an export mesh on demand; verify static analysis identifies all remaining `current_mesh` assumptions.
-- [ ] 4.2 Add failing controller/UI tests for current-generation ownership, stale-result rejection, export enablement, debug-list non-exportability, supported-format dispatch, equivalent exported vertices/faces, restored SCADview color, and exporter errors; run the targeted tests and confirm the expected red state.
-- [ ] 4.3 Implement payload ownership and on-demand non-processing `Trimesh` reconstruction, releasing the temporary export object after dispatch; verify controller and UI tests pass, existing export formats and error behavior remain unchanged, and no source mesh becomes retained controller, UI, or renderer state.
+- [x] 4.1 Create controller and UI boundary stubs for retaining payload results, detecting exportable final payloads, and reconstructing an export mesh on demand; verify static analysis identifies all remaining `current_mesh` assumptions.
+- [x] 4.2 Add failing controller/UI tests for current-generation ownership, stale-result rejection, export enablement, debug-list non-exportability, supported-format dispatch, equivalent exported vertices/faces, restored SCADview color, and exporter errors; run the targeted tests and confirm the expected red state.
+- [x] 4.3 Implement payload ownership and on-demand non-processing `Trimesh` reconstruction, releasing the temporary export object after dispatch; verify controller and UI tests pass, existing export formats and error behavior remain unchanged, and no source mesh becomes retained controller, UI, or renderer state.
 
 ## 5. Externalize and Inject Built-in Scene Assets
 

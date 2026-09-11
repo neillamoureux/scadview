@@ -6,13 +6,12 @@ from pathlib import Path
 from typing import cast
 
 import wx
-from trimesh import Trimesh
-
 from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
+from scadview.mesh_payload import MeshPayload
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.ui.view_state import ViewState
 from scadview.ui.wx.action import (
@@ -359,7 +358,8 @@ class MainFrame(wx.Frame):
 
     def _can_be_exported(self, status: LoadStatus) -> bool:
         return (
-            status == LoadStatus.COMPLETE and self._controller.current_mesh is not None
+            status == LoadStatus.COMPLETE
+            and self._controller.exportable_payload is not None
         )
 
     def _add_view_buttons(self):
@@ -539,7 +539,7 @@ class MainFrame(wx.Frame):
             return new_load or new_sequence
         return load_result.complete and new_load
 
-    def _load_mesh_in_view(self, mesh: Trimesh | list[Trimesh] | None):
+    def _load_mesh_in_view(self, mesh: MeshPayload | list[MeshPayload] | None):
         if mesh is None:
             self._gl_widget.load_mesh([], "loaded mesh")
             return
