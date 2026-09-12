@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import colorsys
+import hashlib
 import logging
 import queue
 from dataclasses import dataclass
@@ -171,6 +172,11 @@ MpCommandQueue = MpQueue[Command]
 MpExportResultQueue = MpQueue[ExportResult]
 
 
+def _array_signature(values: Any) -> bytes:
+    array = np.ascontiguousarray(values)
+    return hashlib.blake2b(array.tobytes(), digest_size=16).digest()
+
+
 def debug_color() -> Generator[tuple[float, float, float], None, None]:
     """
     Generate a random color for debugging purposes
@@ -216,6 +222,7 @@ class LoadWorker(Thread):
         self.load_start_time = time()
         last_mesh: SourceMeshType | None = None
         last_payload: MeshType | None = None
+        last_source_signature: tuple[bytes, bytes, str] | None = None
         try:
             for mesh in self.run_mesh_module():
                 sequence_number += 1
@@ -223,12 +230,21 @@ class LoadWorker(Thread):
                     logger.info("LoadWorker cancelled, stopping load")
                     return
                 last_mesh, last_payload = self._prepare_mesh(mesh)
+                last_source_signature = self._source_signature(last_mesh)
                 self._publish_result(sequence_number, last_payload)
         except Exception as e:
             logger.exception("Failed to load mesh from %s", self.module_path)
-            self._publish_final_result(sequence_number, last_mesh, last_payload, e)
+            self._publish_final_result(
+                sequence_number,
+                last_mesh,
+                last_payload,
+                last_source_signature,
+                e,
+            )
             return
-        self._publish_final_result(sequence_number, last_mesh, last_payload)
+        self._publish_final_result(
+            sequence_number, last_mesh, last_payload, last_source_signature
+        )
 
     def _prepare_mesh(
         self,
@@ -264,12 +280,33 @@ class LoadWorker(Thread):
         sequence_number: int,
         mesh: SourceMeshType | None,
         payload: MeshType | None,
+        source_signature: tuple[bytes, bytes, str] | None,
         error: Exception | None = None,
     ) -> None:
         if self.debug_features:
             mesh, payload = self._prepare_mesh(mesh)
+        elif self._source_changed(mesh, source_signature):
+            mesh, payload = self._prepare_mesh(mesh)
         self._retain_export_source(mesh, True, error)
         self._publish_result(sequence_number, payload, error, complete=True)
+
+    def _source_signature(
+        self, mesh: SourceMeshType | None
+    ) -> tuple[bytes, bytes, str] | None:
+        if not isinstance(mesh, Trimesh):
+            return None
+        return (
+            _array_signature(mesh.vertices),
+            _array_signature(mesh.faces),
+            repr(mesh.metadata),
+        )
+
+    def _source_changed(
+        self,
+        mesh: SourceMeshType | None,
+        source_signature: tuple[bytes, bytes, str] | None,
+    ) -> bool:
+        return source_signature != self._source_signature(mesh)
 
     def _retain_export_source(
         self,

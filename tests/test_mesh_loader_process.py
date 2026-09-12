@@ -234,6 +234,33 @@ def test_load_worker_invalidates_export_source_for_debug_and_errors(load_queue):
     assert worker.export_source is None
 
 
+def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
+    load_queue,
+):
+    source = box()
+    initial_vertices = source.vertices.copy()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = _mutate_after_last_yield(source)
+        worker = LoadWorker("test/path", load_queue)
+        worker.load()
+
+    first_result = load_queue.get(timeout=1.0)
+    final_result = load_queue.get(timeout=1.0)
+    assert isinstance(final_result.mesh, MeshPayload)
+    assert final_result.mesh.color.tolist() == [32, 61, 92, 122]
+    npt.assert_allclose(final_result.mesh.vertices, source.vertices)
+    assert worker.export_source is source
+    assert worker.export_source.metadata == source.metadata
+    npt.assert_allclose(first_result.mesh.vertices, initial_vertices)
+    npt.assert_raises(
+        AssertionError,
+        npt.assert_allclose,
+        first_result.mesh.vertices,
+        source.vertices,
+    )
+
+
 def test_export_worker_uses_the_retained_source_without_payload_reconstruction():
     source = box()
     source.metadata["scadview"] = {"color": [0.123456, 0.2, 0.3, 0.4]}
@@ -300,6 +327,12 @@ def _raise_mesh_error():
 def _yield_then_raise(mesh):
     yield mesh
     raise RuntimeError("mesh failed")
+
+
+def _mutate_after_last_yield(mesh):
+    yield mesh
+    mesh.vertices[0] = (9.125, 8.25, 7.5)
+    mesh.metadata["scadview"] = {"color": [0.125, 0.24, 0.36, 0.48]}
 
 
 def test_load_worker_does_not_evict_newer_queued_result():
