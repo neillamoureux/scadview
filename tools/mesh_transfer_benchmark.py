@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import multiprocessing as mp
+import os
 import pickle
 import platform
+import subprocess
 import tracemalloc
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -40,6 +42,8 @@ METRIC_NAMES = (
     "renderer_upload_ms",
     "first_frame_ms",
     "gpu_measurement_error",
+    "export_latency_ms",
+    "retained_loader_process_rss_bytes",
 )
 
 
@@ -59,6 +63,7 @@ def main() -> None:
     report = run_benchmark(
         measure_gpu=not arguments.no_gpu,
         measure_peak_memory=not arguments.no_peak_memory,
+        measure_retained_source_memory=not arguments.no_retained_source_memory,
         path=arguments.path,
     )
     _write_report(report, arguments.output)
@@ -68,6 +73,7 @@ def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-gpu", action="store_true")
     parser.add_argument("--no-peak-memory", action="store_true")
+    parser.add_argument("--no-retained-source-memory", action="store_true")
     parser.add_argument("--path", choices=("trimesh", "payload"), default="trimesh")
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
@@ -77,6 +83,7 @@ def run_benchmark(
     *,
     measure_gpu: bool = True,
     measure_peak_memory: bool = True,
+    measure_retained_source_memory: bool = True,
     path: Literal["trimesh", "payload"] = "trimesh",
 ) -> dict[str, Any]:
     """Measure every workload using the selected transfer representation."""
@@ -90,6 +97,7 @@ def run_benchmark(
                 case,
                 measure_gpu=measure_gpu,
                 measure_peak_memory=measure_peak_memory,
+                measure_retained_source_memory=measure_retained_source_memory,
                 path=path,
             )
             for case in discover_cases()
@@ -123,13 +131,16 @@ def measure_case(
     *,
     measure_gpu: bool = True,
     measure_peak_memory: bool = True,
+    measure_retained_source_memory: bool = True,
     path: Literal["trimesh", "payload"] = "trimesh",
 ) -> dict[str, Any]:
     """Measure one workload without making timing assertions."""
     if measure_peak_memory:
         tracemalloc.start()
     try:
-        measurement = _measure_case(case, measure_gpu, path)
+        measurement = _measure_case(
+            case, measure_gpu, path, measure_retained_source_memory
+        )
         if measure_peak_memory:
             measurement["peak_memory_bytes"] = tracemalloc.get_traced_memory()[1]
             measurement["peak_memory_supported"] = True
@@ -146,6 +157,7 @@ def _measure_case(
     case: BenchmarkCase,
     measure_gpu: bool,
     path: Literal["trimesh", "payload"],
+    measure_retained_source_memory: bool,
 ) -> dict[str, Any]:
     start = perf_counter()
     meshes = case.meshes()
@@ -156,6 +168,10 @@ def _measure_case(
     serialized, encode_ms = _pickle_encode(transfer_values)
     _, decode_ms = _pickle_decode(serialized)
     queue_round_trip_ms = _queue_round_trip(transfer_values)
+    export_latency_ms = _export_latency(meshes[-1])
+    retained_source_rss_bytes = (
+        _retained_source_rss(meshes) if measure_retained_source_memory else None
+    )
     prepared, preparation_ms = _prepare_renderer_data(meshes, payloads, path)
     gpu_measurements = _measure_gpu(prepared) if measure_gpu else _no_gpu_measurement()
     aggregate_ms = _elapsed_ms(aggregate_start)
@@ -173,9 +189,52 @@ def _measure_case(
         "pickle_encode_ms": encode_ms,
         "pickle_decode_ms": decode_ms,
         "queue_round_trip_ms": queue_round_trip_ms,
+        "export_latency_ms": export_latency_ms,
+        "retained_loader_process_rss_bytes": retained_source_rss_bytes,
         "renderer_preparation_ms": preparation_ms,
         **gpu_measurements,
     }
+
+
+def _export_latency(mesh: Trimesh) -> float:
+    start = perf_counter()
+    mesh.export(file_type="stl")
+    return _elapsed_ms(start)
+
+
+def _retained_source_rss(meshes: list[Trimesh]) -> int | None:
+    parent_connection, child_connection = mp.Pipe(duplex=False)
+    process = mp.Process(
+        target=_report_retained_source_rss, args=(meshes, child_connection)
+    )
+    process.start()
+    child_connection.close()
+    try:
+        return parent_connection.recv() if parent_connection.poll(10) else None
+    finally:
+        parent_connection.close()
+        process.join(timeout=10)
+        if process.is_alive():
+            process.terminate()
+            process.join()
+
+
+def _report_retained_source_rss(meshes: list[Trimesh], connection: Any) -> None:
+    try:
+        connection.send(_current_rss_bytes())
+    finally:
+        del meshes
+        connection.close()
+
+
+def _current_rss_bytes() -> int | None:
+    try:
+        output = subprocess.check_output(
+            ["ps", "-o", "rss=", "-p", str(os.getpid())], text=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return int(output.strip()) * 1024
 
 
 def _to_payloads(

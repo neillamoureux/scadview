@@ -10,7 +10,7 @@ import wx
 from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
-from scadview.mesh_loader_process import LoadResult
+from scadview.mesh_loader_process import ExportResult, LoadResult
 from scadview.mesh_payload import MeshPayload
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
@@ -116,11 +116,11 @@ class MainFrame(wx.Frame):
             on_value_change=self._controller.on_module_path_set,
             enable_func=self._on_module_path_set,
         )
-        self._export_action = EnableableAction[LoadStatus](
+        self._export_action = EnableableAction[bool](
             Action("Export...", self.export, accelerator="E"),
-            initial_value=LoadStatus.NONE,
-            on_value_change=self._controller.on_load_status_change,
-            enable_func=self._can_be_exported,
+            initial_value=self._controller.export_available,
+            on_value_change=self._controller.on_export_availability_change,
+            enable_func=lambda available: available,
         )
         self._debug_features_action = CheckableAction[bool](
             Action("Debug features", self._on_debug_features_toggle, checkable=True),
@@ -495,6 +495,9 @@ class MainFrame(wx.Frame):
         self._load_progress_gauge.Pulse()
 
     def on_load_timer(self, _: wx.Event):
+        export_result = self._controller.check_export_queue()
+        if export_result is not None:
+            self._handle_export_result(export_result)
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
 
@@ -503,7 +506,8 @@ class MainFrame(wx.Frame):
             return
         mesh = load_result.mesh
         if load_result.complete:
-            self._loader_timer.Stop()
+            if not self._controller.export_pending:
+                self._loader_timer.Stop()
             self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
         if load_result.error:
             logger.error(load_result.error)
@@ -514,6 +518,16 @@ class MainFrame(wx.Frame):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
+
+    def _handle_export_result(self, export_result: ExportResult) -> None:
+        if export_result.error is not None:
+            logger.error(
+                "Failure on export (%s): %s",
+                export_result.error.type_name,
+                export_result.error.message,
+            )
+        if self._controller.load_status == LoadStatus.COMPLETE:
+            self._loader_timer.Stop()
 
     def load_module(self, module_path: Path, *, start_timer: bool = True) -> None:
         self._controller.load_mesh(str(module_path))
@@ -563,10 +577,8 @@ class MainFrame(wx.Frame):
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
-                try:
-                    self._controller.export(dlg.GetPath())
-                except Exception as e:
-                    logger.error(f"Failure on export: {e}")
+                if self._controller.export(dlg.GetPath()):
+                    self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
     def on_toggle_grid(self, _: wx.Event):
         self._gl_widget.toggle_grid()

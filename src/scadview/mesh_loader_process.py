@@ -108,6 +108,13 @@ class CancelLoadCommand(Command):
     pass
 
 
+@dataclass(frozen=True)
+class ExportCommand(Command):
+    request_id: int
+    generation: int
+    path: str
+
+
 class ShutDownCommand(Command):
     pass
 
@@ -146,8 +153,22 @@ class LoadResult:
         return LoadStatus.NONE
 
 
+@dataclass(frozen=True)
+class ExportError:
+    type_name: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ExportResult:
+    request_id: int
+    generation: int
+    error: ExportError | None = None
+
+
 MpLoadQueue = MpQueue[LoadResult]
 MpCommandQueue = MpQueue[Command]
+MpExportResultQueue = MpQueue[ExportResult]
 
 
 def debug_color() -> Generator[tuple[float, float, float], None, None]:
@@ -184,6 +205,7 @@ class LoadWorker(Thread):
         self._parameters: list[CreateMeshParameter] | None = None
         self._loaded_feature_states: list[FeatureState] = []
         self._feature_sources = []
+        self.export_source: Trimesh | None = None
 
     def run(self):
         LoadWorker.load_number += 1
@@ -217,6 +239,7 @@ class LoadWorker(Thread):
         tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
         tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
+        self._retain_export_source(tmesh, final, error)
         payload = self._payload_mesh(tmesh)
 
         self.put_in_queue(
@@ -231,6 +254,19 @@ class LoadWorker(Thread):
                 generation=self.generation,
             )
         )
+
+    def _retain_export_source(
+        self,
+        mesh: SourceMeshType | None,
+        final: bool,
+        error: Exception | None,
+    ) -> None:
+        if not final:
+            return
+        if error is None and not self.debug_features and isinstance(mesh, Trimesh):
+            self.export_source = mesh
+            return
+        self.export_source = None
 
     def _ensure_trimesh(
         self, mesh: CreateMeshResultType | None
@@ -456,12 +492,14 @@ class MeshLoaderProcess(Process):
         self,
         command_queue: MpCommandQueue,
         load_queue: MpLoadQueue,
+        export_result_queue: MpExportResultQueue,
         log_queue: mp_queues.Queue[logging.LogRecord],
         log_level: int,
     ):
         super().__init__()
         self._command_queue = command_queue
         self._load_queue = load_queue
+        self._export_result_queue = export_result_queue
         self._worker: LoadWorker | None = None
         self._log_queue = log_queue
         self._log_level = log_level
@@ -496,6 +534,8 @@ class MeshLoaderProcess(Process):
                 logger.info("Load cancelled")
                 self.cancel()
                 continue
+            elif isinstance(command, ExportCommand):
+                self._start_export(command)
             elif isinstance(command, ShutDownCommand):
                 logger.info("Shutting down loader process")
                 self.cancel(close_queues=True)
@@ -510,4 +550,57 @@ class MeshLoaderProcess(Process):
         if close_queues:
             self._command_queue.close()
             self._load_queue.close()
+            self._export_result_queue.close()
         self._worker = None
+
+    def _start_export(self, command: ExportCommand) -> None:
+        source = self._export_source(command.generation)
+        if source is None:
+            self._publish_export_result(
+                command,
+                ExportError(
+                    "StaleSource", "No export source for the requested generation"
+                ),
+            )
+            return
+        ExportWorker(command, source, self._export_result_queue).start()
+
+    def _export_source(self, generation: int) -> Trimesh | None:
+        if self._worker is None or self._worker.generation != generation:
+            return None
+        return self._worker.export_source
+
+    def _publish_export_result(
+        self, command: ExportCommand, error: ExportError | None
+    ) -> None:
+        self._export_result_queue.put(
+            ExportResult(command.request_id, command.generation, error)
+        )
+
+
+class ExportWorker(Thread):
+    def __init__(
+        self,
+        command: ExportCommand,
+        source: Trimesh,
+        result_queue: MpExportResultQueue,
+    ) -> None:
+        super().__init__()
+        self._command = command
+        self._source = source
+        self._result_queue = result_queue
+
+    def run(self) -> None:
+        try:
+            self._source.export(self._command.path)
+        except (OSError, ValueError, TypeError) as error:
+            export_error = ExportError(type(error).__name__, str(error))
+        else:
+            export_error = None
+        self._result_queue.put(
+            ExportResult(
+                self._command.request_id,
+                self._command.generation,
+                export_error,
+            )
+        )

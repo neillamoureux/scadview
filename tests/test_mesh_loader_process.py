@@ -10,10 +10,15 @@ from trimesh.creation import box, icosphere
 from scadview.features import FeatureState, feature
 from scadview.mesh_loader_process import (
     CreateMeshParameter,
+    ExportCommand,
+    ExportError,
+    ExportResult,
+    ExportWorker,
     LoadMeshCommand,
     LoadResult,
     LoadStatus,
     LoadWorker,
+    MeshLoaderProcess,
     MpLoadQueue,
     MpQueue,
 )
@@ -169,6 +174,86 @@ def test_load_worker_reports_parameters_when_execution_fails(load_queue):
     assert result.error is not None
     assert result.parameters == parameters
     assert result.generation == 4
+
+
+def test_load_worker_retains_only_the_final_successful_single_source(load_queue):
+    first = box()
+    final = icosphere()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = iter([first, final])
+        worker = LoadWorker("test/path", load_queue, generation=4)
+        worker.load()
+
+    assert worker.export_source is final
+
+
+def test_load_worker_invalidates_export_source_for_debug_and_errors(load_queue):
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = _raise_mesh_error()
+        worker = LoadWorker("test/path", load_queue, generation=4)
+        worker.load()
+
+    assert worker.export_source is None
+
+
+def test_export_worker_uses_the_retained_source_without_payload_reconstruction():
+    source = box()
+    source.metadata["scadview"] = {"color": [0.123456, 0.2, 0.3, 0.4]}
+    source.metadata["preserved"] = {"value": "exact"}
+    result_queue = Mock()
+    exported: list[Trimesh] = []
+
+    source.export = lambda _: exported.append(source)
+    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
+
+    assert exported == [source]
+    assert result_queue.put.call_args.args[0] == ExportResult(3, 4)
+    assert source.metadata["preserved"] == {"value": "exact"}
+
+
+def test_export_worker_reports_exporter_errors():
+    source = box()
+    result_queue = Mock()
+
+    def fail_export(_: str) -> None:
+        raise OSError("disk full")
+
+    source.export = fail_export
+    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
+
+    assert result_queue.put.call_args.args[0] == ExportResult(
+        3, 4, ExportError("OSError", "disk full")
+    )
+
+
+def test_loader_process_reports_stale_export_requests_reliably():
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = None
+    process._export_result_queue = Mock()
+
+    process._start_export(ExportCommand(3, 4, "/tmp/model.stl"))
+
+    assert process._export_result_queue.put.call_args.args[0] == ExportResult(
+        3,
+        4,
+        ExportError("StaleSource", "No export source for the requested generation"),
+    )
+
+
+def test_loader_process_shutdown_closes_the_export_result_queue():
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = None
+    process._command_queue = Mock()
+    process._load_queue = Mock()
+    process._export_result_queue = Mock()
+
+    process.cancel(close_queues=True)
+
+    process._command_queue.close.assert_called_once_with()
+    process._load_queue.close.assert_called_once_with()
+    process._export_result_queue.close.assert_called_once_with()
 
 
 def _raise_mesh_error():

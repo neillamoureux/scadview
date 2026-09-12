@@ -95,6 +95,31 @@ render-buffer preparation and GL buffer creation, not pickle size alone. The
 historical and compact rows combine the transport and renderer changes, so they
 should not be interpreted as an isolated serialization experiment.
 
+## Loader-owned export retention
+
+Command:
+
+```console
+uv run python -m tools.mesh_transfer_benchmark --path payload --no-gpu
+```
+
+The post-export implementation measurement ran on the environment above. Each
+case retains its normalized source in a child process matching the loader's
+source-ownership boundary, then records current resident memory with `ps`. Export
+latency measures the retained source's STL exporter dispatch. It excludes file
+system latency and is evidence rather than a CI threshold.
+
+| Case | Retained source process RSS | Export latency |
+| --- | ---: | ---: |
+| high-sharing-small | 82,542,592 bytes | 0.350 ms |
+| high-sharing-large | 87,552,000 bytes | 1.018 ms |
+| mixed-transparency | 82,849,792 bytes | 0.122 ms |
+| representative-large-model | 108,158,976 bytes | 0.535 ms |
+
+The retained source adds bounded loader-process memory only for the latest final
+single result. Display payloads remain the sole representation transferred to the
+controller and renderer; no source mesh is reconstructed for export.
+
 ## Human visual validation checklist
 
 Manual validation completed on macOS 26.6.2 with an Apple M3 Max, wxPython

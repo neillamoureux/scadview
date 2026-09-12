@@ -1,6 +1,4 @@
-import gc
 import queue
-import weakref
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -11,7 +9,12 @@ from trimesh.creation import box
 from scadview.controller import Controller
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
-from scadview.mesh_loader_process import LoadMeshCommand, LoadResult
+from scadview.mesh_loader_process import (
+    ExportCommand,
+    ExportResult,
+    LoadMeshCommand,
+    LoadResult,
+)
 from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
 
@@ -49,20 +52,10 @@ class DummyProcess:
         return None
 
 
-class ExportMesh:
-    def __init__(self, error: OSError | None = None):
-        self.error = error
-        self.paths: list[str] = []
-
-    def export(self, path: str):
-        if self.error is not None:
-            raise self.error
-        self.paths.append(path)
-
-
 def _controller(monkeypatch):
     monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
     monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpExportResultQueue", DummyQueue)
     monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
     return Controller()
 
@@ -156,82 +149,49 @@ def test_controller_does_not_export_debug_payload_lists(monkeypatch):
         controller.close()
 
 
-def test_controller_exports_payload_geometry_and_scadview_color(monkeypatch):
+def test_controller_queues_export_for_the_current_generation(monkeypatch):
     controller = _controller(monkeypatch)
-    source = box()
-    source.metadata["scadview"] = {"color": [0.2, 0.4, 0.6, 0.8]}
-    payload = mesh_to_payload(source)
-    exported: list[object] = []
-
-    def capture_export(mesh, path):
-        exported.extend((mesh, path))
-
-    monkeypatch.setattr("trimesh.Trimesh.export", capture_export)
     try:
-        controller.current_mesh = payload
+        controller.current_mesh = mesh_to_payload(box())
         controller.load_status = LoadStatus.COMPLETE
 
+        assert controller.export("/tmp/model.stl")
+
+        assert controller._command_queue.items[-1] == ExportCommand(
+            1, 0, "/tmp/model.stl"
+        )
+        assert controller.export_pending
+        assert not controller.export("/tmp/model.stl")
+    finally:
+        controller.close()
+
+
+def test_controller_accepts_only_the_pending_export_result(monkeypatch):
+    controller = _controller(monkeypatch)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
         controller.export("/tmp/model.stl")
+        controller._export_result_queue.items.extend(
+            [ExportResult(2, 0), ExportResult(1, 0)]
+        )
 
-        export_mesh, export_path = exported
-        assert export_path == "/tmp/model.stl"
-        assert isinstance(export_mesh, type(source))
-        assert export_mesh.metadata["scadview"]["color"] == [0.2, 0.4, 0.6, 0.8]
-        assert export_mesh.vertices.tolist() == source.vertices.tolist()
-        assert export_mesh.faces.tolist() == source.faces.tolist()
+        assert controller.check_export_queue() == ExportResult(2, 0)
+        assert controller.export_pending
+        assert controller.check_export_queue() == ExportResult(1, 0)
+        assert not controller.export_pending
     finally:
         controller.close()
 
 
-@pytest.mark.parametrize("suffix", ["stl", "ply"])
-def test_controller_dispatches_supported_export_formats(monkeypatch, suffix):
+def test_controller_rejects_export_without_a_completed_single_payload(monkeypatch):
     controller = _controller(monkeypatch)
-    export_mesh = ExportMesh()
-    monkeypatch.setattr("scadview.controller.payload_to_trimesh", lambda _: export_mesh)
     try:
-        controller.current_mesh = mesh_to_payload(box())
+        controller.current_mesh = [mesh_to_payload(box())]
         controller.load_status = LoadStatus.COMPLETE
 
-        controller.export(f"/tmp/model.{suffix}")
-
-        assert export_mesh.paths == [f"/tmp/model.{suffix}"]
-    finally:
-        controller.close()
-
-
-def test_controller_releases_temporary_export_mesh_after_dispatch(monkeypatch):
-    controller = _controller(monkeypatch)
-    reference: list[weakref.ReferenceType[ExportMesh]] = []
-
-    def make_export_mesh(_):
-        export_mesh = ExportMesh()
-        reference.append(weakref.ref(export_mesh))
-        return export_mesh
-
-    monkeypatch.setattr("scadview.controller.payload_to_trimesh", make_export_mesh)
-    try:
-        controller.current_mesh = mesh_to_payload(box())
-        controller.load_status = LoadStatus.COMPLETE
-
-        controller.export("/tmp/model.stl")
-        gc.collect()
-
-        assert reference[0]() is None
-        assert controller.current_mesh is not None
-    finally:
-        controller.close()
-
-
-def test_controller_propagates_exporter_errors(monkeypatch):
-    controller = _controller(monkeypatch)
-    export_mesh = ExportMesh(OSError("disk full"))
-    monkeypatch.setattr("scadview.controller.payload_to_trimesh", lambda _: export_mesh)
-    try:
-        controller.current_mesh = mesh_to_payload(box())
-        controller.load_status = LoadStatus.COMPLETE
-
-        with pytest.raises(OSError, match="disk full"):
-            controller.export("/tmp/model.stl")
+        assert not controller.export("/tmp/model.stl")
+        assert controller._command_queue.items == []
     finally:
         controller.close()
 

@@ -9,14 +9,17 @@ from scadview.load_status import LoadStatus
 from scadview.logging_main import log_queue
 from scadview.mesh_loader_process import (
     Command,
+    ExportCommand,
+    ExportResult,
     LoadMeshCommand,
     LoadResult,
     MeshLoaderProcess,
     MpCommandQueue,
+    MpExportResultQueue,
     MpLoadQueue,
     ShutDownCommand,
 )
-from scadview.mesh_payload import MeshPayload, payload_to_trimesh
+from scadview.mesh_payload import MeshPayload
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.observable import Observable
 
@@ -48,16 +51,22 @@ class Controller:
         self._parameters: list[CreateMeshParameter] = []
         self._parameter_values: dict[str, ScalarParameterValue] = {}
         self._current_generation = 0
+        self._next_export_request_id = 1
+        self._pending_export_request_id: int | None = None
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
+        self._export_result_queue = MpExportResultQueue(maxsize=0, type_=ExportResult)
         self._loader_process = MeshLoaderProcess(
             self._command_queue,
             self._load_queue,
+            self._export_result_queue,
             log_queue=log_queue,
             log_level=logger.getEffectiveLevel(),
         )
         self._loader_process.start()
         self.on_load_status_change = Observable()
+        self.on_export_result = Observable()
+        self.on_export_availability_change = Observable()
         self._load_status = LoadStatus.NONE
 
     @property
@@ -148,6 +157,7 @@ class Controller:
                 logger.debug("check_load_queue got mesh == None")
             self.feature_states = load_result.features or []
             self.load_status = load_result.status
+            self._notify_export_availability()
         except queue.Empty:
             logger.debug("check_load_queue empty")
             load_result = LoadResult(0, 0, None, None, False)
@@ -191,13 +201,19 @@ class Controller:
         self._queue_feature_reload(self._feature_state_map())
         return True
 
-    def export(self, file_path: str):
-        payload = self.exportable_payload
-        if payload is None:
+    def export(self, file_path: str) -> bool:
+        if not self.exportable_payload or self.export_pending:
             logger.info("No mesh to export")
-            return
+            return False
         self._last_export_path = file_path
-        self._export_payload(payload, file_path)
+        request_id = self._next_export_request_id
+        self._next_export_request_id += 1
+        self._pending_export_request_id = request_id
+        self._notify_export_availability()
+        self._command_queue.put(
+            ExportCommand(request_id, self.current_generation, file_path)
+        )
+        return True
 
     @property
     def exportable_payload(self) -> MeshPayload | None:
@@ -208,12 +224,24 @@ class Controller:
             return self.current_mesh
         return None
 
-    def _export_payload(self, payload: MeshPayload, file_path: str) -> None:
-        export_mesh = payload_to_trimesh(payload)
+    @property
+    def export_pending(self) -> bool:
+        return self._pending_export_request_id is not None
+
+    @property
+    def export_available(self) -> bool:
+        return self.exportable_payload is not None and not self.export_pending
+
+    def check_export_queue(self) -> ExportResult | None:
         try:
-            export_mesh.export(file_path)
-        finally:
-            del export_mesh
+            result = self._export_result_queue.get_nowait()
+        except queue.Empty:
+            return None
+        if result.request_id == self._pending_export_request_id:
+            self._pending_export_request_id = None
+        self._notify_export_availability()
+        self.on_export_result.notify(result)
+        return result
 
     def default_export_path(self) -> str:
         if self._last_export_path != "":
@@ -242,6 +270,7 @@ class Controller:
 
         self._command_queue.close()
         self._load_queue.close()
+        self._export_result_queue.close()
 
     def _feature_state_map(self) -> dict[str, bool]:
         return {feature.name: feature.enabled for feature in self.feature_states}
@@ -269,6 +298,7 @@ class Controller:
     def _queue_load(self, feature_states: dict[str, bool]):
         self.current_mesh = None
         self.load_status = LoadStatus.START
+        self._notify_export_availability()
         self._current_generation += 1
         self._command_queue.put(
             LoadMeshCommand(
@@ -279,6 +309,9 @@ class Controller:
                 generation=self.current_generation,
             )
         )
+
+    def _notify_export_availability(self) -> None:
+        self.on_export_availability_change.notify(self.export_available)
 
     def _reconcile_parameters(self, parameters: list[CreateMeshParameter]) -> None:
         values = {

@@ -62,6 +62,10 @@ def test_measurement_reports_pickle_timing_and_optional_memory():
     assert measurement["first_frame_ms"] is None
     assert measurement["post_create_mesh_to_first_frame_ms"] is None
     assert measurement["peak_memory_bytes"] is not None
+    assert measurement["export_latency_ms"] >= 0
+    assert measurement["retained_loader_process_rss_bytes"] is None or (
+        measurement["retained_loader_process_rss_bytes"] > 0
+    )
 
 
 def test_aggregate_metric_is_emitted_for_both_transfer_paths():
@@ -84,3 +88,4 @@ def test_memory_measurement_can_be_disabled():
 
     assert measurement["peak_memory_supported"] is False
     assert measurement["peak_memory_bytes"] is None
+    assert measurement["retained_loader_process_rss_bytes"] is not None
