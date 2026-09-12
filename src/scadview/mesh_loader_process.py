@@ -646,7 +646,7 @@ class ExportWorker(Thread):
     def run(self) -> None:
         try:
             self._source.export(self._command.path)
-        except (OSError, ValueError, TypeError) as error:
+        except Exception as error:
             export_error = ExportError(type(error).__name__, str(error))
         else:
             export_error = None

@@ -326,6 +326,21 @@ def test_export_worker_reports_exporter_errors():
     )
 
 
+def test_export_worker_reports_unexpected_exporter_errors():
+    source = box()
+    result_queue = Mock()
+
+    def fail_export(_: str) -> None:
+        raise RuntimeError("unexpected exporter failure")
+
+    source.export = fail_export
+    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
+
+    assert result_queue.put.call_args.args[0] == ExportResult(
+        3, 4, ExportError("RuntimeError", "unexpected exporter failure")
+    )
+
+
 def test_loader_process_reports_stale_export_requests_reliably():
     process = object.__new__(MeshLoaderProcess)
     process._worker = None

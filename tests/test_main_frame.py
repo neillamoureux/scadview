@@ -7,6 +7,7 @@ from trimesh.creation import box
 pytest.importorskip("wx")
 
 from scadview.load_status import LoadStatus
+from scadview.mesh_loader_process import ExportError, ExportResult
 from scadview.mesh_payload import mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
 from scadview.ui.wx import main_frame
@@ -365,6 +366,27 @@ def test_export_is_disabled_for_completed_debug_payload_list():
     )
 
     assert not MainFrame._can_be_exported(frame, LoadStatus.COMPLETE)
+
+
+def test_export_error_is_reported_and_completed_load_polling_stops(caplog):
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(load_status=LoadStatus.COMPLETE),
+        _loader_timer=timer,
+    )
+
+    with caplog.at_level("ERROR"):
+        MainFrame._handle_export_result(
+            frame,
+            ExportResult(
+                1,
+                0,
+                ExportError("LoaderProcessDied", "Mesh loader process exited"),
+            ),
+        )
+
+    timer.Stop.assert_called_once_with()
+    assert "Mesh loader process exited" in caplog.text
 
 
 def test_current_payload_result_reaches_the_view_without_reconstruction():

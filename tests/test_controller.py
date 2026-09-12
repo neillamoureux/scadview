@@ -11,6 +11,7 @@ from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import (
     ExportCommand,
+    ExportError,
     ExportResult,
     LoadMeshCommand,
     LoadResult,
@@ -33,6 +34,11 @@ class DummyQueue:
 
     def close(self):
         return None
+
+
+class FailingQueue(DummyQueue):
+    def put(self, item: object, block: bool = True, timeout: float | None = None):
+        raise OSError("loader command queue closed")
 
 
 class DummyProcess:
@@ -162,6 +168,55 @@ def test_controller_queues_export_for_the_current_generation(monkeypatch):
         )
         assert controller.export_pending
         assert not controller.export("/tmp/model.stl")
+    finally:
+        controller.close()
+
+
+def test_controller_reports_queue_submission_failure_and_clears_pending(monkeypatch):
+    monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MpCommandQueue", FailingQueue)
+    monkeypatch.setattr("scadview.controller.MpExportResultQueue", DummyQueue)
+    monkeypatch.setattr("scadview.controller.MeshLoaderProcess", DummyProcess)
+    controller = Controller()
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
+        results: list[ExportResult] = []
+
+        def record_result(result: ExportResult) -> None:
+            results.append(result)
+
+        controller.on_export_result.subscribe(record_result)
+
+        assert not controller.export("/tmp/model.stl")
+
+        assert not controller.export_pending
+        assert results == [
+            ExportResult(
+                1,
+                0,
+                ExportError("OSError", "loader command queue closed"),
+            )
+        ]
+    finally:
+        controller.close()
+
+
+def test_controller_reports_loader_death_for_pending_export(monkeypatch):
+    controller = _controller(monkeypatch)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
+        assert controller.export("/tmp/model.stl")
+
+        result = controller.check_export_queue()
+
+        assert result == ExportResult(
+            1,
+            0,
+            ExportError("LoaderProcessDied", "Mesh loader process exited"),
+        )
+        assert not controller.export_pending
     finally:
         controller.close()
 

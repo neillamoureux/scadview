@@ -10,6 +10,7 @@ from scadview.logging_main import log_queue
 from scadview.mesh_loader_process import (
     Command,
     ExportCommand,
+    ExportError,
     ExportResult,
     LoadMeshCommand,
     LoadResult,
@@ -53,6 +54,7 @@ class Controller:
         self._current_generation = 0
         self._next_export_request_id = 1
         self._pending_export_request_id: int | None = None
+        self._pending_export_generation: int | None = None
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
         self._export_result_queue = MpExportResultQueue(maxsize=0, type_=ExportResult)
@@ -209,10 +211,22 @@ class Controller:
         request_id = self._next_export_request_id
         self._next_export_request_id += 1
         self._pending_export_request_id = request_id
+        self._pending_export_generation = self.current_generation
         self._notify_export_availability()
-        self._command_queue.put(
-            ExportCommand(request_id, self.current_generation, file_path)
-        )
+        command = ExportCommand(request_id, self.current_generation, file_path)
+        try:
+            self._command_queue.put(command)
+        except (BrokenPipeError, EOFError, OSError, ValueError) as error:
+            self._clear_pending_export()
+            self._notify_export_availability()
+            self.on_export_result.notify(
+                ExportResult(
+                    request_id,
+                    command.generation,
+                    ExportError(type(error).__name__, str(error)),
+                )
+            )
+            return False
         return True
 
     @property
@@ -236,12 +250,41 @@ class Controller:
         try:
             result = self._export_result_queue.get_nowait()
         except queue.Empty:
-            return None
-        if result.request_id == self._pending_export_request_id:
-            self._pending_export_request_id = None
+            result = self._loader_death_result()
+            if result is None:
+                return None
+        except (OSError, ValueError):
+            result = self._loader_death_result()
+            if result is None:
+                return None
+        if (
+            result.request_id == self._pending_export_request_id
+            and result.generation == self._pending_export_generation
+        ):
+            self._clear_pending_export()
         self._notify_export_availability()
         self.on_export_result.notify(result)
         return result
+
+    def _loader_death_result(self) -> ExportResult | None:
+        if self._pending_export_request_id is None:
+            return None
+        if self._loader_process.is_alive():
+            return None
+        request_id = self._pending_export_request_id
+        generation = self._pending_export_generation
+        if generation is None:
+            return None
+        self._clear_pending_export()
+        return ExportResult(
+            request_id,
+            generation,
+            ExportError("LoaderProcessDied", "Mesh loader process exited"),
+        )
+
+    def _clear_pending_export(self) -> None:
+        self._pending_export_request_id = None
+        self._pending_export_generation = None
 
     def default_export_path(self) -> str:
         if self._last_export_path != "":

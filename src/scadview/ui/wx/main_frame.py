@@ -105,6 +105,7 @@ class MainFrame(wx.Frame):
         self._loader_last_load_number = 0
         self._loader_last_sequence_number = 0
         self._controller.on_load_status_change.subscribe(self._indicate_load_status)
+        self._controller.on_export_result.subscribe(self._handle_export_result)
         self._controller.on_features_change.subscribe(self._update_feature_controls)
         self._controller.on_parameters_change.subscribe(self._update_parameter_controls)
 
@@ -495,9 +496,7 @@ class MainFrame(wx.Frame):
         self._load_progress_gauge.Pulse()
 
     def on_load_timer(self, _: wx.Event):
-        export_result = self._controller.check_export_queue()
-        if export_result is not None:
-            self._handle_export_result(export_result)
+        self._controller.check_export_queue()
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
 
