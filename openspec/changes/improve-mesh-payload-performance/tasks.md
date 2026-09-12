@@ -18,9 +18,9 @@
 
 ## 4. Retain Payloads and Preserve Export
 
-- [x] 4.1 Create controller and UI boundary stubs for retaining payload results, detecting exportable final payloads, and reconstructing an export mesh on demand; verify static analysis identifies all remaining `current_mesh` assumptions.
-- [x] 4.2 Add failing controller/UI tests for current-generation ownership, stale-result rejection, export enablement, debug-list non-exportability, supported-format dispatch, equivalent exported vertices/faces, restored SCADview color, and exporter errors; run the targeted tests and confirm the expected red state.
-- [x] 4.3 Implement payload ownership and on-demand non-processing `Trimesh` reconstruction, releasing the temporary export object after dispatch; verify controller and UI tests pass, existing export formats and error behavior remain unchanged, and no source mesh becomes retained controller, UI, or renderer state.
+- [x] 4.1 Create controller and UI boundary stubs for retaining payload results and detecting exportable final payloads; verify static analysis identifies all remaining `current_mesh` assumptions. (Export reconstruction is superseded by Group 8.)
+- [x] 4.2 Add controller/UI tests for current-generation ownership, stale-result rejection, export enablement, debug-list non-exportability, supported-format dispatch, and exporter errors; run the targeted tests and confirm the expected red state. (Lossless source-fidelity coverage is superseded by Group 8.)
+- [x] 4.3 Implement payload ownership and preserve the existing export dispatch seam; verify controller and UI tests pass and no source mesh becomes retained controller, UI, or renderer state. (Loader-owned export is superseded by Group 8.)
 
 ## 5. Externalize and Inject Built-in Scene Assets
 
@@ -40,3 +40,12 @@
 - [x] 7.2 Repeat the baseline benchmark cases on the compact path and record comparable before-and-after results; verify the report identifies whether serialization, payload conversion, renderer expansion, upload, or retained buffers dominate remaining cost.
 - [x] 7.3 Manually compare startup, loading, base-axis, opaque, transparent multi-mesh, feature-debug, incremental, edge-on/off, and framing scenes on supported GUI/OpenGL environments; verify visual parity and record the tested platforms because automated checks cannot establish visual correctness.
 - [x] 7.4 Record the indexed-renderer gate decision from benchmark and visual evidence; verify fully indexed shader work remains deferred, or open a separately reviewable OpenSpec change with explicit portability and visual-acceptance criteria if renderer expansion/upload remains a material bottleneck.
+
+## 8. Restore Lossless Loader-Owned Export
+
+- [x] 8.1 Add typed export command/result models and a dedicated reliable export-result queue; preserve request ids, generations, structured errors, and existing process lifecycle semantics.
+- [x] 8.2 Retain only the final successful non-debug normalized `Trimesh` in the loader process, invalidate it on newer generations, and publish only its `MeshPayload` view through the latest-wins display queue; remove `payload_to_trimesh` from production export flow.
+- [x] 8.3 Implement asynchronous controller/UI export request, polling, duplicate-request suppression, stale-source handling, and error display without blocking the wx event loop.
+- [x] 8.4 Add fidelity tests proving exports use the retained source, including float precision, SCADview color precision, metadata, visuals, supported-format dispatch, and exporter errors.
+- [x] 8.5 Add concurrency and lifecycle tests for incremental results, reload during export, stale generations, queue behavior, loader failure, process death, and shutdown.
+- [x] 8.6 Repeat performance and memory measurements, including retained loader-process RSS and export latency, then update the benchmark evidence and PR description.

@@ -32,8 +32,8 @@ documented list and generator forms.
 - Replace complete `Trimesh` objects on the result queue with a compact,
   validation-friendly internal representation.
 - Move conversion work that does not require a GL context into the loader process.
-- Preserve existing queue freshness, rendering, framing, and on-demand export
-  behavior.
+- Preserve existing queue freshness, rendering, framing, and lossless export
+  behavior without transferring the source mesh through the display queue.
 - Make all production renderer inputs payload-only and keep production modules
   under `scadview.render` independent of `Trimesh`.
 - Inject built-in geometry as a coherent scene-assets value while retaining
@@ -49,7 +49,7 @@ documented list and generator forms.
 - Smooth shading, geometric edge extraction, materials, textures, or per-face and
   per-vertex colors not currently rendered by SCADview.
 - Removing `Trimesh` from public geometry-authoring APIs, feature operations,
-  source normalization, or explicit export conversion.
+  source normalization, or loader-owned export execution.
 - A fully indexed shader pipeline unless a separately reviewed follow-up is
   justified by the measurements from this change.
 
@@ -73,15 +73,16 @@ compacted; it does not assume the answer.
 Alternative: redesign the renderer first. Rejected because no current measurement
 identifies the renderer rather than serialization as the dominant cost.
 
-### Confine Trimesh to source normalization and export conversion
+### Confine Trimesh to source normalization and loader-owned export
 
-Within the runtime load-display-export path, `Trimesh` is allowed only inside
-one-way source normalization and explicit export conversion. Source normalization
-includes user-module results, `Manifold` conversion, feature resolution, and
-built-in scene geometry supplied by resource builders. Each source mesh becomes a
-payload before it enters queue, controller, UI, adapter, renderer-factory, or
-renderer interfaces. Export performs the inverse conversion only for the duration
-of an explicit export request.
+Within the runtime load-display-export path, `Trimesh` is allowed inside source
+normalization and loader-owned export execution. Source normalization includes
+user-module results, `Manifold` conversion, feature resolution, and built-in scene
+geometry supplied by resource builders. The loader retains the final normalized
+user source and derives a payload view before publication. The source mesh does
+not enter the display queue, controller, UI, adapter, renderer-factory, or
+renderer interfaces. Built-in assets are converted to payloads before renderer
+composition.
 
 The public geometry-authoring APIs continue returning and operating on `Trimesh`
 where documented; removing that project-wide dependency is unrelated to this
@@ -130,22 +131,34 @@ incremental sequence numbers, errors, feature states, and parameters stay intact
 This location removes complete `Trimesh` instances from process transfer while
 leaving the user-facing module contract untouched.
 
-### Retain payloads and reconstruct exports on demand
+### Retain payloads and export from the loader-owned source
 
-The controller retains the latest payload rather than eagerly rebuilding a
-`Trimesh`. UI export enablement checks whether an exportable final payload exists.
-On export, a pure conversion creates a non-processing `Trimesh` from vertices and
-faces and restores SCADview mesh-level color metadata before invoking the existing
-format-specific exporter. Debug-list status remains non-exportable.
+The controller retains the latest payload for rendering, while the loader retains
+only the final successful, non-debug normalized `Trimesh` for export. The
+controller sends an `ExportCommand` containing a request id, generation, and path
+through a command channel. The loader performs export against the retained source
+on a worker thread and returns a correlated, structured `ExportResult` through a
+dedicated reliable result queue. The UI polls that queue and disables duplicate
+requests while one is pending. Debug-list status remains non-exportable.
 
-This preserves documented geometric export behavior while avoiding the normal
-memory cost of both payload and reconstructed mesh. SCADview does not currently
-render or document preservation of arbitrary materials, textures, or non-SCADview
-metadata, so those are not added to the transport contract.
+This preserves documented geometric export behavior while avoiding transfer of a
+second complete mesh to the main process. SCADview does not currently render or
+document preservation of arbitrary materials, textures, or non-SCADview metadata
+in the renderer payload; the retained source remains authoritative for export.
 
-Alternative: retain a second complete export mesh in the loader process and add an
-export command. Rejected because it increases process protocol and file-operation
-complexity and keeps the large object alive after every load.
+Alternative: reconstruct an export mesh from the payload. Rejected because fixed
+width payload fields lose coordinate precision, color precision, arbitrary
+metadata, visual state, and future `Trimesh` attributes. Alternative: send and
+retain a complete `Trimesh` in the main process. Rejected because it restores the
+serialization, unpickling, memory pressure, and UI pause that this change targets.
+
+The export protocol uses a separate reliable queue rather than the bounded
+latest-wins display queue. A source is published for export only when a final
+successful non-list result is accepted for the current generation. Starting a new
+load invalidates the previous source for new export requests, while an already
+accepted export completes and reports its own request id. Shutdown stops accepting
+new export work and applies the existing bounded process-termination policy if an
+export cannot finish.
 
 ### Inject built-in geometry as SceneAssets
 
@@ -203,8 +216,12 @@ reproduce corner markers for vertices shared by multiple triangles.
 - [Float and index narrowing can overflow or subtly alter geometry] -> Validate
   before casting, fail through the existing load error path, and compare payload
   geometry with normalized source meshes in tests.
-- [On-demand export temporarily duplicates geometry] -> Limit reconstruction to
-  explicit export and release it after the exporter returns.
+- [The loader retains one complete source mesh] -> Retain only the final
+  successful non-debug source, measure child-process RSS, and revisit spooling
+  only if retained memory is material.
+- [Export protocol races with reload or shutdown] -> Correlate request ids,
+  require generation-aware source selection, use a reliable result queue, and
+  test cancellation, process death, and shutdown.
 - [A compact payload may improve pickle size but not first-frame latency] -> Keep
   measurement as an acceptance activity and defer shader work unless the remaining
   cost is material.
@@ -227,8 +244,8 @@ reproduce corner markers for vertices shared by multiple triangles.
 
 1. Add the benchmark harness and capture the current path's baseline.
 2. Add the internal payload model and pure round-trip conversions behind tests.
-3. Change loader results, controller ownership, and export reconstruction together
-   so no mixed process protocol is shipped.
+3. Change loader results, controller ownership, and export protocol together so
+   no mixed process protocol is shipped.
 4. Build and inject payload-based `SceneAssets` from outside rendering.
 5. Adapt the adapter, renderer, and renderee seams to payload-only inputs while
    retaining the established corner-buffer strategy and renderer responsibilities.

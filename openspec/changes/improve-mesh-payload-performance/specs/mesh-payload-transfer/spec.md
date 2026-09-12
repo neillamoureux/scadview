@@ -23,8 +23,9 @@ memory where supported, and time until the first rendered frame.
 The system SHALL represent each successfully normalized mesh crossing the loader
 process boundary using contiguous indexed geometry, fixed-width numeric types,
 one optional mesh-level color, and only the additional summary data required for
-rendering and export. A successful mesh result SHALL NOT contain a complete
-`Trimesh` object.
+rendering. A successful display result SHALL NOT contain a complete `Trimesh`
+object. The loader process SHALL retain the final normalized source separately
+when lossless export is available.
 
 #### Scenario: Single mesh result is transferred
 - **WHEN** a user module produces one valid mesh
@@ -87,18 +88,24 @@ transforms, visibility, drawable composition, and draw ordering.
 - **WHEN** loaded-mesh scale or axis visibility changes
 - **THEN** the renderer transforms or shows the injected base-axis payload without creating or mutating a `Trimesh`
 
-### Requirement: Source mesh objects remain at conversion boundaries
+### Requirement: Source mesh objects remain loader-owned
 Within the load-display-export path, the system SHALL confine complete `Trimesh`
-objects to source-geometry normalization and temporary on-demand export
-conversion. This boundary SHALL NOT alter documented geometry-authoring APIs.
+objects to source-geometry normalization and loader-owned export execution. The
+normalized source SHALL remain in the loader process and SHALL NOT cross the
+display result queue or become controller, UI, adapter, or renderer state. This
+boundary SHALL NOT alter documented geometry-authoring APIs.
 
 #### Scenario: Source mesh is normalized
 - **WHEN** user-module or built-in source geometry is accepted
 - **THEN** it is converted to a payload before crossing into queue, controller, UI, adapter, or renderer ownership
 
-#### Scenario: Export is requested
-- **WHEN** a completed payload is exported
-- **THEN** a `Trimesh` exists only for the duration of conversion and exporter dispatch and does not become renderer state
+#### Scenario: Final source is retained
+- **WHEN** a final successful non-debug single mesh is accepted for the current generation
+- **THEN** the loader retains the normalized `Trimesh` source for export and publishes only its payload view to the display queue
+
+#### Scenario: Debug or failed source is completed
+- **WHEN** a debug list, failed result, or non-final intermediate result is processed
+- **THEN** the loader does not publish that result as the export source
 
 ### Requirement: Rendering behavior is preserved
 The compact-payload stage SHALL preserve the current observable rendering of
@@ -117,16 +124,27 @@ feature-debug lists, incremental results, and triangle-edge display.
 - **WHEN** the user enables edge display for a compact payload
 - **THEN** all triangle boundaries are displayed with the same corner-marker semantics as the existing renderer
 
-### Requirement: Export behavior is preserved
+### Requirement: Export behavior is preserved from the source mesh
 The system SHALL keep export available for the final successfully loaded,
-non-debug mesh and SHALL reconstruct an exportable mesh only when export needs
-one. The reconstructed mesh SHALL preserve the loaded vertices, triangle faces,
-and SCADview mesh-level color metadata without changing the available export
-formats or existing error reporting.
+non-debug mesh and SHALL export the retained normalized source `Trimesh` without
+reconstructing it from `MeshPayload`. Export SHALL remain asynchronous to the UI
+and SHALL preserve the existing supported formats and error reporting.
 
 #### Scenario: Loaded mesh is exported
 - **WHEN** the user exports a completed single-mesh load to a currently supported format
-- **THEN** the exported mesh has geometry equivalent to the normalized loaded mesh and follows the existing format-specific export path
+- **THEN** the loader exports the retained normalized source through the existing format-specific path with its original geometry, metadata, visuals, and color state
+
+#### Scenario: Export is requested during a load
+- **WHEN** the user requests export while a new load is active or no final source exists for the requested generation
+- **THEN** the controller rejects or disables the request without blocking the UI or exporting stale source data
+
+#### Scenario: Export completes after a reload begins
+- **WHEN** an accepted export request is followed by a new load
+- **THEN** the export result remains correlated to its request id and reports completion or a structured error without replacing the new generation's display state
+
+#### Scenario: Export fails
+- **WHEN** the exporter raises an expected file or format error
+- **THEN** the loader returns a structured correlated error and the UI preserves existing error-reporting behavior
 
 #### Scenario: Debug list is displayed
 - **WHEN** the current result has debug-list status

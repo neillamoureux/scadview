@@ -22,8 +22,10 @@ redesign.
   visibility, drawable construction, and draw ordering.
 - Preserve current rendering semantics, including mesh-level color, transparency,
   framing, incremental results, feature-debug lists, and triangle-edge display.
-- Preserve GUI export behavior by safely converting the retained payload to an
-  exportable `Trimesh` when required.
+- Retain the final normalized `Trimesh` in the loader process as the lossless
+  source of truth and expose it only through an asynchronous export protocol;
+  treat `MeshPayload` as a rendering/transport view rather than an export
+  representation.
 - Evaluate fully indexed GPU rendering only after the compact-payload stage is
   measured; adopt it only if benchmarks justify the complexity and visual
   validation confirms parity.
@@ -46,8 +48,10 @@ None.
   composition of built-in scene assets, renderer input seam, and export conversion
   path.
 - Requires focused unit/integration coverage plus manual visual checks for edges,
-  transparency, colors, framing, built-in assets, and debug rendering.
+  transparency, colors, framing, built-in assets, and debug rendering, along
+  with export-fidelity and export-lifecycle coverage.
 - Does not change public SCADview imports, accepted `create_mesh` return types,
   export availability, or add dependencies.
-- Keeps `Trimesh` in the geometry-authoring and normalization domain and at the
-  on-demand export boundary, but removes it from production renderer modules.
+- Keeps `Trimesh` in the geometry-authoring and normalization domain and in the
+  loader-owned export boundary, but removes it from queue payloads, controller,
+  UI, and production renderer modules.
