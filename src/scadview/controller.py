@@ -204,7 +204,7 @@ class Controller:
         return True
 
     def export(self, file_path: str) -> bool:
-        if not self.exportable_payload or self.export_pending:
+        if self._closed or not self.exportable_payload or self.export_pending:
             logger.info("No mesh to export")
             return False
         self._last_export_path = file_path

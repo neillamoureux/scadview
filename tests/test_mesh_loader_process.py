@@ -1,4 +1,5 @@
 import queue
+from threading import Event, Thread
 from unittest.mock import Mock, patch
 
 import manifold3d
@@ -345,6 +346,7 @@ def test_loader_process_reports_stale_export_requests_reliably():
     process = object.__new__(MeshLoaderProcess)
     process._worker = None
     process._export_result_queue = Mock()
+    process._accepting_exports = True
 
     process._start_export(ExportCommand(3, 4, "/tmp/model.stl"))
 
@@ -355,18 +357,68 @@ def test_loader_process_reports_stale_export_requests_reliably():
     )
 
 
+def test_loader_process_rejects_export_after_shutdown_begins():
+    process = object.__new__(MeshLoaderProcess)
+    process._accepting_exports = False
+    process._export_result_queue = Mock()
+
+    process._start_export(ExportCommand(3, 4, "/tmp/model.stl"))
+
+    assert process._export_result_queue.put.call_args.args[0] == ExportResult(
+        3,
+        4,
+        ExportError("ShuttingDown", "Loader is shutting down"),
+    )
+
+
 def test_loader_process_shutdown_closes_the_export_result_queue():
     process = object.__new__(MeshLoaderProcess)
     process._worker = None
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = Mock()
+    process._active_export_workers = set()
+    process._accepting_exports = True
 
-    process.cancel(close_queues=True)
+    process._shutdown()
 
     process._command_queue.close.assert_called_once_with()
     process._load_queue.close.assert_called_once_with()
     process._export_result_queue.close.assert_called_once_with()
+
+
+def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
+    export_started = Event()
+    release_export = Event()
+    events: list[str] = []
+    source = box()
+
+    def blocking_export(_: str) -> None:
+        export_started.set()
+        release_export.wait(timeout=2.0)
+
+    source.export = blocking_export
+    result_queue = Mock()
+    result_queue.put.side_effect = lambda _: events.append("put")
+    result_queue.close.side_effect = lambda: events.append("close")
+    worker = ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue)
+    worker.start()
+    assert export_started.wait(timeout=1.0)
+
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = None
+    process._command_queue = Mock()
+    process._load_queue = Mock()
+    process._export_result_queue = result_queue
+    process._active_export_workers = {worker}
+    process._accepting_exports = True
+    shutdown = Thread(target=process._shutdown)
+    shutdown.start()
+    release_export.set()
+    shutdown.join(timeout=2.0)
+
+    assert not shutdown.is_alive()
+    assert events == ["put", "close"]
 
 
 def _raise_mesh_error():

@@ -221,6 +221,15 @@ def test_controller_reports_loader_death_for_pending_export(monkeypatch):
         controller.close()
 
 
+def test_controller_rejects_export_after_close(monkeypatch):
+    controller = _controller(monkeypatch)
+    controller.current_mesh = mesh_to_payload(box())
+    controller.load_status = LoadStatus.COMPLETE
+    controller.close()
+
+    assert not controller.export("/tmp/model.stl")
+
+
 def test_controller_discards_unrelated_export_results_without_notification(
     monkeypatch, caplog
 ):

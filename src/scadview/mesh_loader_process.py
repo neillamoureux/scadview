@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from multiprocessing import Process, Queue
 from multiprocessing import queues as mp_queues
 from threading import Thread
-from time import time
+from time import monotonic, time
 from typing import Any, Generator, Generic, Type, TypeVar, cast
 
 import numpy as np
@@ -540,6 +540,7 @@ class LoadWorker(Thread):
 
 class MeshLoaderProcess(Process):
     COMMAND_QUEUE_CHECK_TIMEOUT = 0.1
+    EXPORT_SHUTDOWN_TIMEOUT = 1.0
 
     def __init__(
         self,
@@ -554,6 +555,8 @@ class MeshLoaderProcess(Process):
         self._load_queue = load_queue
         self._export_result_queue = export_result_queue
         self._worker: LoadWorker | None = None
+        self._active_export_workers: set[ExportWorker] = set()
+        self._accepting_exports = True
         self._log_queue = log_queue
         self._log_level = log_level
 
@@ -591,7 +594,7 @@ class MeshLoaderProcess(Process):
                 self._start_export(command)
             elif isinstance(command, ShutDownCommand):
                 logger.info("Shutting down loader process")
-                self.cancel(close_queues=True)
+                self._shutdown()
                 return
             else:
                 logger.warning(f"Unknown command received: {command}")
@@ -606,7 +609,29 @@ class MeshLoaderProcess(Process):
             self._export_result_queue.close()
         self._worker = None
 
+    def _shutdown(self) -> None:
+        self._accepting_exports = False
+        self.cancel()
+        deadline = monotonic() + self.EXPORT_SHUTDOWN_TIMEOUT
+        for worker in tuple(self._active_export_workers):
+            worker.join(timeout=max(0.0, deadline - monotonic()))
+            if worker.is_alive():
+                logger.warning(
+                    "Export worker did not finish before loader shutdown deadline"
+                )
+                return
+            self._active_export_workers.remove(worker)
+        self._command_queue.close()
+        self._load_queue.close()
+        self._export_result_queue.close()
+
     def _start_export(self, command: ExportCommand) -> None:
+        if not self._accepting_exports:
+            self._publish_export_result(
+                command,
+                ExportError("ShuttingDown", "Loader is shutting down"),
+            )
+            return
         source = self._export_source(command.generation)
         if source is None:
             self._publish_export_result(
@@ -616,7 +641,9 @@ class MeshLoaderProcess(Process):
                 ),
             )
             return
-        ExportWorker(command, source, self._export_result_queue).start()
+        worker = ExportWorker(command, source, self._export_result_queue)
+        self._active_export_workers.add(worker)
+        worker.start()
 
     def _export_source(self, generation: int) -> Trimesh | None:
         if self._worker is None or self._worker.generation != generation:
