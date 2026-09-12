@@ -261,6 +261,41 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
     )
 
 
+def test_debug_single_mesh_fallback_retains_source_for_export(load_queue):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = iter([source])
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        worker.load()
+
+    load_queue.get(timeout=1.0)
+    final_result = load_queue.get(timeout=1.0)
+    assert isinstance(final_result.mesh, MeshPayload)
+    assert final_result.complete
+    assert worker.export_source is source
+
+
+def test_debug_mesh_list_does_not_retain_source_for_export(load_queue):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            feature("support", source)
+            yield box()
+
+        loader.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        worker.load()
+
+    load_queue.get(timeout=1.0)
+    final_result = load_queue.get(timeout=1.0)
+    assert isinstance(final_result.mesh, list)
+    assert final_result.complete
+    assert worker.export_source is None
+
+
 def test_export_worker_uses_the_retained_source_without_payload_reconstruction():
     source = box()
     source.metadata["scadview"] = {"color": [0.123456, 0.2, 0.3, 0.4]}

@@ -316,7 +316,7 @@ class LoadWorker(Thread):
     ) -> None:
         if not final:
             return
-        if error is None and not self.debug_features and isinstance(mesh, Trimesh):
+        if error is None and isinstance(mesh, Trimesh):
             self.export_source = mesh
             return
         self.export_source = None
