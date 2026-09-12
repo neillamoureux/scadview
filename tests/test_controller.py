@@ -221,19 +221,49 @@ def test_controller_reports_loader_death_for_pending_export(monkeypatch):
         controller.close()
 
 
-def test_controller_accepts_only_the_pending_export_result(monkeypatch):
+def test_controller_discards_unrelated_export_results_without_notification(
+    monkeypatch, caplog
+):
     controller = _controller(monkeypatch)
     try:
         controller.current_mesh = mesh_to_payload(box())
         controller.load_status = LoadStatus.COMPLETE
         controller.export("/tmp/model.stl")
-        controller._export_result_queue.items.extend(
-            [ExportResult(2, 0), ExportResult(1, 0)]
-        )
+        controller._loader_process.is_alive = lambda: True
+        results: list[ExportResult] = []
 
-        assert controller.check_export_queue() == ExportResult(2, 0)
+        def record_result(result: ExportResult) -> None:
+            results.append(result)
+
+        controller.on_export_result.subscribe(record_result)
+        controller._export_result_queue.items.append(ExportResult(2, 0))
+
+        with caplog.at_level("WARNING"):
+            assert controller.check_export_queue() is None
         assert controller.export_pending
+        assert results == []
+        assert "Discarding unrelated export result" in caplog.text
+
+        controller._export_result_queue.items.append(ExportResult(1, 0))
         assert controller.check_export_queue() == ExportResult(1, 0)
+        assert not controller.export_pending
+        assert results == [ExportResult(1, 0)]
+    finally:
+        controller.close()
+
+
+def test_controller_matches_pending_export_generation_after_reload(monkeypatch):
+    controller = _controller(monkeypatch)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller.load_status = LoadStatus.COMPLETE
+        controller._current_generation = 3
+        assert controller.export("/tmp/model.stl")
+
+        controller._current_generation = 4
+        controller._export_result_queue.items.append(ExportResult(1, 3))
+
+        assert controller.check_export_queue() == ExportResult(1, 3)
         assert not controller.export_pending
     finally:
         controller.close()

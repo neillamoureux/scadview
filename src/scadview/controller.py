@@ -247,24 +247,26 @@ class Controller:
         return self.exportable_payload is not None and not self.export_pending
 
     def check_export_queue(self) -> ExportResult | None:
-        try:
-            result = self._export_result_queue.get_nowait()
-        except queue.Empty:
-            result = self._loader_death_result()
-            if result is None:
-                return None
-        except (OSError, ValueError):
-            result = self._loader_death_result()
-            if result is None:
-                return None
-        if (
-            result.request_id == self._pending_export_request_id
-            and result.generation == self._pending_export_generation
-        ):
-            self._clear_pending_export()
-        self._notify_export_availability()
-        self.on_export_result.notify(result)
-        return result
+        while True:
+            try:
+                result = self._export_result_queue.get_nowait()
+            except queue.Empty:
+                return self._loader_death_result()
+            except (OSError, ValueError):
+                return self._loader_death_result()
+            if (
+                result.request_id == self._pending_export_request_id
+                and result.generation == self._pending_export_generation
+            ):
+                self._clear_pending_export()
+                self._notify_export_availability()
+                self.on_export_result.notify(result)
+                return result
+            logger.warning(
+                "Discarding unrelated export result request=%s generation=%s",
+                result.request_id,
+                result.generation,
+            )
 
     def _loader_death_result(self) -> ExportResult | None:
         if self._pending_export_request_id is None:
