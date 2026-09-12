@@ -78,6 +78,37 @@ def test_mesh_to_payload_converts_explicit_rgba_color(mesh):
     np.testing.assert_array_equal(payload.color, [51, 102, 153, 204])
 
 
+@pytest.mark.parametrize(
+    "color",
+    [
+        (0.2, 0.4, 0.6, 0.8),
+        np.array([0.2, 0.4, 0.6, 0.8], dtype=np.float64),
+    ],
+)
+def test_mesh_to_payload_accepts_compatible_color_sequences(mesh, color):
+    mesh.metadata["scadview"] = {"color": color}
+
+    payload = mesh_to_payload(mesh)
+
+    np.testing.assert_array_equal(payload.color, [51, 102, 153, 204])
+
+
+@pytest.mark.parametrize(
+    "color",
+    [
+        (0.2, 0.4, 0.6),
+        (0.2, 0.4, 0.6, 0.8, 1.0),
+        (0.2, 0.4, 0.6, 1),
+        (0.2, 0.4, 0.6, 1.2),
+    ],
+)
+def test_mesh_to_payload_rejects_invalid_color_sequences(mesh, color):
+    mesh.metadata["scadview"] = {"color": color}
+
+    with pytest.raises(ValueError, match="SCADview color"):
+        mesh_to_payload(mesh)
+
+
 def test_mesh_to_payload_reports_bounds_and_scale(mesh):
     payload = mesh_to_payload(mesh)
 

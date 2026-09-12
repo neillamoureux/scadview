@@ -107,20 +107,24 @@ def _mesh_color(metadata: Any) -> NDArray[np.uint8]:
     return np.rint(np.asarray(color) * 255).astype(np.uint8)
 
 
-def _metadata_color(metadata: Any) -> list[float] | None:
+def _metadata_color(metadata: Any) -> tuple[float, ...] | None:
     if not isinstance(metadata, dict) or "scadview" not in metadata:
         return None
     scadview = metadata["scadview"]
     if scadview is None or "color" not in scadview:
         return None
     color = scadview["color"]
-    if not isinstance(color, list) or len(color) != 4:
-        raise ValueError("SCADview color must be a list of four floats")
-    if not all(isinstance(component, float) for component in color):
-        raise ValueError("SCADview color must be a list of four floats")
-    if not all(0.0 <= component <= 1.0 for component in color):
+    try:
+        components = tuple(color)
+    except TypeError as error:
+        raise ValueError("SCADview color must be a sequence of four floats") from error
+    if len(components) != 4 or not all(
+        isinstance(component, float) for component in components
+    ):
+        raise ValueError("SCADview color must be a sequence of four floats")
+    if not all(0.0 <= component <= 1.0 for component in components):
         raise ValueError("SCADview color components must be in the range [0.0, 1.0]")
-    return color
+    return components
 
 
 def payload_to_trimesh(payload: MeshPayload) -> Trimesh:
