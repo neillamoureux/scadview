@@ -1,9 +1,11 @@
 import queue
 from threading import Event, Thread
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import manifold3d
 import numpy.testing as npt
+import numpy as np
 import pytest
 from trimesh import Trimesh
 from trimesh.creation import box, icosphere
@@ -312,6 +314,64 @@ def test_export_worker_uses_the_retained_source_without_payload_reconstruction()
     assert source.metadata["preserved"] == {"value": "exact"}
 
 
+def test_retained_source_export_preserves_precision_metadata_and_visuals(load_queue):
+    source = Trimesh(
+        vertices=np.array(
+            [
+                [0.123456789012345, 0.0, 0.0],
+                [1.0, 0.987654321098765, 0.0],
+                [0.0, 1.0, 0.246813579135792],
+            ],
+            dtype=np.float64,
+        ),
+        faces=np.array([[0, 1, 2]]),
+        process=False,
+    )
+    color = [0.123456789, 0.234567891, 0.345678912, 0.456789123]
+    face_colors = np.array([[11, 22, 33, 44]], dtype=np.uint8)
+    source.metadata = {
+        "scadview": {"color": color},
+        "preserved": {"nested": ["metadata"]},
+    }
+    source.visual.face_colors = face_colors
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_loader:
+        mock_loader.return_value.run_function.return_value = iter([source])
+        worker = LoadWorker("test/path", load_queue, generation=9)
+        worker.load()
+
+    retained = worker.export_source
+    assert retained is source
+    exported: dict[str, object] = {}
+
+    def record_export(path: str) -> None:
+        exported["path"] = path
+        exported["vertices"] = retained.vertices.copy()
+        exported["metadata"] = retained.metadata.copy()
+        exported["face_colors"] = retained.visual.face_colors.copy()
+
+    source.export = record_export
+    result_queue = Mock()
+    ExportWorker(ExportCommand(9, 9, "/tmp/model.ply"), retained, result_queue).run()
+
+    np.testing.assert_array_equal(exported["vertices"], source.vertices)
+    assert exported["metadata"] == source.metadata
+    np.testing.assert_array_equal(exported["face_colors"], face_colors)
+    assert exported["path"] == "/tmp/model.ply"
+    assert result_queue.put.call_args.args[0] == ExportResult(9, 9)
+
+
+@pytest.mark.parametrize("extension", ["stl", "obj", "ply", "off"])
+def test_export_worker_dispatches_supported_format_by_path(extension, tmp_path):
+    source = box()
+    result_queue = Mock()
+    output_path = tmp_path / f"model.{extension}"
+
+    ExportWorker(ExportCommand(10, 2, str(output_path)), source, result_queue).run()
+
+    assert output_path.exists()
+    assert result_queue.put.call_args.args[0] == ExportResult(10, 2)
+
+
 def test_export_worker_reports_exporter_errors():
     source = box()
     result_queue = Mock()
@@ -355,6 +415,50 @@ def test_loader_process_reports_stale_export_requests_reliably():
         4,
         ExportError("StaleSource", "No export source for the requested generation"),
     )
+
+
+def test_loader_process_rejects_export_for_stale_generation():
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = SimpleNamespace(generation=2, export_source=box())
+    process._export_result_queue = Mock()
+    process._accepting_exports = True
+
+    process._start_export(ExportCommand(3, 1, "/tmp/model.stl"))
+
+    assert process._export_result_queue.put.call_args.args[0] == ExportResult(
+        3,
+        1,
+        ExportError("StaleSource", "No export source for the requested generation"),
+    )
+
+
+def test_export_completes_from_old_source_after_reload():
+    export_started = Event()
+    release_export = Event()
+    source = box()
+
+    def blocking_export(_: str) -> None:
+        export_started.set()
+        release_export.wait(timeout=2.0)
+
+    source.export = blocking_export
+    result_queue = Mock()
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = SimpleNamespace(generation=1, export_source=source)
+    process._export_result_queue = result_queue
+    process._active_export_workers = set()
+    process._accepting_exports = True
+
+    process._start_export(ExportCommand(7, 1, "/tmp/model.stl"))
+    assert export_started.wait(timeout=1.0)
+    process._worker = SimpleNamespace(generation=2, export_source=box())
+    release_export.set()
+    workers = tuple(process._active_export_workers)
+    for worker in workers:
+        worker.join(timeout=2.0)
+
+    assert all(not worker.is_alive() for worker in workers)
+    assert result_queue.put.call_args.args[0] == ExportResult(7, 1)
 
 
 def test_loader_process_rejects_export_after_shutdown_begins():
