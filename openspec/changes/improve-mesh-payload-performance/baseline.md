@@ -1,178 +1,92 @@
-## Trimesh baseline
+## Corrected mesh-transfer comparison
 
-Command:
-
-```console
-uv run python -m tools.mesh_transfer_benchmark --output baseline.json
-```
-
-Environment: macOS 26.6.2 x86_64, CPython 3.11.13, NumPy 2.3.4, Trimesh
-4.9.0, and ModernGL 5.12.0. The benchmark used a standalone OpenGL context.
-Peak memory is Python allocation peak reported by `tracemalloc`; it does not
-include driver or GPU allocations.
-
-## Benchmark methodology correction
-
-The original synthetic grid repeated one vertex in each second triangle, making
-half of its faces degenerate. It also timed standalone pickle encode/decode
-operations before timing a separate multiprocessing queue transfer. Those
-historical timing rows are retained below for traceability, but are not valid for
-comparison with corrected runs.
-
-The runner now generates two non-degenerate triangles per grid cell. It reports
-`pickle_size_bytes` as an observation-only standalone serialized size, and
-`queue_round_trip_ms` as one actual multiprocessing queue transfer; the size
-measurement is excluded from the post-create-mesh aggregate. It no longer
-reports standalone encode/decode timing metrics.
-
-Corrected compact-path CPU-only run:
+Commands, run twice per path:
 
 ```console
-uv run python -m tools.mesh_transfer_benchmark --path payload --no-gpu
+uv run --no-sync python -m tools.mesh_transfer_benchmark --path trimesh --output trimesh-run<N>.json
+uv run --no-sync python -m tools.mesh_transfer_benchmark --path payload --output payload-run<N>.json
 ```
 
-| Case | Pickle size | Queue round trip | Payload conversion | Prepare |
+Both paths use the same deterministic cases from the current harness, in the
+same order and environment. The runs were performed on macOS 26.6.2 x86_64
+with CPython 3.11.13, NumPy 2.3.4, Trimesh 4.9.0, and ModernGL 5.12.0.
+
+The harness reports `mesh_creation_ms` before the post-creation aggregate.
+`post_create_mesh_to_first_frame_ms` starts immediately after mesh creation and
+includes only path-specific payload conversion, one real multiprocessing queue
+round trip, renderer preparation, GL upload, and the first draw. Standalone
+pickle size is an observation outside that aggregate. Export and retained-source
+memory are measured separately.
+
+| Case | Meshes | Vertices | Faces | Path/run | Pickle bytes | Payload conversion ms | Queue ms | Prepare ms | Upload ms | First draw ms | Post-create to first frame ms |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| high-sharing-small | 1 | 1,089 | 2,048 | Trimesh 1 | 76,183 | 0.000 | 1.785 | 1.123 | 0.451 | 49.709 | 137.533 |
+| high-sharing-small | 1 | 1,089 | 2,048 | Trimesh 2 | 76,183 | 0.000 | 1.693 | 1.162 | 0.316 | 8.484 | 84.703 |
+| high-sharing-small | 1 | 1,089 | 2,048 | Payload 1 | 62,675 | 1.667 | 1.556 | 0.573 | 0.325 | 8.946 | 85.780 |
+| high-sharing-small | 1 | 1,089 | 2,048 | Payload 2 | 62,675 | 1.663 | 1.521 | 0.506 | 0.294 | 8.897 | 88.209 |
+| high-sharing-large | 1 | 16,641 | 32,768 | Trimesh 1 | 1,186,720 | 0.000 | 1.922 | 7.195 | 0.860 | 5.782 | 44.271 |
+| high-sharing-large | 1 | 16,641 | 32,768 | Trimesh 2 | 1,186,720 | 0.000 | 2.077 | 7.555 | 0.855 | 5.872 | 45.677 |
+| high-sharing-large | 1 | 16,641 | 32,768 | Payload 1 | 986,606 | 7.820 | 1.588 | 2.610 | 0.952 | 6.094 | 49.895 |
+| high-sharing-large | 1 | 16,641 | 32,768 | Payload 2 | 986,606 | 7.805 | 1.411 | 2.535 | 1.031 | 6.322 | 48.294 |
+| mixed-transparency | 3 | 1,875 | 3,456 | Trimesh 1 | 129,611 | 0.000 | 1.131 | 1.983 | 0.285 | 6.501 | 39.923 |
+| mixed-transparency | 3 | 1,875 | 3,456 | Trimesh 2 | 129,611 | 0.000 | 0.950 | 1.704 | 0.284 | 5.901 | 42.902 |
+| mixed-transparency | 3 | 1,875 | 3,456 | Payload 1 | 106,299 | 2.152 | 0.833 | 0.533 | 0.272 | 6.090 | 39.607 |
+| mixed-transparency | 3 | 1,875 | 3,456 | Payload 2 | 106,299 | 2.205 | 0.823 | 0.521 | 0.288 | 5.774 | 38.392 |
+| representative-large-model | 5 | 83,205 | 163,840 | Trimesh 1 | 5,931,284 | 0.000 | 6.414 | 33.545 | 3.763 | 6.766 | 80.012 |
+| representative-large-model | 5 | 83,205 | 163,840 | Trimesh 2 | 5,931,284 | 0.000 | 8.016 | 34.363 | 3.868 | 6.621 | 83.650 |
+| representative-large-model | 5 | 83,205 | 163,840 | Payload 1 | 4,931,991 | 36.607 | 7.458 | 13.789 | 3.815 | 6.364 | 99.899 |
+| representative-large-model | 5 | 83,205 | 163,840 | Payload 2 | 4,931,991 | 39.839 | 7.181 | 14.426 | 4.277 | 6.771 | 100.745 |
+
+Peak Python allocation during each case was also recorded in the JSON report.
+The payload path reduced peak allocation for the representative list case from
+about 80.2 MB to 51.8 MB. The synthetic grid generator creates two distinct
+non-degenerate triangles per cell; the counts above therefore represent valid
+geometry rather than a degenerate-face shortcut.
+
+## Retained loader-process memory
+
+For single-mesh cases, a child process starts with no source, receives the final
+source over a pipe, retains it, and reports baseline RSS, final RSS, and their
+signed delta. This models loader ownership and avoids reporting an absolute
+interpreter RSS or retaining an entire list. List cases are explicitly reported
+as `list-or-debug-not-retained` and have no retained-source measurement.
+
+| Case | Path/run | Baseline RSS bytes | Final RSS bytes | Signed retained-source delta bytes | Source kind |
+| --- | --- | ---: | ---: | ---: | --- |
+| high-sharing-small | Trimesh 1 | 83,308,544 | 83,263,488 | -45,056 | single-final-source |
+| high-sharing-small | Trimesh 2 | 83,218,432 | 83,136,512 | -81,920 | single-final-source |
+| high-sharing-small | Payload 1 | 83,873,792 | 83,468,288 | -405,504 | single-final-source |
+| high-sharing-small | Payload 2 | 84,328,448 | 84,508,672 | 180,224 | single-final-source |
+| high-sharing-large | Trimesh 1 | 83,333,120 | 94,654,464 | 11,321,344 | single-final-source |
+| high-sharing-large | Trimesh 2 | 83,345,408 | 94,756,864 | 11,411,456 | single-final-source |
+| high-sharing-large | Payload 1 | 83,128,320 | 99,713,024 | 16,584,704 | single-final-source |
+| high-sharing-large | Payload 2 | 83,181,568 | 100,130,816 | 16,949,248 | single-final-source |
+| mixed-transparency | All runs | — | — | — | list-or-debug-not-retained |
+| representative-large-model | All runs | — | — | — | list-or-debug-not-retained |
+
+RSS samples are process-level observations and may produce small negative deltas
+because of allocator and operating-system sampling behavior.
+
+## End-to-end export completion
+
+For each exportable single-mesh case, the harness starts an `ExportWorker` with a
+request, exports to a temporary STL file, waits for the correlated terminal
+result on the reliable export-result queue, and reports total request-to-
+completion time. List cases are not exportable and report no value.
+
+| Case | Trimesh run 1 ms | Trimesh run 2 ms | Payload run 1 ms | Payload run 2 ms |
 | --- | ---: | ---: | ---: | ---: |
-| high-sharing-small | 62,675 | 1.425 ms | 1.666 ms | 0.748 ms |
-| high-sharing-large | 986,606 | 1.394 ms | 7.823 ms | 3.199 ms |
-| mixed-transparency | 106,299 | 0.924 ms | 2.066 ms | 0.795 ms |
-| representative-large-model | 4,931,991 | 6.506 ms | 39.252 ms | 15.595 ms |
-
-Two consecutive complete runs on this environment produced the following
-results. Timings are milliseconds; pickle size and peak memory are bytes.
-
-| Case | Run | Meshes | Vertices | Faces | Pickle | Convert | Encode | Decode | Queue | Peak | Prepare | Upload | First frame |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| high-sharing-small | 1 | 1 | 1,089 | 2,048 | 76,183 | 1.270 | 0.258 | 0.339 | 1.130 | 1,708,758 | 1.147 | 8.475 | 67.486 |
-| high-sharing-small | 2 | 1 | 1,089 | 2,048 | 76,183 | 1.311 | 0.265 | 0.339 | 1.269 | 1,705,092 | 1.231 | 8.579 | 7.910 |
-| high-sharing-large | 1 | 1 | 16,641 | 32,768 | 1,186,720 | 1.205 | 0.551 | 0.115 | 1.674 | 20,558,854 | 6.198 | 128.711 | 5.309 |
-| high-sharing-large | 2 | 1 | 16,641 | 32,768 | 1,186,720 | 0.950 | 0.533 | 0.106 | 2.019 | 20,567,161 | 6.184 | 125.017 | 5.997 |
-| mixed-transparency | 1 | 3 | 1,875 | 3,456 | 129,611 | 0.727 | 0.180 | 0.122 | 0.719 | 1,332,908 | 1.294 | 13.020 | 5.176 |
-| mixed-transparency | 2 | 3 | 1,875 | 3,456 | 129,611 | 0.895 | 0.252 | 0.146 | 0.866 | 1,331,104 | 1.467 | 12.601 | 5.540 |
-| representative-large-model | 1 | 5 | 83,205 | 163,840 | 5,931,284 | 3.370 | 3.138 | 1.096 | 6.193 | 50,168,210 | 26.997 | 644.396 | 5.842 |
-| representative-large-model | 2 | 5 | 83,205 | 163,840 | 5,931,284 | 3.622 | 3.072 | 1.094 | 5.839 | 50,165,804 | 29.374 | 640.914 | 5.643 |
-
-`Convert` is deterministic construction of the source `Trimesh` workload.
-`Prepare` records the existing triangle, face-normal, color, and edge-marker
-array preparation. `Upload` and `First frame` use the existing VAO helper and
-the first VAO draw, each synchronized with `Context.finish()`. The first
-small-case draw includes cold-context overhead, so timing values are evidence,
-not CI thresholds.
-
-## Compact payload comparison
-
-Command, run 1:
-
-```console
-uv run --no-sync python -m tools.mesh_transfer_benchmark --path payload --output compact-run1.json
-```
-
-Command, run 2:
-
-```console
-uv run --no-sync python -m tools.mesh_transfer_benchmark --path payload --output compact-run2.json
-```
-
-Both runs used the same environment recorded above, the same deterministic
-cases, standalone ModernGL, and Python `tracemalloc` peak allocation. The
-compact path serializes `MeshPayload` values and expands them into the same
-triangle-corner GPU inputs used by the renderer.
-
-| Case | Run | Pickle | Payload conversion | Encode | Decode | Queue | Peak | Prepare | Upload | First frame |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| high-sharing-small | 1 | 62,675 | 1.681 | 0.202 | 0.276 | 0.960 | 1,190,172 | 0.631 | 0.327 | 7.753 |
-| high-sharing-small | 2 | 62,675 | 1.730 | 0.202 | 0.276 | 0.960 | 1,192,975 | 0.636 | 0.320 | 8.189 |
-| high-sharing-large | 1 | 986,606 | 7.967 | 0.282 | 0.085 | 1.279 | 12,353,728 | 3.054 | 0.918 | 5.502 |
-| high-sharing-large | 2 | 986,606 | 7.816 | 0.282 | 0.085 | 1.279 | 12,352,130 | 2.658 | 1.012 | 5.545 |
-| mixed-transparency | 1 | 106,299 | 2.099 | 0.169 | 0.110 | 0.600 | 1,302,278 | 0.538 | 0.294 | 5.050 |
-| mixed-transparency | 2 | 106,299 | 1.935 | 0.169 | 0.110 | 0.600 | 1,302,554 | 0.470 | 0.270 | 5.718 |
-| representative-large-model | 1 | 4,931,991 | 40.618 | 1.105 | 0.942 | 5.030 | 56,909,007 | 14.837 | 3.702 | 5.802 |
-| representative-large-model | 2 | 4,931,991 | 37.562 | 1.105 | 0.942 | 5.030 | 56,901,319 | 14.089 | 3.411 | 5.310 |
-
-The compact pickle is 17.7%, 16.9%, 18.0%, and 16.9% smaller than the
-corresponding recorded Trimesh baseline for the four cases. Payload conversion
-is the new dominant measured cost for the large representative case; GPU
-upload and first-frame measurements do not indicate that a fully indexed
-renderer is currently the material bottleneck. These timings are evidence, not
-CI thresholds.
-
-### Post-create-mesh time to first frame
-
-The benchmark also emits `post_create_mesh_to_first_frame_ms`, which covers the
-work after deterministic mesh creation completes: payload conversion when
-applicable, serialization, queue round trip, renderer preparation, GL buffer
-creation, and the first draw. The original renderer did not emit this aggregate
-metric, so the historical value below is reconstructed by summing the recorded
-phase timings; it is an estimate rather than a new measurement.
-
-| Case | Historical Trimesh renderer | Compact payload renderer | Reduction |
-| --- | ---: | ---: | ---: |
-| high-sharing-small, run 1 | 78.835 ms (estimated) | 11.830 ms | 85.0% |
-| high-sharing-small, run 2 | 19.593 ms (estimated) | 12.313 ms | 37.2% |
-| high-sharing-large, run 1 | 142.558 ms (estimated) | 19.087 ms | 86.6% |
-| high-sharing-large, run 2 | 139.856 ms (estimated) | 18.677 ms | 86.6% |
-| mixed-transparency, run 1 | 20.511 ms (estimated) | 8.860 ms | 56.8% |
-| mixed-transparency, run 2 | 20.872 ms (estimated) | 9.272 ms | 55.6% |
-| representative-large-model, run 1 | 687.662 ms (estimated) | 72.036 ms | 89.5% |
-| representative-large-model, run 2 | 685.936 ms (estimated) | 67.449 ms | 90.2% |
-
-The representative large model therefore reduced the estimated UI-blocking
-interval by approximately 90%. The reduction is primarily in synchronous CPU
-render-buffer preparation and GL buffer creation, not pickle size alone. The
-historical and compact rows combine the transport and renderer changes, so they
-should not be interpreted as an isolated serialization experiment.
-
-## Loader-owned export retention
-
-Command:
-
-```console
-uv run python -m tools.mesh_transfer_benchmark --path payload --no-gpu
-```
-
-The post-export implementation measurement ran on the environment above. Each
-case retains its normalized source in a child process matching the loader's
-source-ownership boundary, then records current resident memory with `ps`. Export
-latency measures the retained source's STL exporter dispatch. It excludes file
-system latency and is evidence rather than a CI threshold.
-
-| Case | Retained source process RSS | Export latency |
-| --- | ---: | ---: |
-| high-sharing-small | 82,542,592 bytes | 0.350 ms |
-| high-sharing-large | 87,552,000 bytes | 1.018 ms |
-| mixed-transparency | 82,849,792 bytes | 0.122 ms |
-| representative-large-model | 108,158,976 bytes | 0.535 ms |
-
-The retained source adds bounded loader-process memory only for the latest final
-single result. Display payloads remain the sole representation transferred to the
-controller and renderer; no source mesh is reconstructed for export.
-
-## Human visual validation checklist
-
-Manual validation completed on macOS 26.6.2 with an Apple M3 Max, wxPython
-4.2.5 / wxWidgets 3.2.9, CPython 3.11.13, and the Apple OpenGL stack
-`4.1 Metal - 90.5`. The startup and loaded scenes were compared before and
-after the change with visual parity confirmed:
-
-- startup mesh: geometry, default color, framing, axes, labels, and gnomon;
-- loading placeholder: geometry, background color, axes, and transition;
-- base axes: visibility, scale while framing small and large meshes, and labels;
-- opaque single mesh: flat shading, color, framing, and depth behavior;
-- transparent multi-mesh list: multiple mesh colors, global triangle ordering,
-  and depth/blend behavior;
-- feature-debug list: ordering, per-mesh colors, background, and export state;
-- incremental generator results: replacement and final completion behavior;
-- edge display on and off: every triangle boundary, including shared vertices;
-- framing from each supported view direction and after resize/orbit operations.
-
-The checklist was completed by a human and visual parity was confirmed.
+| high-sharing-small | 1.694 | 1.619 | 1.307 | 1.199 |
+| high-sharing-large | 3.325 | 3.435 | 2.551 | 2.689 |
+| mixed-transparency | — | — | — | — |
+| representative-large-model | — | — | — | — |
 
 ## Indexed-renderer gate
 
-Based on the compact benchmark and visual validation, fully indexed shader
-rendering remains deferred. Serialized transfer improved materially, the UI
-blocking interval decreased by approximately 90% for the representative large
-model, and no visual parity issue requires a deeper renderer redesign. The
-current renderer expansion/upload cost is not a material enough bottleneck to
-justify the portability and visual-regression risk of a fully indexed shader
-pipeline.
+The corrected comparison does not justify a fully indexed renderer in this
+change. Payload serialization is smaller and list-case peak allocation is lower,
+but payload conversion is the dominant new CPU phase for the representative
+case. Renderer preparation, upload, and first draw remain small and comparable
+between paths; no corrected result identifies renderer expansion or upload as a
+material remaining bottleneck. Fully indexed shader work therefore remains
+deferred to a separately reviewable change.

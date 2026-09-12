@@ -67,17 +67,18 @@ def test_measurement_reports_one_queue_transfer_and_optional_memory():
     measurement = measure_case(discover_cases()[0], measure_gpu=False)
 
     assert measurement["pickle_size_bytes"] > 0
-    assert measurement["trimesh_conversion_ms"] >= 0
+    assert measurement["mesh_creation_ms"] >= 0
     assert measurement["queue_round_trip_ms"] >= 0
     assert measurement["renderer_preparation_ms"] >= 0
     assert measurement["renderer_upload_ms"] is None
     assert measurement["first_frame_ms"] is None
     assert measurement["post_create_mesh_to_first_frame_ms"] is None
     assert measurement["peak_memory_bytes"] is not None
-    assert measurement["export_latency_ms"] >= 0
-    assert measurement["retained_loader_process_rss_bytes"] is None or (
-        measurement["retained_loader_process_rss_bytes"] > 0
-    )
+    assert measurement["export_request_completion_ms"] >= 0
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_loader_process_rss_delta_bytes"] is not None
+    assert measurement["retained_loader_process_baseline_rss_bytes"] > 0
+    assert measurement["retained_loader_process_final_rss_bytes"] > 0
 
 
 def test_aggregate_metric_is_emitted_for_both_transfer_paths():
@@ -100,4 +101,18 @@ def test_memory_measurement_can_be_disabled():
 
     assert measurement["peak_memory_supported"] is False
     assert measurement["peak_memory_bytes"] is None
-    assert measurement["retained_loader_process_rss_bytes"] is not None
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_loader_process_rss_delta_bytes"] is not None
+
+
+def test_list_cases_report_separate_non_retained_memory_and_export_metrics():
+    measurement = measure_case(
+        discover_cases()[2],
+        measure_gpu=False,
+        measure_peak_memory=False,
+        measure_retained_source_memory=True,
+    )
+
+    assert measurement["retained_source_kind"] == "list-or-debug-not-retained"
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+    assert measurement["export_request_completion_ms"] is None

@@ -9,6 +9,7 @@ import os
 import pickle
 import platform
 import subprocess
+import tempfile
 import tracemalloc
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -22,6 +23,12 @@ import moderngl
 import numpy as np
 from trimesh import Trimesh
 
+from scadview.mesh_loader_process import (
+    ExportCommand,
+    ExportResult,
+    ExportWorker,
+    MpExportResultQueue,
+)
 from scadview.mesh_payload import mesh_to_payload
 from scadview.render.mesh_renderee import create_vao_from_arrays, expand_payload
 
@@ -30,7 +37,7 @@ METRIC_NAMES = (
     "face_count",
     "mesh_count",
     "pickle_size_bytes",
-    "trimesh_conversion_ms",
+    "mesh_creation_ms",
     "payload_conversion_ms",
     "post_create_mesh_to_first_frame_ms",
     "queue_round_trip_ms",
@@ -40,8 +47,11 @@ METRIC_NAMES = (
     "renderer_upload_ms",
     "first_frame_ms",
     "gpu_measurement_error",
-    "export_latency_ms",
-    "retained_loader_process_rss_bytes",
+    "export_request_completion_ms",
+    "retained_loader_process_rss_delta_bytes",
+    "retained_loader_process_baseline_rss_bytes",
+    "retained_loader_process_final_rss_bytes",
+    "retained_source_kind",
 )
 
 
@@ -86,8 +96,8 @@ def run_benchmark(
 ) -> dict[str, Any]:
     """Measure every workload using the selected transfer representation."""
     return {
-        "benchmark_version": 1,
-        "command": "uv run python -m tools.mesh_transfer_benchmark",
+        "benchmark_version": 2,
+        "command": "uv run --no-sync python -m tools.mesh_transfer_benchmark",
         "environment": _environment_metadata(),
         "path": path,
         "cases": [
@@ -159,53 +169,75 @@ def _measure_case(
 ) -> dict[str, Any]:
     start = perf_counter()
     meshes = case.meshes()
-    trimesh_conversion_ms = _elapsed_ms(start)
+    mesh_creation_ms = _elapsed_ms(start)
+    aggregate_start = perf_counter()
     payloads, payload_conversion_ms = _to_payloads(meshes, path)
     transfer_values: list[Any] = meshes if path == "trimesh" else payloads
-    serialized_size_bytes = _serialized_size(transfer_values)
-    aggregate_start = perf_counter()
     queue_round_trip_ms = _queue_round_trip(transfer_values)
-    export_latency_ms = _export_latency(meshes[-1])
-    retained_source_rss_bytes = (
-        _retained_source_rss(meshes) if measure_retained_source_memory else None
-    )
     prepared, preparation_ms = _prepare_renderer_data(meshes, payloads, path)
     gpu_measurements = _measure_gpu(prepared) if measure_gpu else _no_gpu_measurement()
     aggregate_ms = _elapsed_ms(aggregate_start)
     if gpu_measurements["first_frame_ms"] is None:
         aggregate_ms = None
+    serialized_size_bytes = _serialized_size(transfer_values)
+    export_completion_ms = (
+        _export_request_completion(meshes[-1]) if len(meshes) == 1 else None
+    )
+    retained_memory = (
+        _retained_source_memory(meshes[-1])
+        if measure_retained_source_memory and len(meshes) == 1
+        else _no_retained_source_memory()
+    )
     return {
         "case": case.name,
         "mesh_count": len(meshes),
         "vertex_count": sum(len(mesh.vertices) for mesh in meshes),
         "face_count": sum(len(mesh.faces) for mesh in meshes),
         "pickle_size_bytes": serialized_size_bytes,
-        "trimesh_conversion_ms": trimesh_conversion_ms,
+        "mesh_creation_ms": mesh_creation_ms,
         "payload_conversion_ms": payload_conversion_ms,
         "post_create_mesh_to_first_frame_ms": aggregate_ms,
         "queue_round_trip_ms": queue_round_trip_ms,
-        "export_latency_ms": export_latency_ms,
-        "retained_loader_process_rss_bytes": retained_source_rss_bytes,
+        "export_request_completion_ms": export_completion_ms,
         "renderer_preparation_ms": preparation_ms,
+        **retained_memory,
         **gpu_measurements,
     }
 
 
-def _export_latency(mesh: Trimesh) -> float:
-    start = perf_counter()
-    mesh.export(file_type="stl")
+def _export_request_completion(mesh: Trimesh) -> float:
+    result_queue = MpExportResultQueue(maxsize=0, type_=ExportResult)
+    with tempfile.TemporaryDirectory() as directory:
+        command = ExportCommand(1, 0, str(Path(directory) / "mesh.stl"))
+        worker = ExportWorker(command, mesh, result_queue)
+        start = perf_counter()
+        worker.start()
+        result = result_queue.get(timeout=10)
+        worker.join(timeout=10)
+    result_queue.close()
+    if result.error is not None:
+        raise RuntimeError(result.error.message)
     return _elapsed_ms(start)
 
 
-def _retained_source_rss(meshes: list[Trimesh]) -> int | None:
-    parent_connection, child_connection = mp.Pipe(duplex=False)
+def _retained_source_memory(mesh: Trimesh) -> dict[str, Any]:
+    parent_connection, child_connection = mp.Pipe()
     process = mp.Process(
-        target=_report_retained_source_rss, args=(meshes, child_connection)
+        target=_report_retained_source_memory, args=(child_connection,)
     )
     process.start()
     child_connection.close()
     try:
-        return parent_connection.recv() if parent_connection.poll(10) else None
+        parent_connection.send(mesh)
+        if not parent_connection.poll(10):
+            return _no_retained_source_memory()
+        baseline, final, delta = parent_connection.recv()
+        return {
+            "retained_source_kind": "single-final-source",
+            "retained_loader_process_baseline_rss_bytes": baseline,
+            "retained_loader_process_final_rss_bytes": final,
+            "retained_loader_process_rss_delta_bytes": delta,
+        }
     finally:
         parent_connection.close()
         process.join(timeout=10)
@@ -214,12 +246,26 @@ def _retained_source_rss(meshes: list[Trimesh]) -> int | None:
             process.join()
 
 
-def _report_retained_source_rss(meshes: list[Trimesh], connection: Any) -> None:
+def _report_retained_source_memory(connection: Any) -> None:
+    mesh: Trimesh | None = None
     try:
-        connection.send(_current_rss_bytes())
+        baseline = _current_rss_bytes()
+        mesh = connection.recv()
+        final = _current_rss_bytes()
+        delta = final - baseline if baseline is not None and final is not None else None
+        connection.send((baseline, final, delta))
     finally:
-        del meshes
+        del mesh
         connection.close()
+
+
+def _no_retained_source_memory() -> dict[str, Any]:
+    return {
+        "retained_source_kind": "list-or-debug-not-retained",
+        "retained_loader_process_baseline_rss_bytes": None,
+        "retained_loader_process_final_rss_bytes": None,
+        "retained_loader_process_rss_delta_bytes": None,
+    }
 
 
 def _current_rss_bytes() -> int | None:
