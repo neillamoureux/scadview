@@ -205,28 +205,6 @@ class Renderer:
             "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
         )
 
-    def _create_axis_shader_program(self, observable: Observable) -> ShaderProgram:
-        program_vars = {
-            ShaderVar.MODEL_MATRIX: "m_model",
-            ShaderVar.VIEW_MATRIX: "m_camera",
-            ShaderVar.PROJECTION_MATRIX: "m_proj",
-            ShaderVar.SHOW_GRID: "show_grid",
-            ShaderVar.SHOW_EDGES: "show_edges",
-        }
-        return self._create_shader_program(
-            "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
-        )
-
-    def _create_gnomon_shader_program(self, observable: Observable) -> ShaderProgram:
-        program_vars = {
-            ShaderVar.MODEL_MATRIX: "m_model",
-            ShaderVar.GNOMON_VIEW_MATRIX: "m_camera",
-            ShaderVar.GNOMON_PROJECTION_MATRIX: "m_proj",
-        }
-        return self._create_shader_program(
-            "gnomon_vertex.glsl", "gnomon_fragment.glsl", program_vars, observable
-        )
-
     def _create_shader_program(
         self,
         vertex_shader_loc: str,
@@ -248,6 +226,28 @@ class Renderer:
         }
         return self._create_shader_program(
             "label_vertex.glsl", "label_fragment.glsl", program_vars, observable
+        )
+
+    def _create_axis_shader_program(self, observable: Observable) -> ShaderProgram:
+        program_vars = {
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.VIEW_MATRIX: "m_camera",
+            ShaderVar.PROJECTION_MATRIX: "m_proj",
+            ShaderVar.SHOW_GRID: "show_grid",
+            ShaderVar.SHOW_EDGES: "show_edges",
+        }
+        return self._create_shader_program(
+            "main_vertex.glsl", "main_fragment.glsl", program_vars, observable
+        )
+
+    def _create_gnomon_shader_program(self, observable: Observable) -> ShaderProgram:
+        program_vars = {
+            ShaderVar.MODEL_MATRIX: "m_model",
+            ShaderVar.GNOMON_VIEW_MATRIX: "m_camera",
+            ShaderVar.GNOMON_PROJECTION_MATRIX: "m_proj",
+        }
+        return self._create_shader_program(
+            "gnomon_vertex.glsl", "gnomon_fragment.glsl", program_vars, observable
         )
 
     def indicate_load_status(self, status: LoadStatus):

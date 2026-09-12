@@ -47,17 +47,19 @@ def create_mesh_list_renderee(
     return MeshListRenderee(opaque_renderee, alpha_renderee)
 
 
-def create_single_mesh_renderee(
-    ctx: moderngl.Context,
-    program: moderngl.Program,
-    mesh: MeshPayload,
-    model_matrix: NDArray[np.float32],
-    view_matrix: NDArray[np.float32],
-    name: str,
-) -> MeshRenderee:
-    if is_alpha(mesh):
-        return AlphaMeshRenderee(ctx, program, mesh, model_matrix, view_matrix, name)
-    return OpaqueMeshRenderee(ctx, program, mesh, name=name)
+def split_opaque_alpha(
+    meshes: list[MeshPayload],
+) -> tuple[list[MeshPayload], list[MeshPayload]]:
+    opaques: list[MeshPayload] = []
+    alphas: list[MeshPayload] = []
+    for mesh in meshes:
+        (alphas if is_alpha(mesh) else opaques).append(mesh)
+    return opaques, alphas
+
+
+def is_alpha(mesh: MeshPayload) -> bool:
+    color = mesh.color if mesh.color is not None else DEFAULT_COLOR
+    return int(color[3]) < 255
 
 
 def create_mesh_list_opaque_renderee(
@@ -81,19 +83,17 @@ def create_mesh_list_alpha_renderee(
     return MeshListAlphaRenderee(ctx, program, meshes, model_matrix, view_matrix, name)
 
 
-def split_opaque_alpha(
-    meshes: list[MeshPayload],
-) -> tuple[list[MeshPayload], list[MeshPayload]]:
-    opaques: list[MeshPayload] = []
-    alphas: list[MeshPayload] = []
-    for mesh in meshes:
-        (alphas if is_alpha(mesh) else opaques).append(mesh)
-    return opaques, alphas
-
-
-def is_alpha(mesh: MeshPayload) -> bool:
-    color = mesh.color if mesh.color is not None else DEFAULT_COLOR
-    return int(color[3]) < 255
+def create_single_mesh_renderee(
+    ctx: moderngl.Context,
+    program: moderngl.Program,
+    mesh: MeshPayload,
+    model_matrix: NDArray[np.float32],
+    view_matrix: NDArray[np.float32],
+    name: str,
+) -> MeshRenderee:
+    if is_alpha(mesh):
+        return AlphaMeshRenderee(ctx, program, mesh, model_matrix, view_matrix, name)
+    return OpaqueMeshRenderee(ctx, program, mesh, name=name)
 
 
 def expand_payload(

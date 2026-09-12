@@ -69,15 +69,6 @@ class Controller:
         self._current_mesh = value
 
     @property
-    def exportable_payload(self) -> MeshPayload | None:
-        """Return the completed single payload that can be exported."""
-        if self.load_status != LoadStatus.COMPLETE:
-            return None
-        if isinstance(self.current_mesh, MeshPayload):
-            return self.current_mesh
-        return None
-
-    @property
     def feature_states(self) -> list[FeatureState]:
         return self._feature_states
 
@@ -207,6 +198,15 @@ class Controller:
             return
         self._last_export_path = file_path
         self._export_payload(payload, file_path)
+
+    @property
+    def exportable_payload(self) -> MeshPayload | None:
+        """Return the completed single payload that can be exported."""
+        if self.load_status != LoadStatus.COMPLETE:
+            return None
+        if isinstance(self.current_mesh, MeshPayload):
+            return self.current_mesh
+        return None
 
     def _export_payload(self, payload: MeshPayload, file_path: str) -> None:
         export_mesh = payload_to_trimesh(payload)

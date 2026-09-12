@@ -64,6 +64,15 @@ def main() -> None:
     _write_report(report, arguments.output)
 
 
+def _parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--no-gpu", action="store_true")
+    parser.add_argument("--no-peak-memory", action="store_true")
+    parser.add_argument("--path", choices=("trimesh", "payload"), default="trimesh")
+    parser.add_argument("--output", type=Path)
+    return parser.parse_args()
+
+
 def run_benchmark(
     *,
     measure_gpu: bool = True,
@@ -85,6 +94,17 @@ def run_benchmark(
             )
             for case in discover_cases()
         ],
+    }
+
+
+def _environment_metadata() -> dict[str, str]:
+    return {
+        "machine": platform.machine(),
+        "moderngl_version": version("moderngl"),
+        "numpy_version": version("numpy"),
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "trimesh_version": version("trimesh"),
     }
 
 
@@ -321,28 +341,8 @@ def _no_gpu_measurement() -> dict[str, float | str | None]:
     }
 
 
-def _environment_metadata() -> dict[str, str]:
-    return {
-        "machine": platform.machine(),
-        "moderngl_version": version("moderngl"),
-        "numpy_version": version("numpy"),
-        "platform": platform.platform(),
-        "python_version": platform.python_version(),
-        "trimesh_version": version("trimesh"),
-    }
-
-
 def _elapsed_ms(start: float) -> float:
     return round((perf_counter() - start) * 1000, 3)
-
-
-def _parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--no-gpu", action="store_true")
-    parser.add_argument("--no-peak-memory", action="store_true")
-    parser.add_argument("--path", choices=("trimesh", "payload"), default="trimesh")
-    parser.add_argument("--output", type=Path)
-    return parser.parse_args()
 
 
 def _write_report(report: dict[str, Any], output: Path | None) -> None:
