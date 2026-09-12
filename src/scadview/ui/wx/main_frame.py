@@ -47,6 +47,17 @@ def convert_parameter_value(
     return value
 
 
+def _stop_loader_polling_if_terminal(controller: Controller, timer: wx.Timer) -> None:
+    if controller.export_pending:
+        return
+    if controller.load_status in {
+        LoadStatus.COMPLETE,
+        LoadStatus.DEBUG,
+        LoadStatus.ERROR,
+    }:
+        timer.Stop()
+
+
 class MainFrame(wx.Frame):
     def __init__(
         self,
@@ -505,8 +516,6 @@ class MainFrame(wx.Frame):
             return
         mesh = load_result.mesh
         if load_result.complete:
-            if not self._controller.export_pending:
-                self._loader_timer.Stop()
             self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
         if load_result.error:
             logger.error(load_result.error)
@@ -517,6 +526,7 @@ class MainFrame(wx.Frame):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
             self._loader_last_sequence_number = load_result.sequence_number
+        _stop_loader_polling_if_terminal(self._controller, self._loader_timer)
 
     def _handle_export_result(self, export_result: ExportResult) -> None:
         if export_result.error is not None:
@@ -525,8 +535,7 @@ class MainFrame(wx.Frame):
                 export_result.error.type_name,
                 export_result.error.message,
             )
-        if self._controller.load_status == LoadStatus.COMPLETE:
-            self._loader_timer.Stop()
+        _stop_loader_polling_if_terminal(self._controller, self._loader_timer)
 
     def load_module(self, module_path: Path, *, start_timer: bool = True) -> None:
         self._controller.load_mesh(str(module_path))
