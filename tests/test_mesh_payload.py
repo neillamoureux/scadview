@@ -3,10 +3,10 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-import scadview
 from trimesh import Trimesh
 from trimesh.creation import icosphere
 
+import scadview
 from scadview.mesh_payload import MeshPayload, mesh_to_payload, payload_to_trimesh
 
 

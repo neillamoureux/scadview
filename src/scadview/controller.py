@@ -16,8 +16,8 @@ from scadview.mesh_loader_process import (
     MpLoadQueue,
     ShutDownCommand,
 )
-from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.mesh_payload import MeshPayload, payload_to_trimesh
+from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.observable import Observable
 
 logger = logging.getLogger(__name__)

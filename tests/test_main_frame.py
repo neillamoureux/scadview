@@ -6,9 +6,9 @@ from trimesh.creation import box
 
 pytest.importorskip("wx")
 
-from scadview.module_loader import CreateMeshParameter
 from scadview.load_status import LoadStatus
 from scadview.mesh_payload import mesh_to_payload
+from scadview.module_loader import CreateMeshParameter
 from scadview.ui.wx import main_frame
 from scadview.ui.wx.main_frame import MainFrame, convert_parameter_value
 

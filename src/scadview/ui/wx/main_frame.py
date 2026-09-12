@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import cast
 
 import wx
+
 from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
 from scadview.mesh_loader_process import LoadResult
-from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.mesh_payload import MeshPayload
+from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.ui.view_state import ViewState
 from scadview.ui.wx.action import (
