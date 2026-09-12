@@ -214,46 +214,62 @@ class LoadWorker(Thread):
     def load(self):
         sequence_number = 0
         self.load_start_time = time()
-        last_mesh = None
+        last_mesh: SourceMeshType | None = None
+        last_payload: MeshType | None = None
         try:
             for mesh in self.run_mesh_module():
                 sequence_number += 1
                 if self.cancelled:
                     logger.info("LoadWorker cancelled, stopping load")
                     return
-                self._update_mesh(sequence_number, mesh)
-                last_mesh = mesh
+                last_mesh, last_payload = self._prepare_mesh(mesh)
+                self._publish_result(sequence_number, last_payload)
         except Exception as e:
             logger.exception("Failed to load mesh from %s", self.module_path)
-            self._update_mesh(sequence_number, last_mesh, final=True, error=e)
+            self._publish_final_result(sequence_number, last_mesh, last_payload, e)
             return
-        self._update_mesh(sequence_number, last_mesh, final=True)
+        self._publish_final_result(sequence_number, last_mesh, last_payload)
 
-    def _update_mesh(
+    def _prepare_mesh(
         self,
-        sequence_number: int,
-        mesh: CreateMeshResultType | None,
-        final: bool = False,
-        error: Exception | None = None,
-    ):
+        mesh: CreateMeshResultType | SourceMeshType | None,
+    ) -> tuple[SourceMeshType | None, MeshType | None]:
         tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
         tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
-        self._retain_export_source(tmesh, final, error)
-        payload = self._payload_mesh(tmesh)
+        return tmesh, self._payload_mesh(tmesh)
 
+    def _publish_result(
+        self,
+        sequence_number: int,
+        payload: MeshType | None,
+        error: Exception | None = None,
+        complete: bool = False,
+    ) -> None:
         self.put_in_queue(
             LoadResult(
                 self.load_number,
                 sequence_number,
                 payload,
                 error=error,
-                complete=final,
+                complete=complete,
                 features=self._current_feature_states(),
                 parameters=self._parameters,
                 generation=self.generation,
             )
         )
+
+    def _publish_final_result(
+        self,
+        sequence_number: int,
+        mesh: SourceMeshType | None,
+        payload: MeshType | None,
+        error: Exception | None = None,
+    ) -> None:
+        if self.debug_features:
+            mesh, payload = self._prepare_mesh(mesh)
+        self._retain_export_source(mesh, True, error)
+        self._publish_result(sequence_number, payload, error, complete=True)
 
     def _retain_export_source(
         self,
@@ -269,7 +285,7 @@ class LoadWorker(Thread):
         self.export_source = None
 
     def _ensure_trimesh(
-        self, mesh: CreateMeshResultType | None
+        self, mesh: CreateMeshResultType | SourceMeshType | None
     ) -> SourceMeshType | None:
         if mesh is None:
             return None

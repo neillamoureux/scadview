@@ -1,4 +1,4 @@
-"""Measure the current Trimesh mesh-transfer and rendering path."""
+"""Measure mesh transfer and rendering with one queue transfer per case."""
 
 from __future__ import annotations
 
@@ -33,8 +33,6 @@ METRIC_NAMES = (
     "trimesh_conversion_ms",
     "payload_conversion_ms",
     "post_create_mesh_to_first_frame_ms",
-    "pickle_encode_ms",
-    "pickle_decode_ms",
     "queue_round_trip_ms",
     "peak_memory_supported",
     "peak_memory_bytes",
@@ -162,11 +160,10 @@ def _measure_case(
     start = perf_counter()
     meshes = case.meshes()
     trimesh_conversion_ms = _elapsed_ms(start)
-    aggregate_start = perf_counter()
     payloads, payload_conversion_ms = _to_payloads(meshes, path)
     transfer_values: list[Any] = meshes if path == "trimesh" else payloads
-    serialized, encode_ms = _pickle_encode(transfer_values)
-    _, decode_ms = _pickle_decode(serialized)
+    serialized_size_bytes = _serialized_size(transfer_values)
+    aggregate_start = perf_counter()
     queue_round_trip_ms = _queue_round_trip(transfer_values)
     export_latency_ms = _export_latency(meshes[-1])
     retained_source_rss_bytes = (
@@ -182,12 +179,10 @@ def _measure_case(
         "mesh_count": len(meshes),
         "vertex_count": sum(len(mesh.vertices) for mesh in meshes),
         "face_count": sum(len(mesh.faces) for mesh in meshes),
-        "pickle_size_bytes": len(serialized),
+        "pickle_size_bytes": serialized_size_bytes,
         "trimesh_conversion_ms": trimesh_conversion_ms,
         "payload_conversion_ms": payload_conversion_ms,
         "post_create_mesh_to_first_frame_ms": aggregate_ms,
-        "pickle_encode_ms": encode_ms,
-        "pickle_decode_ms": decode_ms,
         "queue_round_trip_ms": queue_round_trip_ms,
         "export_latency_ms": export_latency_ms,
         "retained_loader_process_rss_bytes": retained_source_rss_bytes,
@@ -262,8 +257,8 @@ def _grid_mesh(
     faces = np.column_stack(
         (
             np.concatenate((bottom_left, bottom_left + 1)),
-            np.concatenate((bottom_left + cells + 1, bottom_left + cells + 1)),
-            np.concatenate((bottom_left + cells + 2, bottom_left + 1)),
+            np.concatenate((bottom_left + cells + 1, bottom_left + cells + 2)),
+            np.concatenate((bottom_left + cells + 2, bottom_left + cells + 1)),
         )
     )
     return Trimesh(vertices=vertices, faces=faces, process=False)
@@ -288,20 +283,12 @@ def _set_color(mesh: Trimesh, color: list[float]) -> None:
     mesh.metadata["scadview"] = {"color": color}
 
 
-def _pickle_encode(meshes: list[Trimesh]) -> tuple[bytes, float]:
-    start = perf_counter()
-    serialized = pickle.dumps(meshes, protocol=pickle.HIGHEST_PROTOCOL)
-    return serialized, _elapsed_ms(start)
+def _serialized_size(meshes: list[Any]) -> int:
+    return len(pickle.dumps(meshes, protocol=pickle.HIGHEST_PROTOCOL))
 
 
-def _pickle_decode(serialized: bytes) -> tuple[list[Trimesh], float]:
-    start = perf_counter()
-    meshes = pickle.loads(serialized)
-    return meshes, _elapsed_ms(start)
-
-
-def _queue_round_trip(meshes: list[Trimesh]) -> float:
-    queue: mp.Queue[list[Trimesh]] = mp.Queue(maxsize=1)
+def _queue_round_trip(meshes: list[Any]) -> float:
+    queue: mp.Queue[list[Any]] = mp.Queue(maxsize=1)
     try:
         start = perf_counter()
         queue.put(meshes)

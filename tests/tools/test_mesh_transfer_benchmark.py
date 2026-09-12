@@ -1,5 +1,8 @@
+import numpy as np
+
 from tools.mesh_transfer_benchmark import (
     METRIC_NAMES,
+    _grid_mesh,
     discover_cases,
     measure_case,
     run_benchmark,
@@ -29,6 +32,17 @@ def test_cases_have_expected_vertex_and_face_counts():
     assert measurements[3]["face_count"] > measurements[1]["face_count"]
 
 
+def test_grid_mesh_faces_are_non_degenerate():
+    mesh = _grid_mesh(8)
+    triangles = mesh.vertices[mesh.faces]
+    double_areas = np.linalg.norm(
+        np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]),
+        axis=1,
+    )
+
+    assert np.all(double_areas > 0)
+
+
 def test_run_benchmark_reports_environment_and_planned_metrics():
     report = run_benchmark(measure_gpu=False)
 
@@ -49,13 +63,11 @@ def test_run_benchmark_supports_compact_payload_path():
     assert report["cases"][0]["pickle_size_bytes"] < 100_000
 
 
-def test_measurement_reports_pickle_timing_and_optional_memory():
+def test_measurement_reports_one_queue_transfer_and_optional_memory():
     measurement = measure_case(discover_cases()[0], measure_gpu=False)
 
     assert measurement["pickle_size_bytes"] > 0
     assert measurement["trimesh_conversion_ms"] >= 0
-    assert measurement["pickle_encode_ms"] >= 0
-    assert measurement["pickle_decode_ms"] >= 0
     assert measurement["queue_round_trip_ms"] >= 0
     assert measurement["renderer_preparation_ms"] >= 0
     assert measurement["renderer_upload_ms"] is None

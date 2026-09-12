@@ -188,6 +188,42 @@ def test_load_worker_retains_only_the_final_successful_single_source(load_queue)
     assert worker.export_source is final
 
 
+def test_load_worker_reuses_the_last_payload_for_the_final_result(load_queue):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = iter([source])
+        with patch("scadview.mesh_loader_process.mesh_to_payload") as to_payload:
+            to_payload.return_value = mesh_to_payload(source)
+            worker = LoadWorker("test/path", load_queue)
+            worker.load()
+
+    assert to_payload.call_count == 1
+    first_result = load_queue.get(timeout=1.0)
+    final_result = load_queue.get(timeout=1.0)
+    _assert_payload_geometry(first_result.mesh, source)
+    _assert_payload_geometry(final_result.mesh, source)
+    assert final_result.complete
+
+
+def test_load_worker_reuses_the_last_payload_for_the_final_error_result(load_queue):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = _yield_then_raise(source)
+        with patch("scadview.mesh_loader_process.mesh_to_payload") as to_payload:
+            to_payload.return_value = mesh_to_payload(source)
+            worker = LoadWorker("test/path", load_queue)
+            worker.load()
+
+    assert to_payload.call_count == 1
+    load_queue.get(timeout=1.0)
+    final_result = load_queue.get(timeout=1.0)
+    _assert_payload_geometry(final_result.mesh, source)
+    assert isinstance(final_result.error, RuntimeError)
+    assert final_result.complete
+
+
 def test_load_worker_invalidates_export_source_for_debug_and_errors(load_queue):
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
         loader = mock_module_loader.return_value
@@ -259,6 +295,11 @@ def test_loader_process_shutdown_closes_the_export_result_queue():
 def _raise_mesh_error():
     raise RuntimeError("mesh failed")
     yield
+
+
+def _yield_then_raise(mesh):
+    yield mesh
+    raise RuntimeError("mesh failed")
 
 
 def test_load_worker_does_not_evict_newer_queued_result():

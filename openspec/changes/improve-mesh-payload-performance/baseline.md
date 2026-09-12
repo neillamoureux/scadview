@@ -11,6 +11,33 @@ Environment: macOS 26.6.2 x86_64, CPython 3.11.13, NumPy 2.3.4, Trimesh
 Peak memory is Python allocation peak reported by `tracemalloc`; it does not
 include driver or GPU allocations.
 
+## Benchmark methodology correction
+
+The original synthetic grid repeated one vertex in each second triangle, making
+half of its faces degenerate. It also timed standalone pickle encode/decode
+operations before timing a separate multiprocessing queue transfer. Those
+historical timing rows are retained below for traceability, but are not valid for
+comparison with corrected runs.
+
+The runner now generates two non-degenerate triangles per grid cell. It reports
+`pickle_size_bytes` as an observation-only standalone serialized size, and
+`queue_round_trip_ms` as one actual multiprocessing queue transfer; the size
+measurement is excluded from the post-create-mesh aggregate. It no longer
+reports standalone encode/decode timing metrics.
+
+Corrected compact-path CPU-only run:
+
+```console
+uv run python -m tools.mesh_transfer_benchmark --path payload --no-gpu
+```
+
+| Case | Pickle size | Queue round trip | Payload conversion | Prepare |
+| --- | ---: | ---: | ---: | ---: |
+| high-sharing-small | 62,675 | 1.425 ms | 1.666 ms | 0.748 ms |
+| high-sharing-large | 986,606 | 1.394 ms | 7.823 ms | 3.199 ms |
+| mixed-transparency | 106,299 | 0.924 ms | 2.066 ms | 0.795 ms |
+| representative-large-model | 4,931,991 | 6.506 ms | 39.252 ms | 15.595 ms |
+
 Two consecutive complete runs on this environment produced the following
 results. Timings are milliseconds; pickle size and peak memory are bytes.
 
