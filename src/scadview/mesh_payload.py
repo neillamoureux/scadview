@@ -88,8 +88,16 @@ def _bounds_and_scale(
 ) -> tuple[NDArray[np.float32], float]:
     if not len(vertices):
         return np.zeros((2, 3), dtype=np.float32), 0.0
-    bounds = np.array([vertices.min(axis=0), vertices.max(axis=0)], dtype=np.float32)
-    return np.ascontiguousarray(bounds), float(np.linalg.norm(bounds[1] - bounds[0]))
+    wide_vertices = vertices.astype(np.float64, copy=False)
+    wide_bounds = np.array(
+        [wide_vertices.min(axis=0), wide_vertices.max(axis=0)], dtype=np.float64
+    )
+    extent = wide_bounds[1] - wide_bounds[0]
+    scale = float(np.linalg.norm(extent))
+    if not np.isfinite(wide_bounds).all() or not np.isfinite(scale):
+        raise ValueError("bounds and scale must contain finite values")
+    bounds = np.array(wide_bounds, dtype=np.float32, order="C")
+    return bounds, scale
 
 
 def _mesh_color(metadata: Any) -> NDArray[np.uint8]:

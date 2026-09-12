@@ -142,6 +142,22 @@ def test_mesh_to_payload_rejects_non_finite_or_float32_overflow_vertices(vertice
         mesh_to_payload(mesh)
 
 
+def test_mesh_to_payload_keeps_finite_summaries_for_near_float32_limit_vertices():
+    mesh = _source(
+        vertices=np.array(
+            [[-3e38, 0.0, 0.0], [3e38, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            dtype=np.float64,
+        ),
+        faces=np.array([[0, 1, 2]]),
+    )
+
+    payload = mesh_to_payload(mesh)
+
+    assert np.isfinite(payload.bounds).all()
+    assert np.isfinite(payload.scale)
+    assert payload.scale == pytest.approx(6e38)
+
+
 def test_compact_payload_pickle_contains_no_trimesh_and_is_smaller():
     mesh = icosphere(subdivisions=4)
 
