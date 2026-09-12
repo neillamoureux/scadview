@@ -97,10 +97,10 @@ should not be interpreted as an isolated serialization experiment.
 
 ## Human visual validation checklist
 
-Not run in this environment: no supported SCADview GUI session was available.
-On a supported GUI/OpenGL platform, compare the same startup and loaded scenes
-before and after the change, recording OS, Python, GPU, driver, and OpenGL
-version:
+Manual validation completed on macOS 26.6.2 with an Apple M3 Max, wxPython
+4.2.5 / wxWidgets 3.2.9, CPython 3.11.13, and the Apple OpenGL stack
+`4.1 Metal - 90.5`. The startup and loaded scenes were compared before and
+after the change with visual parity confirmed:
 
 - startup mesh: geometry, default color, framing, axes, labels, and gnomon;
 - loading placeholder: geometry, background color, axes, and transition;
@@ -113,13 +113,14 @@ version:
 - edge display on and off: every triangle boundary, including shared vertices;
 - framing from each supported view direction and after resize/orbit operations.
 
-Until this checklist is completed by a human, visual parity remains unverified.
+The checklist was completed by a human and visual parity was confirmed.
 
 ## Indexed-renderer gate
 
-Based on the compact benchmark, fully indexed shader rendering remains deferred:
-serialized transfer improved materially, while upload and first-frame timings are
-small relative to payload conversion and retained temporary allocation. The
-human visual checklist above is still outstanding, so this is a provisional
-gate decision and does not authorize an indexed-renderer redesign or a separate
-change.
+Based on the compact benchmark and visual validation, fully indexed shader
+rendering remains deferred. Serialized transfer improved materially, the UI
+blocking interval decreased by approximately 90% for the representative large
+model, and no visual parity issue requires a deeper renderer redesign. The
+current renderer expansion/upload cost is not a material enough bottleneck to
+justify the portability and visual-regression risk of a fully indexed shader
+pipeline.
