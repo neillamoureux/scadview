@@ -30,6 +30,7 @@ METRIC_NAMES = (
     "pickle_size_bytes",
     "trimesh_conversion_ms",
     "payload_conversion_ms",
+    "post_create_mesh_to_first_frame_ms",
     "pickle_encode_ms",
     "pickle_decode_ms",
     "queue_round_trip_ms",
@@ -129,13 +130,17 @@ def _measure_case(
     start = perf_counter()
     meshes = case.meshes()
     trimesh_conversion_ms = _elapsed_ms(start)
+    aggregate_start = perf_counter()
     payloads, payload_conversion_ms = _to_payloads(meshes, path)
     transfer_values: list[Any] = meshes if path == "trimesh" else payloads
     serialized, encode_ms = _pickle_encode(transfer_values)
     _, decode_ms = _pickle_decode(serialized)
     queue_round_trip_ms = _queue_round_trip(transfer_values)
-    prepared, preparation_ms = _prepare_renderer_data(payloads)
+    prepared, preparation_ms = _prepare_renderer_data(meshes, payloads, path)
     gpu_measurements = _measure_gpu(prepared) if measure_gpu else _no_gpu_measurement()
+    aggregate_ms = _elapsed_ms(aggregate_start)
+    if gpu_measurements["first_frame_ms"] is None:
+        aggregate_ms = None
     return {
         "case": case.name,
         "mesh_count": len(meshes),
@@ -144,6 +149,7 @@ def _measure_case(
         "pickle_size_bytes": len(serialized),
         "trimesh_conversion_ms": trimesh_conversion_ms,
         "payload_conversion_ms": payload_conversion_ms,
+        "post_create_mesh_to_first_frame_ms": aggregate_ms,
         "pickle_encode_ms": encode_ms,
         "pickle_decode_ms": decode_ms,
         "queue_round_trip_ms": queue_round_trip_ms,
@@ -156,7 +162,7 @@ def _to_payloads(
     meshes: list[Trimesh], path: Literal["trimesh", "payload"]
 ) -> tuple[list[Any], float]:
     if path == "trimesh":
-        return [mesh_to_payload(mesh) for mesh in meshes], 0.0
+        return [], 0.0
     start = perf_counter()
     payloads = [mesh_to_payload(mesh) for mesh in meshes]
     return payloads, _elapsed_ms(start)
@@ -228,11 +234,42 @@ def _queue_round_trip(meshes: list[Trimesh]) -> float:
 
 
 def _prepare_renderer_data(
+    meshes: list[Trimesh],
     payloads: list[Any],
+    path: Literal["trimesh", "payload"],
 ) -> tuple[list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]], float]:
     start = perf_counter()
-    prepared = [expand_payload(payload) for payload in payloads]
+    if path == "trimesh":
+        prepared = [_expand_trimesh(mesh) for mesh in meshes]
+    else:
+        prepared = [expand_payload(payload) for payload in payloads]
     return prepared, _elapsed_ms(start)
+
+
+def _expand_trimesh(
+    mesh: Trimesh,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    triangles = np.ascontiguousarray(mesh.triangles, dtype="f4")
+    normals = np.ascontiguousarray(
+        np.broadcast_to(mesh.triangles_cross[:, np.newaxis, :], triangles.shape),
+        dtype="f4",
+    )
+    color = [128, 128, 128, 255]
+    metadata = mesh.metadata
+    if isinstance(metadata, dict) and metadata.get("scadview") is not None:
+        color = (
+            np.rint(np.asarray(metadata["scadview"]["color"]) * 255)
+            .astype(np.uint8)
+            .tolist()
+        )
+    colors = np.broadcast_to(
+        np.asarray(color, dtype=np.uint8), (len(triangles), 3, 4)
+    ).copy()
+    edges = np.tile(
+        np.array([255, 0, 0, 0, 255, 0, 0, 0, 255], dtype=np.uint8),
+        (len(triangles), 1),
+    )
+    return triangles, normals, colors, edges
 
 
 def _measure_gpu(

@@ -60,7 +60,21 @@ def test_measurement_reports_pickle_timing_and_optional_memory():
     assert measurement["renderer_preparation_ms"] >= 0
     assert measurement["renderer_upload_ms"] is None
     assert measurement["first_frame_ms"] is None
+    assert measurement["post_create_mesh_to_first_frame_ms"] is None
     assert measurement["peak_memory_bytes"] is not None
+
+
+def test_aggregate_metric_is_emitted_for_both_transfer_paths():
+    for path in ("trimesh", "payload"):
+        measurement = measure_case(
+            discover_cases()[0],
+            measure_gpu=False,
+            measure_peak_memory=False,
+            path=path,
+        )
+
+        assert "post_create_mesh_to_first_frame_ms" in measurement
+        assert measurement["post_create_mesh_to_first_frame_ms"] is None
 
 
 def test_memory_measurement_can_be_disabled():

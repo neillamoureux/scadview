@@ -69,6 +69,32 @@ upload and first-frame measurements do not indicate that a fully indexed
 renderer is currently the material bottleneck. These timings are evidence, not
 CI thresholds.
 
+### Post-create-mesh time to first frame
+
+The benchmark also emits `post_create_mesh_to_first_frame_ms`, which covers the
+work after deterministic mesh creation completes: payload conversion when
+applicable, serialization, queue round trip, renderer preparation, GL buffer
+creation, and the first draw. The original renderer did not emit this aggregate
+metric, so the historical value below is reconstructed by summing the recorded
+phase timings; it is an estimate rather than a new measurement.
+
+| Case | Historical Trimesh renderer | Compact payload renderer | Reduction |
+| --- | ---: | ---: | ---: |
+| high-sharing-small, run 1 | 78.835 ms (estimated) | 11.830 ms | 85.0% |
+| high-sharing-small, run 2 | 19.593 ms (estimated) | 12.313 ms | 37.2% |
+| high-sharing-large, run 1 | 142.558 ms (estimated) | 19.087 ms | 86.6% |
+| high-sharing-large, run 2 | 139.856 ms (estimated) | 18.677 ms | 86.6% |
+| mixed-transparency, run 1 | 20.511 ms (estimated) | 8.860 ms | 56.8% |
+| mixed-transparency, run 2 | 20.872 ms (estimated) | 9.272 ms | 55.6% |
+| representative-large-model, run 1 | 687.662 ms (estimated) | 72.036 ms | 89.5% |
+| representative-large-model, run 2 | 685.936 ms (estimated) | 67.449 ms | 90.2% |
+
+The representative large model therefore reduced the estimated UI-blocking
+interval by approximately 90%. The reduction is primarily in synchronous CPU
+render-buffer preparation and GL buffer creation, not pickle size alone. The
+historical and compact rows combine the transport and renderer changes, so they
+should not be interpreted as an isolated serialization experiment.
+
 ## Human visual validation checklist
 
 Not run in this environment: no supported SCADview GUI session was available.
