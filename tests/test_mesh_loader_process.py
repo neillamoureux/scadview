@@ -111,27 +111,88 @@ def test_mp_queue_close_discards_pending_items(mock_queue, mp_queue_int):
     mock_queue.return_value.join_thread.assert_not_called()
 
 
-def test_load_result_debug():
+def test_load_result_preserves_explicit_debug_state():
     mesh = mesh_to_payload(box())
-    lr = LoadResult(1, 2, [mesh], None)
+    lr = LoadResult(
+        1,
+        2,
+        [mesh],
+        None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=False,
+        debug=True,
+    )
     assert lr.debug
-    lr = LoadResult(1, 2, mesh, None)
+    lr = LoadResult(
+        1,
+        2,
+        mesh,
+        None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
     assert not lr.debug
 
 
 def test_load_result_status():
     mesh = mesh_to_payload(box())
-    lr = LoadResult(1, 2, mesh, LoadError("RuntimeError", "failed"))
+    lr = LoadResult(
+        1,
+        2,
+        mesh,
+        LoadError("RuntimeError", "failed"),
+        phase=LoadPhase.ERROR,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
     assert lr.status == LoadStatus.ERROR
-    lr = LoadResult(1, 2, [mesh], None)
+    lr = LoadResult(
+        1,
+        2,
+        [mesh],
+        None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=False,
+        debug=True,
+    )
     assert lr.status == LoadStatus.DEBUG
-    lr = LoadResult(1, 2, [mesh], None, True)
-    assert lr.status == LoadStatus.DEBUG
-    lr = LoadResult(1, 2, mesh, None, True)
+    lr = LoadResult(
+        1,
+        2,
+        mesh,
+        None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=True,
+        debug=False,
+    )
     assert lr.status == LoadStatus.COMPLETE
-    lr = LoadResult(1, 2, mesh, None)
+    lr = LoadResult(
+        1,
+        2,
+        mesh,
+        None,
+        phase=LoadPhase.PROGRESS,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
     assert lr.status == LoadStatus.START
-    lr = LoadResult(1, 2, None, None)
+    lr = LoadResult(
+        1,
+        2,
+        None,
+        None,
+        phase=LoadPhase.PROGRESS,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
     assert lr.status == LoadStatus.NONE
 
 
@@ -195,6 +256,103 @@ def test_load_result_exposes_explicit_phase_revision_and_exportability():
         9,
         10,
     ]
+
+
+def test_load_result_requires_explicit_state_fields():
+    payload = mesh_to_payload(box())
+
+    with pytest.raises(TypeError):
+        LoadResult(1, 1, payload, None)
+
+
+def test_load_result_completion_is_derived_from_phase():
+    payload = mesh_to_payload(box())
+    progress = LoadResult(
+        1,
+        1,
+        payload,
+        None,
+        phase=LoadPhase.PROGRESS,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
+    final = LoadResult(
+        1,
+        1,
+        payload,
+        None,
+        phase=LoadPhase.FINAL,
+        revision=2,
+        exportable=True,
+        debug=False,
+    )
+
+    assert not progress.complete
+    assert final.complete
+    with pytest.raises(AttributeError):
+        setattr(final, "complete", False)
+
+
+@pytest.mark.parametrize(
+    ("phase", "payload_kind", "error", "exportable", "debug"),
+    [
+        (LoadPhase.ERROR, "none", None, False, False),
+        (LoadPhase.ERROR, "none", "failed", False, False),
+        (
+            LoadPhase.FINAL,
+            "single",
+            LoadError("ValueError", "failed"),
+            False,
+            False,
+        ),
+        (LoadPhase.PROGRESS, "single", None, True, False),
+        (LoadPhase.CANCELLED, "single", None, True, False),
+        (LoadPhase.FINAL, "list", None, True, True),
+        (LoadPhase.FINAL, "single", None, False, True),
+        (LoadPhase.FINAL, "list", None, False, False),
+    ],
+)
+def test_load_result_rejects_inconsistent_state(
+    phase, payload_kind, error, exportable, debug
+):
+    payload = mesh_to_payload(box())
+    payload_by_kind = {"none": None, "single": payload, "list": [payload]}
+
+    with pytest.raises(ValueError):
+        LoadResult(
+            1,
+            1,
+            payload_by_kind[payload_kind],
+            error,
+            phase=phase,
+            revision=1,
+            exportable=exportable,
+            debug=debug,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("phase", None),
+        ("revision", -1),
+        ("revision", True),
+        ("exportable", None),
+        ("debug", None),
+    ],
+)
+def test_load_result_rejects_invalid_explicit_state_field(field, value):
+    state = {
+        "phase": LoadPhase.PROGRESS,
+        "revision": 1,
+        "exportable": False,
+        "debug": False,
+    }
+    state[field] = value
+
+    with pytest.raises(ValueError):
+        LoadResult(1, 1, None, None, **state)
 
 
 def test_load_mesh_command_preserves_debug_features():
@@ -857,12 +1015,34 @@ def _drain_load_results(load_queue):
 
 def test_load_worker_does_not_evict_newer_queued_result():
     load_queue = Mock()
-    newer_result = LoadResult(1, 1, mesh_to_payload(box()), None, generation=4)
+    newer_result = LoadResult(
+        1,
+        1,
+        mesh_to_payload(box()),
+        None,
+        phase=LoadPhase.PROGRESS,
+        revision=1,
+        exportable=False,
+        debug=False,
+        generation=4,
+    )
     load_queue.put.side_effect = [queue.Full, None]
     load_queue.get_nowait.return_value = newer_result
     worker = LoadWorker("test/path", load_queue, generation=3)
 
-    worker.put_in_queue(LoadResult(1, 1, None, None, generation=3))
+    worker.put_in_queue(
+        LoadResult(
+            1,
+            1,
+            None,
+            None,
+            phase=LoadPhase.PROGRESS,
+            revision=1,
+            exportable=False,
+            debug=False,
+            generation=3,
+        )
+    )
 
     assert load_queue.put.call_args_list[-1].args[0] == newer_result
 
@@ -871,7 +1051,18 @@ def test_cancelled_worker_does_not_publish_payload(load_queue):
     worker = LoadWorker("test/path", load_queue)
     worker.cancel()
 
-    worker.put_in_queue(LoadResult(1, 1, mesh_to_payload(box()), None))
+    worker.put_in_queue(
+        LoadResult(
+            1,
+            1,
+            mesh_to_payload(box()),
+            None,
+            phase=LoadPhase.PROGRESS,
+            revision=1,
+            exportable=False,
+            debug=False,
+        )
+    )
 
     with pytest.raises(queue.Empty):
         load_queue.get_nowait()

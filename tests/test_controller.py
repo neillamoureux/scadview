@@ -91,6 +91,7 @@ def test_reload_start_invalidates_export_before_queueing_load(
                 revision=1,
                 phase=LoadPhase.FINAL,
                 exportable=True,
+                debug=False,
             )
         )
         controller.check_load_queue()
@@ -151,6 +152,7 @@ def test_reload_start_invalidates_export_before_queueing_load(
                 revision=2,
                 phase=LoadPhase.FINAL,
                 exportable=True,
+                debug=False,
             )
         )
         controller.check_load_queue()
@@ -181,8 +183,11 @@ def test_controller_reloads_with_updated_feature_state(monkeypatch):
                 1,
                 payload,
                 None,
-                False,
-                [FeatureState("cutout", True)],
+                phase=LoadPhase.PROGRESS,
+                revision=1,
+                exportable=False,
+                debug=False,
+                features=[FeatureState("cutout", True)],
                 generation=controller.current_generation,
             )
         )
@@ -204,7 +209,17 @@ def test_controller_retains_only_current_completed_single_payload(monkeypatch):
     try:
         controller.load_mesh("/tmp/model.py")
         controller._load_queue.items.append(
-            LoadResult(1, 1, payload, None, complete=True, generation=1)
+            LoadResult(
+                1,
+                1,
+                payload,
+                None,
+                phase=LoadPhase.FINAL,
+                revision=1,
+                exportable=True,
+                debug=False,
+                generation=1,
+            )
         )
 
         controller.check_load_queue()
@@ -253,7 +268,17 @@ def test_controller_rejects_stale_payload_without_replacing_current_payload(
         controller.current_mesh = current_payload
         controller._current_generation = 2
         controller._load_queue.items.append(
-            LoadResult(1, 1, stale_payload, None, complete=True, generation=1)
+            LoadResult(
+                1,
+                1,
+                stale_payload,
+                None,
+                phase=LoadPhase.FINAL,
+                revision=1,
+                exportable=True,
+                debug=False,
+                generation=1,
+            )
         )
 
         controller.check_load_queue()
@@ -552,6 +577,10 @@ def test_controller_reconciles_parameters_and_reloads_with_values(monkeypatch):
                 1,
                 mesh_to_payload(box()),
                 None,
+                phase=LoadPhase.PROGRESS,
+                revision=1,
+                exportable=False,
+                debug=False,
                 parameters=[parameter],
                 generation=1,
             )
@@ -575,7 +604,17 @@ def test_controller_ignores_stale_result(monkeypatch):
     try:
         controller.load_mesh("/tmp/model.py")
         controller.load_mesh("/tmp/model.py")
-        stale = LoadResult(1, 1, mesh_to_payload(box()), None, generation=1)
+        stale = LoadResult(
+            1,
+            1,
+            mesh_to_payload(box()),
+            None,
+            phase=LoadPhase.PROGRESS,
+            revision=1,
+            exportable=False,
+            debug=False,
+            generation=1,
+        )
         controller._load_queue.items.append(stale)
 
         result = controller.check_load_queue()
@@ -604,13 +643,13 @@ def test_controller_reports_loader_death_as_current_load_error_once(monkeypatch)
             0,
             payload=None,
             error=LoadError("LoaderProcessDied", "Mesh loader process exited"),
-            complete=True,
+            phase=LoadPhase.ERROR,
+            revision=1,
+            exportable=False,
+            debug=False,
             features=[],
             parameters=[],
             generation=controller.current_generation,
-            revision=1,
-            phase=LoadPhase.ERROR,
-            exportable=False,
         )
         assert controller.load_status is LoadStatus.ERROR
         assert statuses == [LoadStatus.ERROR]
@@ -675,6 +714,7 @@ def test_loader_death_after_progress_stops_main_frame_timer_once(monkeypatch, ca
                 revision=4,
                 phase=LoadPhase.PROGRESS,
                 exportable=False,
+                debug=False,
             )
         )
         controller.check_load_queue()
@@ -817,6 +857,10 @@ def test_controller_reset_parameter_values_restores_defaults_and_reloads(monkeyp
                 1,
                 mesh_to_payload(box()),
                 None,
+                phase=LoadPhase.PROGRESS,
+                revision=1,
+                exportable=False,
+                debug=False,
                 parameters=parameters,
                 generation=1,
             )

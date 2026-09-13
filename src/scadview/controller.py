@@ -181,13 +181,13 @@ class Controller:
                 self._current_load_sequence_number,
                 payload=self.current_mesh,
                 error=error,
-                complete=True,
                 features=self.feature_states.copy(),
                 parameters=self.parameters.copy(),
                 generation=self.current_generation,
                 revision=self._current_load_revision + 1,
                 phase=LoadPhase.ERROR,
                 exportable=False,
+                debug=isinstance(self.current_mesh, list),
             )
         )
 
@@ -237,10 +237,22 @@ class Controller:
             error=None,
             generation=generation,
             phase=LoadPhase.CANCELLED,
+            revision=0,
+            exportable=False,
+            debug=False,
         )
 
     def _idle_load_result(self) -> LoadResult:
-        return LoadResult(0, 0, payload=None, error=None, phase=LoadPhase.CANCELLED)
+        return LoadResult(
+            0,
+            0,
+            payload=None,
+            error=None,
+            phase=LoadPhase.CANCELLED,
+            revision=0,
+            exportable=False,
+            debug=False,
+        )
 
     def set_feature_enabled(self, name: str, enabled: bool):
         if self.module_path == "":

@@ -399,7 +399,17 @@ def test_stale_load_result_does_not_stop_current_timer_or_update_view():
         _loader_last_load_number=0,
         _loader_last_sequence_number=0,
     )
-    result = LoadResult(1, 1, None, None, complete=True, generation=1)
+    result = LoadResult(
+        1,
+        1,
+        None,
+        None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=False,
+        debug=False,
+        generation=1,
+    )
 
     MainFrame._handle_load_result(frame, result)
 
@@ -518,7 +528,18 @@ def test_reload_completion_stops_polling_after_export_completed():
         _has_mesh_changed=lambda result: False,
     )
     MainFrame._handle_load_result(
-        frame, LoadResult(1, 1, payload, None, complete=True, generation=1)
+        frame,
+        LoadResult(
+            1,
+            1,
+            payload,
+            None,
+            phase=LoadPhase.FINAL,
+            revision=1,
+            exportable=True,
+            debug=False,
+            generation=1,
+        ),
     )
 
     timer.Stop.assert_called_once_with()
@@ -548,6 +569,8 @@ def test_terminal_load_error_resets_progress_gauge():
         generation=2,
         phase=LoadPhase.ERROR,
         revision=1,
+        exportable=False,
+        debug=False,
     )
 
     MainFrame._handle_load_result(frame, result)
@@ -576,7 +599,19 @@ def test_ignored_export_result_does_not_stop_ui_polling():
         load_status=LoadStatus.START,
         export_pending=True,
         check_export_queue=Mock(return_value=None),
-        check_load_queue=Mock(return_value=LoadResult(1, 1, None, None, generation=1)),
+        check_load_queue=Mock(
+            return_value=LoadResult(
+                1,
+                1,
+                None,
+                None,
+                phase=LoadPhase.PROGRESS,
+                revision=1,
+                exportable=False,
+                debug=False,
+                generation=1,
+            )
+        ),
     )
     frame = SimpleNamespace(
         _controller=controller,
@@ -615,7 +650,17 @@ def test_current_payload_result_reaches_the_view_without_reconstruction():
         _load_mesh_in_view=lambda mesh: gl_widget.load_mesh(mesh, "loaded mesh"),
         _is_first_in_load=lambda result: False,
     )
-    result = LoadResult(1, 1, payload, None, generation=1)
+    result = LoadResult(
+        1,
+        1,
+        payload,
+        None,
+        phase=LoadPhase.PROGRESS,
+        revision=1,
+        exportable=False,
+        debug=False,
+        generation=1,
+    )
 
     MainFrame._handle_load_result(frame, result)
 

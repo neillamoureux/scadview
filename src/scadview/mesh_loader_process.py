@@ -153,31 +153,59 @@ class LoadResult:
     sequence_number: int
     payload: MeshType | None
     error: LoadError | None
-    complete: bool = False
+    phase: LoadPhase
+    revision: int
+    exportable: bool
+    debug: bool
     features: list[FeatureState] | None = None
     parameters: list[CreateMeshParameter] | None = None
     generation: int = 0
-    revision: int = 0
-    phase: LoadPhase | None = None
-    exportable: bool | None = None
-    debug: bool = False
 
     def __post_init__(self) -> None:
-        if self.phase is None:
-            if self.error is not None:
-                self.phase = LoadPhase.ERROR
-            elif self.complete or isinstance(self.payload, list):
-                self.phase = LoadPhase.FINAL
-            else:
-                self.phase = LoadPhase.PROGRESS
-        if self.exportable is None:
-            self.exportable = (
-                self.phase is LoadPhase.FINAL
-                and isinstance(self.payload, MeshPayload)
-                and not self.debug
-            )
-        if self.debug is False and isinstance(self.payload, list):
-            self.debug = True
+        self._validate_explicit_state()
+        self._validate_error_state()
+        self._validate_debug_state()
+        self._validate_exportable_state()
+
+    def _validate_explicit_state(self) -> None:
+        if not isinstance(self.phase, LoadPhase):
+            raise ValueError("Load result phase must be a LoadPhase")
+        if (
+            not isinstance(self.revision, int)
+            or isinstance(self.revision, bool)
+            or self.revision < 0
+        ):
+            raise ValueError("Load result revision must be a non-negative integer")
+        if not isinstance(self.exportable, bool) or not isinstance(self.debug, bool):
+            raise ValueError("Load result exportable and debug state must be boolean")
+
+    def _validate_error_state(self) -> None:
+        if self.phase is LoadPhase.ERROR:
+            if not isinstance(self.error, LoadError):
+                raise ValueError("Error-phase load results require a LoadError")
+            return
+        if self.error is not None:
+            raise ValueError("Only error-phase load results may contain an error")
+
+    def _validate_debug_state(self) -> None:
+        if self.debug != isinstance(self.payload, list):
+            raise ValueError("Load result debug state must match a payload list")
+
+    def _validate_exportable_state(self) -> None:
+        if self.exportable and (
+            self.phase is not LoadPhase.FINAL
+            or not isinstance(self.payload, MeshPayload)
+            or self.debug
+        ):
+            raise ValueError("Only final single-payload load results are exportable")
+
+    @property
+    def complete(self) -> bool:
+        return self.phase in {
+            LoadPhase.FINAL,
+            LoadPhase.ERROR,
+            LoadPhase.CANCELLED,
+        }
 
     @property
     def mesh(self) -> MeshType | None:
@@ -285,7 +313,11 @@ class LoadWorker(Thread):
                     break
                 last_mesh, last_payload = self._prepare_mesh(mesh)
                 last_source_signature = self._source_signature(last_mesh)
-                self._publish_result(sequence_number, last_payload)
+                self._publish_result(
+                    sequence_number,
+                    last_payload,
+                    debug=isinstance(last_mesh, list),
+                )
         except Exception as error:
             logger.exception("Failed to load mesh from %s", self.module_path)
             terminal_phase = LoadPhase.ERROR
@@ -316,6 +348,7 @@ class LoadWorker(Thread):
                     payload,
                     phase=phase,
                     allow_cancelled=True,
+                    debug=isinstance(mesh, list),
                 )
                 return
             self._publish_final_result(
@@ -346,7 +379,6 @@ class LoadWorker(Thread):
                 sequence_number,
                 payload=payload,
                 error=error,
-                complete=True,
                 features=list(self._loaded_feature_states),
                 parameters=self._parameters,
                 generation=self.generation,
@@ -384,8 +416,6 @@ class LoadWorker(Thread):
                 sequence_number,
                 payload=payload,
                 error=error,
-                complete=phase
-                in (LoadPhase.FINAL, LoadPhase.ERROR, LoadPhase.CANCELLED),
                 features=self._current_feature_states(),
                 parameters=self._parameters,
                 generation=self.generation,
