@@ -1,4 +1,4 @@
-"""Measure mesh transfer and rendering with one queue transfer per case."""
+"""Measure loader publication, process transfer, and mesh replacement."""
 
 from __future__ import annotations
 
@@ -16,8 +16,7 @@ from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter
-from typing import Any
-from typing import Literal
+from typing import Any, Literal, cast
 
 import moderngl
 import numpy as np
@@ -27,11 +26,30 @@ from scadview.mesh_loader_process import (
     ExportCommand,
     ExportResult,
     ExportWorker,
+    FinalMeshSnapshot,
+    LoadPhase,
+    LoadResult,
+    LoadWorker,
     MpExportResultQueue,
+    MpLoadQueue,
+    MpQueue,
 )
-from scadview.mesh_payload import mesh_to_payload
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.render.mesh_renderee import create_vao_from_arrays, expand_payload
 
+PublicationPath = Literal["trimesh", "payload"]
+PUBLICATION_PHASES = (
+    "payload_conversion_ms",
+    "source_signature_ms",
+    "envelope_finalization_ms",
+)
+DISPLAY_LATENCY_PHASES = (
+    "loader_publication_ms",
+    "child_to_main_transfer_ms",
+    "renderer_preparation_ms",
+    "renderer_upload_ms",
+    "first_frame_ms",
+)
 METRIC_NAMES = (
     "vertex_count",
     "face_count",
@@ -39,11 +57,19 @@ METRIC_NAMES = (
     "pickle_size_bytes",
     "mesh_creation_ms",
     "payload_conversion_ms",
-    "post_create_mesh_to_first_frame_ms",
-    "queue_round_trip_ms",
+    "source_signature_ms",
+    "source_signature_passes",
+    "envelope_finalization_ms",
+    "loader_publication_ms",
+    "child_to_main_transfer_ms",
+    "transfer_producer_pid",
+    "transfer_consumer_pid",
+    "post_mesh_creation_to_first_frame_ms",
     "peak_memory_supported",
-    "peak_memory_bytes",
+    "main_process_peak_memory_bytes",
+    "loader_publication_peak_memory_bytes",
     "renderer_preparation_ms",
+    "gpu_context_shader_setup_ms",
     "renderer_upload_ms",
     "first_frame_ms",
     "gpu_measurement_error",
@@ -64,6 +90,34 @@ class BenchmarkCase:
 
     def meshes(self) -> list[Trimesh]:
         return self.create_meshes()
+
+
+@dataclass(frozen=True)
+class TrimeshTransferEnvelope:
+    """Counterfactual final envelope carrying complete source meshes."""
+
+    load_number: int
+    generation: int
+    sequence_number: int
+    revision: int
+    phase: LoadPhase
+    payload: Trimesh | list[Trimesh]
+    exportable: bool
+    error: None
+    debug: bool
+    features: list[Any]
+    parameters: list[Any]
+
+
+@dataclass(frozen=True)
+class PublicationTransfer:
+    """A finalized envelope and its measured child-to-main publication stages."""
+
+    envelope: LoadResult | TrimeshTransferEnvelope
+    metrics: dict[str, Any]
+    pickle_size_bytes: int
+    producer_pid: int
+    consumer_pid: int
 
 
 def main() -> None:
@@ -92,12 +146,20 @@ def run_benchmark(
     measure_gpu: bool = True,
     measure_peak_memory: bool = True,
     measure_retained_source_memory: bool = True,
-    path: Literal["trimesh", "payload"] = "trimesh",
+    path: PublicationPath = "trimesh",
 ) -> dict[str, Any]:
     """Measure every workload using the selected transfer representation."""
     return {
-        "benchmark_version": 2,
+        "benchmark_version": 3,
         "command": "uv run --no-sync python -m tools.mesh_transfer_benchmark",
+        "comparison_kind": "same-version-counterfactual",
+        "transfer_boundary": "child-to-main-process",
+        "multiprocessing_start_method": mp.get_start_method(),
+        "display_latency_phases": list(DISPLAY_LATENCY_PHASES),
+        "gpu_setup_scope": (
+            "cold standalone context and shader setup per case; excluded from "
+            "mesh replacement latency"
+        ),
         "environment": _environment_metadata(),
         "path": path,
         "cases": [
@@ -140,20 +202,26 @@ def measure_case(
     measure_gpu: bool = True,
     measure_peak_memory: bool = True,
     measure_retained_source_memory: bool = True,
-    path: Literal["trimesh", "payload"] = "trimesh",
+    path: PublicationPath = "trimesh",
 ) -> dict[str, Any]:
     """Measure one workload without making timing assertions."""
     if measure_peak_memory:
         tracemalloc.start()
     try:
         measurement = _measure_case(
-            case, measure_gpu, path, measure_retained_source_memory
+            case,
+            measure_gpu,
+            measure_peak_memory,
+            path,
+            measure_retained_source_memory,
         )
         if measure_peak_memory:
-            measurement["peak_memory_bytes"] = tracemalloc.get_traced_memory()[1]
+            measurement["main_process_peak_memory_bytes"] = (
+                tracemalloc.get_traced_memory()[1]
+            )
             measurement["peak_memory_supported"] = True
         else:
-            measurement["peak_memory_bytes"] = None
+            measurement["main_process_peak_memory_bytes"] = None
             measurement["peak_memory_supported"] = False
         return measurement
     finally:
@@ -164,22 +232,20 @@ def measure_case(
 def _measure_case(
     case: BenchmarkCase,
     measure_gpu: bool,
-    path: Literal["trimesh", "payload"],
+    measure_peak_memory: bool,
+    path: PublicationPath,
     measure_retained_source_memory: bool,
 ) -> dict[str, Any]:
     start = perf_counter()
     meshes = case.meshes()
     mesh_creation_ms = _elapsed_ms(start)
-    aggregate_start = perf_counter()
-    payloads, payload_conversion_ms = _to_payloads(meshes, path)
-    transfer_values: list[Any] = meshes if path == "trimesh" else payloads
-    queue_round_trip_ms = _queue_round_trip(transfer_values)
-    prepared, preparation_ms = _prepare_renderer_data(meshes, payloads, path)
+    transfer = _measure_publication_transfer(
+        meshes,
+        path,
+        measure_peak_memory=measure_peak_memory,
+    )
+    prepared, preparation_ms = _prepare_renderer_data(transfer.envelope, path)
     gpu_measurements = _measure_gpu(prepared) if measure_gpu else _no_gpu_measurement()
-    aggregate_ms = _elapsed_ms(aggregate_start)
-    if gpu_measurements["first_frame_ms"] is None:
-        aggregate_ms = None
-    serialized_size_bytes = _serialized_size(transfer_values)
     export_completion_ms = (
         _export_request_completion(meshes[-1]) if len(meshes) == 1 else None
     )
@@ -188,21 +254,222 @@ def _measure_case(
         if measure_retained_source_memory and len(meshes) == 1
         else _no_retained_source_memory()
     )
-    return {
+    measurement = {
         "case": case.name,
         "mesh_count": len(meshes),
         "vertex_count": sum(len(mesh.vertices) for mesh in meshes),
         "face_count": sum(len(mesh.faces) for mesh in meshes),
-        "pickle_size_bytes": serialized_size_bytes,
+        "pickle_size_bytes": transfer.pickle_size_bytes,
         "mesh_creation_ms": mesh_creation_ms,
-        "payload_conversion_ms": payload_conversion_ms,
-        "post_create_mesh_to_first_frame_ms": aggregate_ms,
-        "queue_round_trip_ms": queue_round_trip_ms,
+        **transfer.metrics,
+        "transfer_producer_pid": transfer.producer_pid,
+        "transfer_consumer_pid": transfer.consumer_pid,
         "export_request_completion_ms": export_completion_ms,
         "renderer_preparation_ms": preparation_ms,
         **retained_memory,
         **gpu_measurements,
     }
+    measurement["post_mesh_creation_to_first_frame_ms"] = _compose_display_latency(
+        measurement
+    )
+    return measurement
+
+
+def _measure_publication_transfer(
+    meshes: list[Trimesh],
+    path: PublicationPath,
+    *,
+    measure_peak_memory: bool = False,
+) -> PublicationTransfer:
+    parent_connection, child_connection = mp.Pipe()
+    result_queue: Any
+    if path == "payload":
+        result_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
+    else:
+        result_queue = MpQueue(maxsize=1, type_=TrimeshTransferEnvelope)
+    process = mp.Process(
+        target=_publication_process,
+        args=(child_connection, result_queue, meshes, path, measure_peak_memory),
+    )
+    process.start()
+    child_connection.close()
+    try:
+        if not parent_connection.poll(30):
+            raise RuntimeError("Timed out waiting for benchmark publication setup")
+        publication = parent_connection.recv()
+        if isinstance(publication, str):
+            raise RuntimeError(publication)
+        producer_pid, metrics, pickle_size_bytes = publication
+        start = perf_counter()
+        parent_connection.send("publish")
+        envelope = result_queue.get(timeout=30)
+        transfer_ms = _elapsed_ms(start)
+        metrics["child_to_main_transfer_ms"] = transfer_ms
+        return PublicationTransfer(
+            envelope=envelope,
+            metrics=metrics,
+            pickle_size_bytes=pickle_size_bytes,
+            producer_pid=producer_pid,
+            consumer_pid=os.getpid(),
+        )
+    finally:
+        parent_connection.close()
+        process.join(timeout=30)
+        if process.is_alive():
+            process.terminate()
+            process.join()
+        result_queue.close()
+
+
+def _publication_process(
+    connection: Any,
+    result_queue: Any,
+    meshes: list[Trimesh],
+    path: PublicationPath,
+    measure_peak_memory: bool,
+) -> None:
+    if measure_peak_memory:
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
+        tracemalloc.start()
+    try:
+        envelope, metrics = _finalize_envelope(meshes, path)
+        metrics["loader_publication_peak_memory_bytes"] = (
+            tracemalloc.get_traced_memory()[1] if measure_peak_memory else None
+        )
+        connection.send((os.getpid(), metrics, _serialized_size(envelope)))
+        if connection.recv() != "publish":
+            raise RuntimeError("Unexpected benchmark publication command")
+        result_queue.put(envelope)
+    except Exception as error:
+        connection.send(f"{type(error).__name__}: {error}")
+    finally:
+        if measure_peak_memory:
+            tracemalloc.stop()
+        connection.close()
+
+
+def _finalize_envelope(
+    meshes: list[Trimesh], path: PublicationPath
+) -> tuple[LoadResult | TrimeshTransferEnvelope, dict[str, Any]]:
+    source: Trimesh | list[Trimesh] = meshes[0] if len(meshes) == 1 else meshes
+    start = perf_counter()
+    payload = _publication_payload(source, path)
+    payload_conversion_ms = _elapsed_ms(start) if path == "payload" else 0.0
+
+    worker = object.__new__(LoadWorker)
+    start = perf_counter()
+    source_signature = worker._source_signature(source)
+    source_signature_ms = _elapsed_ms(start)
+
+    start = perf_counter()
+    _progress_envelope(source, payload, path)
+    envelope_finalization_ms = _elapsed_ms(start)
+
+    start = perf_counter()
+    source_changed = worker._source_changed(source, source_signature)
+    source_signature_ms = round(source_signature_ms + _elapsed_ms(start), 3)
+    if source_changed:
+        raise RuntimeError("Deterministic benchmark source changed during finalization")
+
+    start = perf_counter()
+    envelope = _final_envelope(worker, source, payload, path)
+    envelope_finalization_ms = round(envelope_finalization_ms + _elapsed_ms(start), 3)
+    metrics: dict[str, Any] = {
+        "payload_conversion_ms": payload_conversion_ms,
+        "source_signature_ms": source_signature_ms,
+        "source_signature_passes": 2,
+        "envelope_finalization_ms": envelope_finalization_ms,
+    }
+    metrics["loader_publication_ms"] = _compose_display_latency(
+        metrics, PUBLICATION_PHASES
+    )
+    return envelope, metrics
+
+
+def _publication_payload(
+    source: Trimesh | list[Trimesh], path: PublicationPath
+) -> MeshPayload | list[MeshPayload] | Trimesh | list[Trimesh]:
+    if path == "trimesh":
+        return source
+    if isinstance(source, list):
+        source_meshes = cast(list[Trimesh], source)
+        return [mesh_to_payload(mesh) for mesh in source_meshes]
+    return mesh_to_payload(source)
+
+
+def _progress_envelope(
+    source: Trimesh | list[Trimesh],
+    payload: MeshPayload | list[MeshPayload] | Trimesh | list[Trimesh],
+    path: PublicationPath,
+) -> LoadResult | TrimeshTransferEnvelope:
+    if path == "trimesh":
+        return TrimeshTransferEnvelope(
+            1,
+            1,
+            1,
+            1,
+            LoadPhase.PROGRESS,
+            source,
+            False,
+            None,
+            isinstance(source, list),
+            [],
+            [],
+        )
+    load_payload = cast(MeshPayload | list[MeshPayload], payload)
+    return LoadResult(
+        1,
+        1,
+        payload=load_payload,
+        error=None,
+        generation=1,
+        revision=1,
+        phase=LoadPhase.PROGRESS,
+        exportable=False,
+        debug=isinstance(payload, list),
+        features=[],
+        parameters=[],
+    )
+
+
+def _final_envelope(
+    worker: LoadWorker,
+    source: Trimesh | list[Trimesh],
+    payload: MeshPayload | list[MeshPayload] | Trimesh | list[Trimesh],
+    path: PublicationPath,
+) -> LoadResult | TrimeshTransferEnvelope:
+    if path == "trimesh":
+        return TrimeshTransferEnvelope(
+            1,
+            1,
+            1,
+            2,
+            LoadPhase.FINAL,
+            source,
+            not isinstance(source, list),
+            None,
+            isinstance(source, list),
+            [],
+            [],
+        )
+    load_payload = cast(MeshPayload | list[MeshPayload], payload)
+    snapshot: FinalMeshSnapshot | None = worker._final_snapshot(
+        source, load_payload, None
+    )
+    return LoadResult(
+        1,
+        1,
+        payload=load_payload,
+        error=None,
+        generation=1,
+        revision=2,
+        phase=LoadPhase.FINAL,
+        exportable=snapshot is not None,
+        debug=isinstance(payload, list),
+        features=[],
+        parameters=[],
+    )
 
 
 def _export_request_completion(mesh: Trimesh) -> float:
@@ -278,16 +545,6 @@ def _current_rss_bytes() -> int | None:
     return int(output.strip()) * 1024
 
 
-def _to_payloads(
-    meshes: list[Trimesh], path: Literal["trimesh", "payload"]
-) -> tuple[list[Any], float]:
-    if path == "trimesh":
-        return [], 0.0
-    start = perf_counter()
-    payloads = [mesh_to_payload(mesh) for mesh in meshes]
-    return payloads, _elapsed_ms(start)
-
-
 def _grid_mesh(
     cells: int, *, offset: tuple[float, float, float] = (0, 0, 0)
 ) -> Trimesh:
@@ -329,32 +586,21 @@ def _set_color(mesh: Trimesh, color: list[float]) -> None:
     mesh.metadata["scadview"] = {"color": color}
 
 
-def _serialized_size(meshes: list[Any]) -> int:
-    return len(pickle.dumps(meshes, protocol=pickle.HIGHEST_PROTOCOL))
-
-
-def _queue_round_trip(meshes: list[Any]) -> float:
-    queue: mp.Queue[list[Any]] = mp.Queue(maxsize=1)
-    try:
-        start = perf_counter()
-        queue.put(meshes)
-        queue.get()
-        return _elapsed_ms(start)
-    finally:
-        queue.close()
-        queue.join_thread()
+def _serialized_size(value: Any) -> int:
+    return len(pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 def _prepare_renderer_data(
-    meshes: list[Trimesh],
-    payloads: list[Any],
-    path: Literal["trimesh", "payload"],
+    envelope: LoadResult | TrimeshTransferEnvelope,
+    path: PublicationPath,
 ) -> tuple[list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]], float]:
     start = perf_counter()
+    values = envelope.payload
+    items = values if isinstance(values, list) else [values]
     if path == "trimesh":
-        prepared = [_expand_trimesh(mesh) for mesh in meshes]
+        prepared = [_expand_trimesh(cast(Trimesh, mesh)) for mesh in items]
     else:
-        prepared = [expand_payload(payload) for payload in payloads]
+        prepared = [expand_payload(cast(MeshPayload, payload)) for payload in items]
     return prepared, _elapsed_ms(start)
 
 
@@ -391,6 +637,7 @@ def _measure_gpu(
         return _measure_gpu_with_context(prepared)
     except (moderngl.Error, OSError, RuntimeError, ValueError) as error:
         return {
+            "gpu_context_shader_setup_ms": None,
             "renderer_upload_ms": None,
             "first_frame_ms": None,
             "gpu_measurement_error": str(error),
@@ -400,11 +647,14 @@ def _measure_gpu(
 def _measure_gpu_with_context(
     prepared: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
 ) -> dict[str, float | str | None]:
+    setup_start = perf_counter()
     context = moderngl.create_standalone_context()
     try:
         program = context.program(
             vertex_shader=_VERTEX_SHADER, fragment_shader=_FRAGMENT_SHADER
         )
+        context.finish()
+        setup_ms = _elapsed_ms(setup_start)
         start = perf_counter()
         vaos = [
             create_vao_from_arrays(context, program, triangles, normals, colors, edges)
@@ -417,6 +667,7 @@ def _measure_gpu_with_context(
             vao.render()
         context.finish()
         return {
+            "gpu_context_shader_setup_ms": setup_ms,
             "renderer_upload_ms": upload_ms,
             "first_frame_ms": _elapsed_ms(start),
             "gpu_measurement_error": None,
@@ -427,6 +678,7 @@ def _measure_gpu_with_context(
 
 def _no_gpu_measurement() -> dict[str, float | str | None]:
     return {
+        "gpu_context_shader_setup_ms": None,
         "renderer_upload_ms": None,
         "first_frame_ms": None,
         "gpu_measurement_error": "GPU measurement disabled",
@@ -435,6 +687,16 @@ def _no_gpu_measurement() -> dict[str, float | str | None]:
 
 def _elapsed_ms(start: float) -> float:
     return round((perf_counter() - start) * 1000, 3)
+
+
+def _compose_display_latency(
+    measurement: dict[str, Any],
+    phases: tuple[str, ...] = DISPLAY_LATENCY_PHASES,
+) -> float | None:
+    values = [measurement.get(phase) for phase in phases]
+    if any(not isinstance(value, (int, float)) for value in values):
+        return None
+    return round(sum(cast(float, value) for value in values), 3)
 
 
 def _write_report(report: dict[str, Any], output: Path | None) -> None:
