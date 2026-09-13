@@ -267,6 +267,8 @@ class Renderer:
             self.background_color = self.DEBUG_BACKGROUND_COLOR
         elif status == LoadStatus.ERROR:
             self.background_color = self.ERROR_BACKGROUND_COLOR
+        elif status == LoadStatus.CANCELLED:
+            self.background_color = self.DEFAULT_BACKGROUND_COLOR
         else:
             self.background_color = self.DEFAULT_BACKGROUND_COLOR
 

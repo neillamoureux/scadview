@@ -194,6 +194,17 @@ def test_load_result_status():
         debug=False,
     )
     assert lr.status == LoadStatus.NONE
+    lr = LoadResult(
+        1,
+        2,
+        None,
+        None,
+        phase=LoadPhase.CANCELLED,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
+    assert lr.status == LoadStatus.CANCELLED
 
 
 def test_load_result_exposes_explicit_phase_revision_and_exportability():
@@ -1462,14 +1473,6 @@ def test_load_worker_errors_on_non_finite_manifold_vertices(load_queue):
     assert result.error is not None
     assert result.error.type_name == "ValueError"
     assert result.status == LoadStatus.ERROR
-
-
-@pytest.mark.skip  # Flakey
-def test_load_worker_cancel(started_load_worker):
-    assert started_load_worker.is_alive()
-    started_load_worker.cancel()
-    started_load_worker.join(timeout=1.0)
-    assert not started_load_worker.is_alive()
 
 
 def _assert_payload_geometry(payload, mesh):

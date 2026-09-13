@@ -218,7 +218,7 @@ class LoadResult:
         if self.phase is LoadPhase.ERROR:
             return LoadStatus.ERROR
         if self.phase is LoadPhase.CANCELLED:
-            return LoadStatus.START
+            return LoadStatus.CANCELLED
         if self.phase is LoadPhase.FINAL and self.debug:
             return LoadStatus.DEBUG
         if self.phase is LoadPhase.FINAL:

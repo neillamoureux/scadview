@@ -753,6 +753,63 @@ def test_loader_death_after_progress_stops_main_frame_timer_once(monkeypatch, ca
         controller.close()
 
 
+def test_current_generation_cancellation_stops_main_frame_polling(monkeypatch):
+    pytest.importorskip("wx")
+    from scadview.ui.wx.main_frame import MainFrame
+
+    controller = _controller(monkeypatch)
+    try:
+        controller.load_mesh("/tmp/model.py")
+        generation = controller.current_generation
+        controller._load_queue.items.append(
+            LoadResult(
+                3,
+                1,
+                payload=None,
+                error=None,
+                generation=generation,
+                revision=1,
+                phase=LoadPhase.CANCELLED,
+                exportable=False,
+                debug=False,
+            )
+        )
+        statuses: list[LoadStatus] = []
+
+        def record_status(status: LoadStatus) -> None:
+            statuses.append(status)
+
+        controller.on_load_status_change.subscribe(record_status)
+        timer = Mock()
+        gauge = Mock()
+        frame = SimpleNamespace(
+            _controller=controller,
+            _loader_timer=timer,
+            _load_progress_gauge=gauge,
+            _loader_last_load_number=0,
+            _loader_last_revision=-1,
+            _has_mesh_changed=lambda result: False,
+        )
+        results: list[LoadResult] = []
+
+        def handle_load_result(result: LoadResult) -> None:
+            results.append(result)
+            MainFrame._handle_load_result(frame, result)
+
+        frame._handle_load_result = handle_load_result
+
+        MainFrame.on_load_timer(frame, Mock())
+
+        assert [result.phase for result in results] == [LoadPhase.CANCELLED]
+        assert results[0].generation == generation
+        assert controller.load_status is LoadStatus.CANCELLED
+        assert statuses == [LoadStatus.CANCELLED]
+        gauge.SetValue.assert_called_once_with(0)
+        timer.Stop.assert_called_once_with()
+    finally:
+        controller.close()
+
+
 def test_controller_reloads_with_session_persistent_feature_debug(monkeypatch):
     monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
     monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)

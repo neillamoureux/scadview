@@ -54,6 +54,7 @@ def _stop_loader_polling_if_terminal(controller: Controller, timer: wx.Timer) ->
         LoadStatus.COMPLETE,
         LoadStatus.DEBUG,
         LoadStatus.ERROR,
+        LoadStatus.CANCELLED,
     }:
         timer.Stop()
 
