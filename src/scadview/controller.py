@@ -13,6 +13,7 @@ from scadview.mesh_loader_process import (
     ExportCommand,
     ExportError,
     ExportResult,
+    LoadError,
     LoadMeshCommand,
     LoadPhase,
     LoadResult,
@@ -55,6 +56,10 @@ class Controller:
         self._parameters: list[CreateMeshParameter] = []
         self._parameter_values: dict[str, ScalarParameterValue] = {}
         self._current_generation = 0
+        self._current_load_number = 0
+        self._current_load_sequence_number = 0
+        self._current_load_revision = 0
+        self._terminal_load_generation: int | None = None
         self._next_export_request_id = 1
         self._pending_export_request_id: int | None = None
         self._pending_export_generation: int | None = None
@@ -150,35 +155,92 @@ class Controller:
     def check_load_queue(self) -> LoadResult:
         try:
             load_result = self._load_queue.get_nowait()
-            if load_result.generation != self.current_generation:
-                return LoadResult(
-                    0,
-                    0,
-                    payload=None,
-                    error=None,
-                    generation=load_result.generation,
-                    phase=LoadPhase.CANCELLED,
-                )
-            self._reconcile_parameters(load_result.parameters or [])
-            if load_result.payload is not None:
-                logger.debug("check_load_queue got mesh")
-                self.current_mesh = load_result.payload
-            else:
-                logger.debug("check_load_queue got mesh == None")
-            self._exportable_payload = (
-                cast(MeshPayload, load_result.payload)
-                if load_result.exportable
-                else None
-            )
-            self.feature_states = load_result.features or []
-            self.load_status = load_result.status
-            self._notify_export_availability()
         except queue.Empty:
-            logger.debug("check_load_queue empty")
-            load_result = LoadResult(
-                0, 0, payload=None, error=None, phase=LoadPhase.CANCELLED
+            return self._load_result_for_empty_queue()
+        except (EOFError, OSError, ValueError) as error:
+            return self._load_result_for_queue_error(error)
+        return self._apply_load_result(load_result)
+
+    def _load_result_for_empty_queue(self) -> LoadResult:
+        if self._load_is_active() and not self._loader_process.is_alive():
+            return self._complete_load_error(
+                LoadError("LoaderProcessDied", "Mesh loader process exited")
             )
+        logger.debug("check_load_queue empty")
+        return self._idle_load_result()
+
+    def _load_result_for_queue_error(self, error: Exception) -> LoadResult:
+        if not self._load_is_active():
+            return self._idle_load_result()
+        return self._complete_load_error(LoadError(type(error).__name__, str(error)))
+
+    def _complete_load_error(self, error: LoadError) -> LoadResult:
+        return self._apply_load_result(
+            LoadResult(
+                self._current_load_number,
+                self._current_load_sequence_number,
+                payload=self.current_mesh,
+                error=error,
+                complete=True,
+                features=self.feature_states.copy(),
+                parameters=self.parameters.copy(),
+                generation=self.current_generation,
+                revision=self._current_load_revision + 1,
+                phase=LoadPhase.ERROR,
+                exportable=False,
+            )
+        )
+
+    def _apply_load_result(self, load_result: LoadResult) -> LoadResult:
+        if load_result.generation != self.current_generation:
+            return self._stale_load_result(load_result.generation)
+        self._record_load_result(load_result)
+        self._reconcile_parameters(load_result.parameters or [])
+        self._apply_load_payload(load_result)
+        self.feature_states = load_result.features or []
+        self.load_status = load_result.status
+        self._notify_export_availability()
         return load_result
+
+    def _record_load_result(self, load_result: LoadResult) -> None:
+        self._current_load_number = load_result.load_number
+        self._current_load_sequence_number = load_result.sequence_number
+        self._current_load_revision = load_result.revision
+        if load_result.phase in {
+            LoadPhase.FINAL,
+            LoadPhase.ERROR,
+            LoadPhase.CANCELLED,
+        }:
+            self._terminal_load_generation = load_result.generation
+
+    def _apply_load_payload(self, load_result: LoadResult) -> None:
+        if load_result.payload is not None:
+            logger.debug("check_load_queue got mesh")
+            self.current_mesh = load_result.payload
+        else:
+            logger.debug("check_load_queue got mesh == None")
+        self._exportable_payload = (
+            cast(MeshPayload, load_result.payload) if load_result.exportable else None
+        )
+
+    def _load_is_active(self) -> bool:
+        return (
+            self.load_status is LoadStatus.START
+            and self._terminal_load_generation != self.current_generation
+        )
+
+    def _stale_load_result(self, generation: int) -> LoadResult:
+        return LoadResult(
+            0,
+            0,
+            payload=None,
+            error=None,
+            generation=generation,
+            phase=LoadPhase.CANCELLED,
+        )
+
+    def _idle_load_result(self) -> LoadResult:
+        return LoadResult(0, 0, payload=None, error=None, phase=LoadPhase.CANCELLED)
 
     def set_feature_enabled(self, name: str, enabled: bool):
         if self.module_path == "":
@@ -357,6 +419,10 @@ class Controller:
         self._exportable_payload = None
         self.load_status = LoadStatus.START
         self._current_generation += 1
+        self._current_load_number = 0
+        self._current_load_sequence_number = 0
+        self._current_load_revision = 0
+        self._terminal_load_generation = None
         self._notify_export_availability()
         self._command_queue.put(
             LoadMeshCommand(

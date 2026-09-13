@@ -13,6 +13,7 @@ from scadview.mesh_loader_process import (
     ExportCommand,
     ExportError,
     ExportResult,
+    LoadError,
     LoadMeshCommand,
     LoadPhase,
     LoadResult,
@@ -581,6 +582,133 @@ def test_controller_ignores_stale_result(monkeypatch):
 
         assert result.mesh is None
         assert controller.current_mesh is None
+    finally:
+        controller.close()
+
+
+def test_controller_reports_loader_death_as_current_load_error_once(monkeypatch):
+    controller = _controller(monkeypatch)
+    statuses: list[LoadStatus] = []
+
+    def record_status(status: LoadStatus) -> None:
+        statuses.append(status)
+
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller.on_load_status_change.subscribe(record_status)
+
+        result = controller.check_load_queue()
+
+        assert result == LoadResult(
+            0,
+            0,
+            payload=None,
+            error=LoadError("LoaderProcessDied", "Mesh loader process exited"),
+            complete=True,
+            features=[],
+            parameters=[],
+            generation=controller.current_generation,
+            revision=1,
+            phase=LoadPhase.ERROR,
+            exportable=False,
+        )
+        assert controller.load_status is LoadStatus.ERROR
+        assert statuses == [LoadStatus.ERROR]
+
+        repeated_result = controller.check_load_queue()
+
+        assert repeated_result.phase is LoadPhase.CANCELLED
+        assert statuses == [LoadStatus.ERROR]
+    finally:
+        controller.close()
+
+
+@pytest.mark.parametrize(
+    "queue_error",
+    [
+        EOFError("load result pipe closed"),
+        OSError("load result queue closed"),
+        ValueError("load result queue unavailable"),
+    ],
+)
+def test_controller_reports_load_queue_transport_failure_once(
+    monkeypatch,
+    queue_error,
+):
+    controller = _controller(monkeypatch)
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._loader_process.is_alive = lambda: True
+        controller._load_queue.get_nowait = Mock(side_effect=queue_error)
+
+        result = controller.check_load_queue()
+
+        assert result.generation == controller.current_generation
+        assert result.revision == 1
+        assert result.phase is LoadPhase.ERROR
+        assert result.error == LoadError(type(queue_error).__name__, str(queue_error))
+        assert controller.load_status is LoadStatus.ERROR
+
+        repeated_result = controller.check_load_queue()
+
+        assert repeated_result.phase is LoadPhase.CANCELLED
+        assert controller.load_status is LoadStatus.ERROR
+    finally:
+        controller.close()
+
+
+def test_loader_death_after_progress_stops_main_frame_timer_once(monkeypatch, caplog):
+    pytest.importorskip("wx")
+    from scadview.ui.wx.main_frame import MainFrame
+
+    controller = _controller(monkeypatch)
+    payload = mesh_to_payload(box())
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._load_queue.items.append(
+            LoadResult(
+                7,
+                3,
+                payload=payload,
+                error=None,
+                generation=controller.current_generation,
+                revision=4,
+                phase=LoadPhase.PROGRESS,
+                exportable=False,
+            )
+        )
+        controller.check_load_queue()
+        timer = Mock()
+        frame = SimpleNamespace(
+            _controller=controller,
+            _loader_timer=timer,
+            _load_progress_gauge=Mock(),
+            _loader_last_load_number=7,
+            _loader_last_revision=4,
+            _has_mesh_changed=lambda result: False,
+        )
+        results: list[LoadResult] = []
+
+        def handle_load_result(result: LoadResult) -> None:
+            results.append(result)
+            MainFrame._handle_load_result(frame, result)
+
+        frame._handle_load_result = handle_load_result
+
+        with caplog.at_level("ERROR"):
+            MainFrame.on_load_timer(frame, Mock())
+            MainFrame.on_load_timer(frame, Mock())
+
+        errors = [result for result in results if result.phase is LoadPhase.ERROR]
+        assert len(errors) == 1
+        assert errors[0].generation == controller.current_generation
+        assert errors[0].revision == 5
+        assert errors[0].payload is payload
+        assert errors[0].error == LoadError(
+            "LoaderProcessDied", "Mesh loader process exited"
+        )
+        assert caplog.text.count("Mesh loader process exited") == 1
+        timer.Stop.assert_called_once_with()
     finally:
         controller.close()
 
