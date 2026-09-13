@@ -232,14 +232,8 @@ class Controller:
         try:
             self._command_queue.put(command)
         except (BrokenPipeError, EOFError, OSError, ValueError) as error:
-            self._clear_pending_export()
-            self._notify_export_availability()
-            self.on_export_result.notify(
-                ExportResult(
-                    request_id,
-                    command.generation,
-                    ExportError(type(error).__name__, str(error)),
-                )
+            self._complete_pending_export_error(
+                ExportError(type(error).__name__, str(error))
             )
             return False
         return True
@@ -257,43 +251,50 @@ class Controller:
     def export_available(self) -> bool:
         return self.exportable_payload is not None and not self.export_pending
 
-    def check_export_queue(self) -> ExportResult | None:
+    def check_export_queue(self) -> None:
         while True:
             try:
                 result = self._export_result_queue.get_nowait()
             except queue.Empty:
-                return self._loader_death_result()
-            except (OSError, ValueError):
-                return self._loader_death_result()
+                self._complete_export_after_loader_death()
+                return
+            except (EOFError, OSError, ValueError) as error:
+                self._complete_pending_export_error(
+                    ExportError(type(error).__name__, str(error))
+                )
+                return
             if (
                 result.request_id == self._pending_export_request_id
                 and result.generation == self._pending_export_generation
             ):
-                self._clear_pending_export()
-                self._notify_export_availability()
-                self.on_export_result.notify(result)
-                return result
+                self._complete_export(result)
+                return
             logger.warning(
                 "Discarding unrelated export result request=%s generation=%s",
                 result.request_id,
                 result.generation,
             )
 
-    def _loader_death_result(self) -> ExportResult | None:
+    def _complete_export_after_loader_death(self) -> None:
         if self._pending_export_request_id is None:
-            return None
+            return
         if self._loader_process.is_alive():
-            return None
+            return
+        self._complete_pending_export_error(
+            ExportError("LoaderProcessDied", "Mesh loader process exited")
+        )
+
+    def _complete_pending_export_error(self, error: ExportError) -> None:
         request_id = self._pending_export_request_id
         generation = self._pending_export_generation
-        if generation is None:
-            return None
+        if request_id is None or generation is None:
+            return
+        self._complete_export(ExportResult(request_id, generation, error))
+
+    def _complete_export(self, result: ExportResult) -> None:
         self._clear_pending_export()
-        return ExportResult(
-            request_id,
-            generation,
-            ExportError("LoaderProcessDied", "Mesh loader process exited"),
-        )
+        self._notify_export_availability()
+        self.on_export_result.notify(result)
 
     def _clear_pending_export(self) -> None:
         self._pending_export_request_id = None

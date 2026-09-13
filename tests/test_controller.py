@@ -333,15 +333,133 @@ def test_controller_reports_loader_death_for_pending_export(monkeypatch):
         controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
         assert controller.export("/tmp/model.stl")
+        availability: list[bool] = []
+        results: list[ExportResult] = []
+
+        def record_availability(available: bool) -> None:
+            availability.append(available)
+
+        def record_result(result: ExportResult) -> None:
+            results.append(result)
+
+        controller.on_export_availability_change.subscribe(record_availability)
+        controller.on_export_result.subscribe(record_result)
 
         result = controller.check_export_queue()
 
-        assert result == ExportResult(
+        expected = ExportResult(
             1,
             0,
             ExportError("LoaderProcessDied", "Mesh loader process exited"),
         )
+        assert result is None
         assert not controller.export_pending
+        assert availability == [True]
+        assert results == [expected]
+
+        controller.check_export_queue()
+
+        assert availability == [True]
+        assert results == [expected]
+    finally:
+        controller.close()
+
+
+@pytest.mark.parametrize(
+    "queue_error",
+    [
+        EOFError("export result pipe closed"),
+        OSError("export result queue closed"),
+        ValueError("export result queue unavailable"),
+    ],
+)
+def test_controller_reports_export_result_queue_failure_once(
+    monkeypatch,
+    queue_error,
+):
+    controller = _controller(monkeypatch)
+    try:
+        controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
+        controller.load_status = LoadStatus.COMPLETE
+        assert controller.export("/tmp/model.stl")
+        controller._export_result_queue.get_nowait = Mock(side_effect=queue_error)
+        availability: list[bool] = []
+        results: list[ExportResult] = []
+
+        def record_availability(available: bool) -> None:
+            availability.append(available)
+
+        def record_result(result: ExportResult) -> None:
+            results.append(result)
+
+        controller.on_export_availability_change.subscribe(record_availability)
+        controller.on_export_result.subscribe(record_result)
+
+        assert controller.check_export_queue() is None
+
+        expected = ExportResult(
+            1,
+            0,
+            ExportError(type(queue_error).__name__, str(queue_error)),
+        )
+        assert not controller.export_pending
+        assert availability == [True]
+        assert results == [expected]
+
+        controller.check_export_queue()
+
+        assert availability == [True]
+        assert results == [expected]
+    finally:
+        controller.close()
+
+
+def test_loader_death_export_completion_stops_main_frame_timer(monkeypatch, caplog):
+    pytest.importorskip("wx")
+    from scadview.ui.wx.main_frame import MainFrame
+
+    controller = _controller(monkeypatch)
+    try:
+        controller._current_generation = 1
+        controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
+        controller.load_status = LoadStatus.COMPLETE
+        assert controller.export("/tmp/model.stl")
+        availability: list[bool] = []
+        results: list[ExportResult] = []
+        timer = Mock()
+        frame = SimpleNamespace(
+            _controller=controller,
+            _loader_timer=timer,
+        )
+
+        def handle_export_result(result: ExportResult) -> None:
+            results.append(result)
+            MainFrame._handle_export_result(frame, result)
+
+        def record_availability(available: bool) -> None:
+            availability.append(available)
+
+        frame._handle_load_result = lambda result: MainFrame._handle_load_result(
+            frame, result
+        )
+        controller.on_export_availability_change.subscribe(record_availability)
+        controller.on_export_result.subscribe(handle_export_result)
+
+        with caplog.at_level("ERROR"):
+            MainFrame.on_load_timer(frame, Mock())
+            MainFrame.on_load_timer(frame, Mock())
+
+        expected = ExportResult(
+            1,
+            1,
+            ExportError("LoaderProcessDied", "Mesh loader process exited"),
+        )
+        assert results == [expected]
+        assert availability == [True]
+        assert "Mesh loader process exited" in caplog.text
+        timer.Stop.assert_called_once_with()
     finally:
         controller.close()
 
@@ -381,7 +499,7 @@ def test_controller_discards_unrelated_export_results_without_notification(
         assert "Discarding unrelated export result" in caplog.text
 
         controller._export_result_queue.items.append(ExportResult(1, 0))
-        assert controller.check_export_queue() == ExportResult(1, 0)
+        assert controller.check_export_queue() is None
         assert not controller.export_pending
         assert results == [ExportResult(1, 0)]
     finally:
@@ -400,7 +518,7 @@ def test_controller_matches_pending_export_generation_after_reload(monkeypatch):
         controller._current_generation = 4
         controller._export_result_queue.items.append(ExportResult(1, 3))
 
-        assert controller.check_export_queue() == ExportResult(1, 3)
+        assert controller.check_export_queue() is None
         assert not controller.export_pending
     finally:
         controller.close()
