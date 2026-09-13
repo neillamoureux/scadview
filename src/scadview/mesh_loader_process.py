@@ -123,6 +123,8 @@ class ShutDownCommand(Command):
 
 SourceMeshType = Trimesh | list[Trimesh]
 MeshType = MeshPayload | list[MeshPayload]
+SingleSourceSignature = tuple[bytes, bytes, bytes, bytes, str]
+SourceSignature = SingleSourceSignature | tuple[SingleSourceSignature, ...] | None
 CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
@@ -301,7 +303,7 @@ class LoadWorker(Thread):
         self.load_start_time = time()
         last_mesh: SourceMeshType | None = None
         last_payload: MeshType | None = None
-        last_source_signature: tuple[bytes, bytes, bytes, bytes, str] | None = None
+        last_source_signature: SourceSignature = None
         terminal_phase = LoadPhase.FINAL
         terminal_error = None
         try:
@@ -336,7 +338,7 @@ class LoadWorker(Thread):
         sequence_number: int,
         mesh: SourceMeshType | None,
         payload: MeshType | None,
-        source_signature: tuple[bytes, bytes, bytes, bytes, str] | None,
+        source_signature: SourceSignature,
         phase: LoadPhase,
         error: LoadError | None,
     ) -> None:
@@ -432,7 +434,7 @@ class LoadWorker(Thread):
         sequence_number: int,
         mesh: SourceMeshType | None,
         payload: MeshType | None,
-        source_signature: tuple[bytes, bytes, bytes, bytes, str] | None,
+        source_signature: SourceSignature,
         error: LoadError | None = None,
     ) -> None:
         if error is None and (
@@ -451,11 +453,15 @@ class LoadWorker(Thread):
             debug=isinstance(mesh, list),
         )
 
-    def _source_signature(
-        self, mesh: SourceMeshType | None
-    ) -> tuple[bytes, bytes, bytes, bytes, str] | None:
-        if not isinstance(mesh, Trimesh):
-            return None
+    def _source_signature(self, mesh: SourceMeshType | None) -> SourceSignature:
+        if isinstance(mesh, list):
+            source_meshes = cast(list[Trimesh], mesh)
+            return tuple(self._single_source_signature(item) for item in source_meshes)
+        if isinstance(mesh, Trimesh):
+            return self._single_source_signature(mesh)
+        return None
+
+    def _single_source_signature(self, mesh: Trimesh) -> SingleSourceSignature:
         face_colors = getattr(mesh.visual, "face_colors", np.empty((0, 4)))
         return (
             _array_signature(mesh.vertices),
@@ -468,7 +474,7 @@ class LoadWorker(Thread):
     def _source_changed(
         self,
         mesh: SourceMeshType | None,
-        source_signature: tuple[bytes, bytes, bytes, bytes, str] | None,
+        source_signature: SourceSignature,
     ) -> bool:
         return source_signature != self._source_signature(mesh)
 

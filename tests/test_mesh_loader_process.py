@@ -504,6 +504,67 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
 
 
 @pytest.mark.parametrize(
+    ("mutate_source", "changed_payload_field"),
+    [
+        pytest.param(
+            lambda mesh: mesh.vertices.__setitem__((0, 0), 9.125),
+            "vertices",
+            id="vertices",
+        ),
+        pytest.param(lambda mesh: _rotate_first_face(mesh), "faces", id="faces"),
+        pytest.param(
+            lambda mesh: _set_valid_face_normal(mesh),
+            "face_normals",
+            id="face-normals",
+        ),
+        pytest.param(
+            lambda mesh: mesh.metadata.__setitem__(
+                "scadview", {"color": [0.125, 0.24, 0.36, 0.48]}
+            ),
+            "color",
+            id="color-metadata",
+        ),
+    ],
+)
+def test_load_worker_refreshes_final_list_payload_after_generator_mutation(
+    load_queue,
+    mutate_source,
+    changed_payload_field,
+):
+    sources = [box(), box(extents=(2.0, 3.0, 4.0))]
+    for source in sources:
+        source.metadata["scadview"] = {"color": [0.2, 0.3, 0.4, 0.5]}
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = _mutate_list_source_after_yield(
+            sources, mutate_source
+        )
+        worker = LoadWorker("test/path", load_queue, generation=7)
+        worker.load()
+
+    progress = load_queue.get(timeout=1.0)
+    final = load_queue.get(timeout=1.0)
+    assert isinstance(progress.payload, list)
+    assert isinstance(final.payload, list)
+    expected = [mesh_to_payload(source) for source in sources]
+    for final_payload, expected_payload in zip(final.payload, expected):
+        npt.assert_allclose(final_payload.vertices, expected_payload.vertices)
+        npt.assert_array_equal(final_payload.faces, expected_payload.faces)
+        npt.assert_allclose(final_payload.face_normals, expected_payload.face_normals)
+        npt.assert_array_equal(final_payload.color, expected_payload.color)
+    assert not np.array_equal(
+        getattr(progress.payload[1], changed_payload_field),
+        getattr(final.payload[1], changed_payload_field),
+    )
+    assert final.phase is LoadPhase.FINAL
+    assert final.revision != progress.revision
+    assert final.debug
+    assert not final.exportable
+    assert worker.final_snapshot is None
+    assert worker.export_source is None
+
+
+@pytest.mark.parametrize(
     ("mutate_source", "error_type"),
     [
         pytest.param(
@@ -991,6 +1052,21 @@ def _mutate_after_last_yield(mesh):
     yield mesh
     mesh.vertices[0] = (9.125, 8.25, 7.5)
     mesh.metadata["scadview"] = {"color": [0.125, 0.24, 0.36, 0.48]}
+
+
+def _mutate_list_source_after_yield(meshes, mutate_source):
+    yield meshes
+    mutate_source(meshes[1])
+
+
+def _rotate_first_face(mesh):
+    mesh.faces[0] = np.roll(mesh.faces[0], 1)
+
+
+def _set_valid_face_normal(mesh):
+    face_normals = mesh.face_normals
+    face_normals.setflags(write=True)
+    face_normals[0] = (0.25, 0.5, 0.75)
 
 
 def _mutate_source_after_yield(mesh, mutate_source):
