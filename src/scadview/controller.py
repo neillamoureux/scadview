@@ -130,9 +130,6 @@ class Controller:
         self.on_load_status_change.notify(value)
 
     def load_mesh(self, module_path: str):
-        self.current_mesh = None
-        self._exportable_payload = None
-        self.load_status = LoadStatus.START
         if not self._same_module(module_path):
             self._last_export_path = (
                 ""  # Reset last export path if loading a new module
@@ -356,9 +353,10 @@ class Controller:
 
     def _queue_load(self, feature_states: dict[str, bool]):
         self.current_mesh = None
+        self._exportable_payload = None
         self.load_status = LoadStatus.START
-        self._notify_export_availability()
         self._current_generation += 1
+        self._notify_export_availability()
         self._command_queue.put(
             LoadMeshCommand(
                 self.module_path,

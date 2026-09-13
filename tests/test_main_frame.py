@@ -16,6 +16,7 @@ from scadview.mesh_loader_process import (
 )
 from scadview.mesh_payload import mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
+from scadview.observable import Observable
 from scadview.ui.wx import main_frame
 from scadview.ui.wx.main_frame import MainFrame, convert_parameter_value
 
@@ -50,6 +51,59 @@ class FakeParameterBox:
 
     def ShowItems(self, value: bool):
         self.visible.append(value)
+
+
+class FakeEnableControl:
+    def __init__(self):
+        self.enabled = True
+
+    def Enable(self, enabled: bool = True):
+        self.enabled = enabled
+
+    def Disable(self):
+        self.enabled = False
+
+
+class FakeAction:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+    def button(self, _parent):
+        return FakeEnableControl()
+
+    def menu_item(self, _menu):
+        return FakeEnableControl()
+
+
+def test_export_controls_disable_immediately_on_availability_notification(monkeypatch):
+    export_availability = Observable()
+    controller = SimpleNamespace(
+        debug_features=False,
+        export_available=True,
+        on_debug_features_change=Observable(),
+        on_export_availability_change=export_availability,
+        on_module_path_set=Observable(),
+    )
+    frame = SimpleNamespace(
+        _controller=controller,
+        _on_debug_features_toggle=Mock(),
+        _on_module_path_set=Mock(),
+        export=Mock(),
+        on_load=Mock(),
+        on_reload=Mock(),
+    )
+    monkeypatch.setattr(main_frame, "Action", FakeAction)
+
+    MainFrame._create_file_actions(frame)
+    button = frame._export_action.button(object())
+    menu_item = frame._export_action.menu_item(object())
+    assert button.enabled
+    assert menu_item.enabled
+
+    export_availability.notify(False)
+
+    assert not button.enabled
+    assert not menu_item.enabled
 
 
 def test_parameter_control_uses_parameter_name_and_current_value(monkeypatch):

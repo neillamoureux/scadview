@@ -67,6 +67,99 @@ def _controller(monkeypatch):
     return Controller()
 
 
+@pytest.mark.parametrize("reload_trigger", ["feature", "parameter", "reset", "debug"])
+def test_reload_start_invalidates_export_before_queueing_load(
+    monkeypatch,
+    reload_trigger,
+):
+    controller = _controller(monkeypatch)
+    payload = mesh_to_payload(box())
+    parameter = CreateMeshParameter("width", "float", 2.5)
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._command_queue.items.clear()
+        controller._load_queue.items.append(
+            LoadResult(
+                1,
+                1,
+                payload,
+                None,
+                features=[FeatureState("cutout", True)],
+                parameters=[parameter],
+                generation=controller.current_generation,
+                revision=1,
+                phase=LoadPhase.FINAL,
+                exportable=True,
+            )
+        )
+        controller.check_load_queue()
+        if reload_trigger == "reset":
+            controller._parameter_values = {"width": 3.5}
+
+        availability_events: list[tuple] = []
+
+        def record_availability(available: bool) -> None:
+            availability_events.append(
+                (
+                    available,
+                    controller.current_generation,
+                    controller.load_status,
+                    controller.current_mesh,
+                    controller.exportable_payload,
+                    controller._command_queue.items.copy(),
+                )
+            )
+
+        controller.on_export_availability_change.subscribe(record_availability)
+        previous_generation = controller.current_generation
+
+        if reload_trigger == "feature":
+            controller.set_feature_enabled("cutout", False)
+        elif reload_trigger == "parameter":
+            controller.set_parameter_value("width", 3.5)
+        elif reload_trigger == "reset":
+            controller.reset_parameter_values()
+        else:
+            controller.set_debug_features(True)
+
+        assert availability_events == [
+            (
+                False,
+                previous_generation + 1,
+                LoadStatus.START,
+                None,
+                None,
+                [],
+            )
+        ]
+        assert len(controller._command_queue.items) == 1
+        assert isinstance(controller._command_queue.items[0], LoadMeshCommand)
+        assert not controller.export("/tmp/stale.stl")
+        assert not any(
+            isinstance(command, ExportCommand)
+            for command in controller._command_queue.items
+        )
+
+        controller._load_queue.items.append(
+            LoadResult(
+                2,
+                1,
+                payload,
+                None,
+                generation=controller.current_generation,
+                revision=2,
+                phase=LoadPhase.FINAL,
+                exportable=True,
+            )
+        )
+        controller.check_load_queue()
+
+        assert controller.export("/tmp/current.stl")
+        assert isinstance(controller._command_queue.items[-1], ExportCommand)
+    finally:
+        controller.close()
+
+
 def test_controller_reloads_with_updated_feature_state(monkeypatch):
     monkeypatch.setattr("scadview.controller.MpLoadQueue", DummyQueue)
     monkeypatch.setattr("scadview.controller.MpCommandQueue", DummyQueue)
