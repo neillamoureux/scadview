@@ -341,6 +341,107 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
     )
 
 
+@pytest.mark.parametrize(
+    ("mutate_source", "error_type"),
+    [
+        pytest.param(
+            lambda mesh: mesh.vertices.__setitem__((0, 0), 1e40),
+            "ValueError",
+            id="vertex",
+        ),
+        pytest.param(
+            lambda mesh: mesh.faces.__setitem__((0, 0), len(mesh.vertices)),
+            "IndexError",
+            id="face",
+        ),
+        pytest.param(
+            lambda mesh: _invalidate_face_normal(mesh),
+            "ValueError",
+            id="normal",
+        ),
+        pytest.param(
+            lambda mesh: mesh.metadata.__setitem__(
+                "scadview", {"color": [2.0, 0.0, 0.0, 1.0]}
+            ),
+            "ValueError",
+            id="metadata",
+        ),
+    ],
+)
+def test_load_worker_publishes_one_error_for_invalid_post_yield_mutation(
+    load_queue,
+    mutate_source,
+    error_type,
+):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = _mutate_source_after_yield(
+            source, mutate_source
+        )
+        worker = LoadWorker("test/path", load_queue, generation=8)
+
+        worker.load()
+
+    results = _drain_load_results(load_queue)
+    terminal_results = [result for result in results if result.complete]
+    assert len(terminal_results) == 1
+    assert terminal_results[0].phase is LoadPhase.ERROR
+    assert terminal_results[0].error is not None
+    assert terminal_results[0].error.type_name == error_type
+    assert not terminal_results[0].exportable
+    assert worker.final_snapshot is None
+    assert worker.export_source is None
+
+
+def test_load_worker_preserves_module_error_when_error_publication_fails(load_queue):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = _yield_then_raise(source)
+        worker = LoadWorker("test/path", load_queue, generation=8)
+        feature_states = Mock(
+            side_effect=[[], RuntimeError("terminal state failed"), []]
+        )
+
+        with patch.object(worker, "_current_feature_states", feature_states):
+            worker.load()
+
+    results = _drain_load_results(load_queue)
+    terminal_results = [result for result in results if result.complete]
+    assert len(terminal_results) == 1
+    assert terminal_results[0].phase is LoadPhase.ERROR
+    assert terminal_results[0].error == LoadError("RuntimeError", "mesh failed")
+    assert not terminal_results[0].exportable
+    assert worker.final_snapshot is None
+    assert worker.export_source is None
+
+
+def test_load_worker_clears_export_snapshot_when_final_publication_fails(load_queue):
+    source = box()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = iter([source])
+        worker = LoadWorker("test/path", load_queue, generation=8)
+        feature_states = Mock(
+            side_effect=[[], RuntimeError("terminal state failed"), []]
+        )
+
+        with patch.object(worker, "_current_feature_states", feature_states):
+            worker.load()
+
+    results = _drain_load_results(load_queue)
+    terminal_results = [result for result in results if result.complete]
+    assert len(terminal_results) == 1
+    assert terminal_results[0].phase is LoadPhase.ERROR
+    assert terminal_results[0].error == LoadError(
+        "RuntimeError", "terminal state failed"
+    )
+    assert not terminal_results[0].exportable
+    assert worker.final_snapshot is None
+    assert worker.export_source is None
+
+
 def test_debug_single_mesh_fallback_retains_source_for_export(load_queue):
     source = box()
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
@@ -632,6 +733,26 @@ def _mutate_after_last_yield(mesh):
     yield mesh
     mesh.vertices[0] = (9.125, 8.25, 7.5)
     mesh.metadata["scadview"] = {"color": [0.125, 0.24, 0.36, 0.48]}
+
+
+def _mutate_source_after_yield(mesh, mutate_source):
+    yield mesh
+    mutate_source(mesh)
+
+
+def _invalidate_face_normal(mesh):
+    face_normals = mesh.face_normals
+    face_normals.setflags(write=True)
+    face_normals[0, 0] = np.inf
+
+
+def _drain_load_results(load_queue):
+    results = []
+    while True:
+        try:
+            results.append(load_queue.get(timeout=0.1))
+        except queue.Empty:
+            return results
 
 
 def test_load_worker_does_not_evict_newer_queued_result():

@@ -274,33 +274,88 @@ class LoadWorker(Thread):
         last_mesh: SourceMeshType | None = None
         last_payload: MeshType | None = None
         last_source_signature: tuple[bytes, bytes, bytes, bytes, str] | None = None
+        terminal_phase = LoadPhase.FINAL
+        terminal_error = None
         try:
             for mesh in self.run_mesh_module():
                 sequence_number += 1
                 if self.cancelled:
                     logger.info("LoadWorker cancelled, stopping load")
-                    self._publish_result(
-                        sequence_number,
-                        last_payload,
-                        phase=LoadPhase.CANCELLED,
-                        allow_cancelled=True,
-                    )
-                    return
+                    terminal_phase = LoadPhase.CANCELLED
+                    break
                 last_mesh, last_payload = self._prepare_mesh(mesh)
                 last_source_signature = self._source_signature(last_mesh)
                 self._publish_result(sequence_number, last_payload)
-        except Exception as e:
+        except Exception as error:
             logger.exception("Failed to load mesh from %s", self.module_path)
+            terminal_phase = LoadPhase.ERROR
+            terminal_error = LoadError(type(error).__name__, str(error))
+        self._publish_terminal_result(
+            sequence_number,
+            last_mesh,
+            last_payload,
+            last_source_signature,
+            terminal_phase,
+            terminal_error,
+        )
+
+    def _publish_terminal_result(
+        self,
+        sequence_number: int,
+        mesh: SourceMeshType | None,
+        payload: MeshType | None,
+        source_signature: tuple[bytes, bytes, bytes, bytes, str] | None,
+        phase: LoadPhase,
+        error: LoadError | None,
+    ) -> None:
+        try:
+            if phase is LoadPhase.CANCELLED:
+                self.final_snapshot = None
+                self._publish_result(
+                    sequence_number,
+                    payload,
+                    phase=phase,
+                    allow_cancelled=True,
+                )
+                return
             self._publish_final_result(
                 sequence_number,
-                last_mesh,
-                last_payload,
-                last_source_signature,
-                LoadError(type(e).__name__, str(e)),
+                mesh,
+                payload,
+                source_signature,
+                error,
             )
-            return
-        self._publish_final_result(
-            sequence_number, last_mesh, last_payload, last_source_signature
+        except Exception as finalization_error:
+            logger.exception("Failed to finalize mesh from %s", self.module_path)
+            self.final_snapshot = None
+            load_error = error or LoadError(
+                type(finalization_error).__name__, str(finalization_error)
+            )
+            self._publish_terminal_error(sequence_number, payload, load_error)
+
+    def _publish_terminal_error(
+        self,
+        sequence_number: int,
+        payload: MeshType | None,
+        error: LoadError,
+    ) -> None:
+        self._revision += 1
+        self.put_in_queue(
+            LoadResult(
+                self.load_number,
+                sequence_number,
+                payload=payload,
+                error=error,
+                complete=True,
+                features=list(self._loaded_feature_states),
+                parameters=self._parameters,
+                generation=self.generation,
+                revision=self._revision,
+                phase=LoadPhase.ERROR,
+                exportable=False,
+                debug=isinstance(payload, list),
+            ),
+            allow_cancelled=True,
         )
 
     def _prepare_mesh(
@@ -361,6 +416,7 @@ class LoadWorker(Thread):
             payload,
             error,
             phase=LoadPhase.ERROR if error is not None else LoadPhase.FINAL,
+            allow_cancelled=True,
             exportable=snapshot is not None,
             debug=isinstance(mesh, list),
         )
