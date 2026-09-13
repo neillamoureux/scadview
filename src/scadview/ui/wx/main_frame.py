@@ -517,6 +517,8 @@ class MainFrame(wx.Frame):
         mesh = load_result.payload
         if load_result.phase is LoadPhase.FINAL:
             self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
+        elif load_result.phase in (LoadPhase.ERROR, LoadPhase.CANCELLED):
+            self._load_progress_gauge.SetValue(0)
         if load_result.error is not None:
             logger.error(
                 "Load failed (%s): %s",
@@ -535,9 +537,17 @@ class MainFrame(wx.Frame):
     def _handle_export_result(self, export_result: ExportResult) -> None:
         if export_result.error is not None:
             logger.error(
-                "Failure on export (%s): %s",
+                "Export failed (request=%s generation=%s): %s (%s)",
+                export_result.request_id,
+                export_result.generation,
                 export_result.error.type_name,
                 export_result.error.message,
+            )
+        else:
+            logger.info(
+                "Export completed (request=%s generation=%s)",
+                export_result.request_id,
+                export_result.generation,
             )
         _stop_loader_polling_if_terminal(self._controller, self._loader_timer)
 

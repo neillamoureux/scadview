@@ -7,7 +7,13 @@ from trimesh.creation import box
 pytest.importorskip("wx")
 
 from scadview.load_status import LoadStatus
-from scadview.mesh_loader_process import ExportError, ExportResult, LoadResult
+from scadview.mesh_loader_process import (
+    ExportError,
+    ExportResult,
+    LoadError,
+    LoadPhase,
+    LoadResult,
+)
 from scadview.mesh_payload import mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
 from scadview.ui.wx import main_frame
@@ -388,6 +394,25 @@ def test_export_error_is_reported_and_completed_load_polling_stops(caplog):
 
     timer.Stop.assert_called_once_with()
     assert "Mesh loader process exited" in caplog.text
+    assert any(record.levelname == "ERROR" for record in caplog.records)
+
+
+def test_export_success_is_logged_at_info(caplog):
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            load_status=LoadStatus.COMPLETE,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+    )
+
+    with caplog.at_level("INFO"):
+        MainFrame._handle_export_result(frame, ExportResult(7, 3))
+
+    assert "Export completed" in caplog.text
+    assert "request=7 generation=3" in caplog.text
+    assert any(record.levelname == "INFO" for record in caplog.records)
 
 
 def test_export_completion_before_reload_completion_keeps_polling():
@@ -442,6 +467,38 @@ def test_reload_completion_stops_polling_after_export_completed():
         frame, LoadResult(1, 1, payload, None, complete=True, generation=1)
     )
 
+    timer.Stop.assert_called_once_with()
+
+
+def test_terminal_load_error_resets_progress_gauge():
+    timer = Mock()
+    gauge = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            current_generation=2,
+            load_status=LoadStatus.ERROR,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _gl_widget=Mock(),
+        _loader_last_load_number=0,
+        _loader_last_revision=-1,
+        _has_mesh_changed=lambda _: False,
+    )
+    result = LoadResult(
+        2,
+        1,
+        payload=None,
+        error=LoadError("SyntaxError", "invalid syntax"),
+        generation=2,
+        phase=LoadPhase.ERROR,
+        revision=1,
+    )
+
+    MainFrame._handle_load_result(frame, result)
+
+    gauge.SetValue.assert_called_once_with(0)
     timer.Stop.assert_called_once_with()
 
 
