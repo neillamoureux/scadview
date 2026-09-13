@@ -138,6 +138,36 @@ incremental sequence numbers, errors, feature states, and parameters stay intact
 This location removes complete `Trimesh` instances from process transfer while
 leaving the user-facing module contract untouched.
 
+### Make load state explicit with a result envelope
+
+The loader session should expose result state explicitly rather than requiring
+consumers to infer meaning from payload shape, sequence numbers, and feature
+flags. The internal envelope should contain equivalent fields to:
+
+```python
+@dataclass(frozen=True)
+class LoadResult:
+    load_number: int
+    generation: int
+    sequence_number: int
+    revision: int
+    phase: LoadPhase
+    payload: MeshPayload | list[MeshPayload] | None
+    exportable: bool
+    error: LoadError | None
+    features: list[FeatureState]
+    parameters: list[CreateMeshParameter]
+```
+
+The exact names may follow existing conventions, but the semantics are required:
+`phase` distinguishes progress, final, error, and cancellation; `revision`
+identifies a new display state even when sequence numbers repeat; `exportable`
+describes the effective result rather than requested debug mode; and `payload`
+remains the only mesh data exposed outside the loader process. The controller
+applies each accepted envelope as one state transition, and the UI uses its
+explicit phase, revision, and exportability instead of reconstructing those
+values independently.
+
 ### Retain payloads and export from the loader-owned source
 
 The controller retains the latest payload for rendering, while the loader retains
@@ -253,11 +283,12 @@ reproduce corner markers for vertices shared by multiple triangles.
 2. Add the internal payload model and pure round-trip conversions behind tests.
 3. Change loader results, controller ownership, and export protocol together so
    no mixed process protocol is shipped.
-4. Build and inject payload-based `SceneAssets` from outside rendering.
-5. Adapt the adapter, renderer, and renderee seams to payload-only inputs while
+4. Introduce the explicit load-result envelope and final-snapshot state model.
+5. Build and inject payload-based `SceneAssets` from outside rendering.
+6. Adapt the adapter, renderer, and renderee seams to payload-only inputs while
    retaining the established corner-buffer strategy and renderer responsibilities.
-6. Run automated validation, repeat measurements, and complete human visual checks.
-7. Record the indexed-renderer gate outcome; pursue it only through a separately
+7. Run automated validation, repeat measurements, and complete human visual checks.
+8. Record the indexed-renderer gate outcome; pursue it only through a separately
    reviewed follow-up if justified.
 
 The payload is internal and persisted only in memory, so no data migration or

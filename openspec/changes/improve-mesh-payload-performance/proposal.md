@@ -26,6 +26,9 @@ redesign.
   source of truth and expose it only through an asynchronous export protocol;
   treat `MeshPayload` as a rendering/transport view rather than an export
   representation.
+- Add an explicit load-result envelope describing phase, revision, generation,
+  payload, and exportability so finality and ownership are not inferred from
+  payload shape, sequence numbers, or debug flags.
 - Evaluate fully indexed GPU rendering only after the compact-payload stage is
   measured; adopt it only if benchmarks justify the complexity and visual
   validation confirms parity.
@@ -47,6 +50,8 @@ None.
 - Affects the internal loader result protocol, controller mesh ownership,
   composition of built-in scene assets, renderer input seam, and export conversion
   path.
+- Adds an internal result-state model and final-snapshot ownership boundary;
+  these do not expand the public `create_mesh` or renderer APIs.
 - Requires focused unit/integration coverage plus manual visual checks for edges,
   transparency, colors, framing, built-in assets, and debug rendering, along
   with export-fidelity and export-lifecycle coverage.

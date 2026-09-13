@@ -51,6 +51,32 @@ when lossless export is available.
 - **WHEN** application code crosses a loader, controller, UI, adapter, or renderer boundary
 - **THEN** it uses the internal payload representation without requiring or exposing `MeshPayload` as a public SCADview API
 
+### Requirement: Load results expose explicit state
+The system SHALL represent each load result with explicit phase, generation,
+revision, payload, exportability, and terminal error state. Consumers SHALL NOT
+infer finality, debug status, revision, or exportability solely from payload shape,
+sequence number, requested debug mode, or load status.
+
+#### Scenario: Progress result is published
+- **WHEN** a generator yields an intermediate normalized mesh
+- **THEN** the loader publishes a progress-phase envelope with a new display revision and a non-exportable payload view
+
+#### Scenario: Final single result is published
+- **WHEN** the current generation successfully exhausts with one effective mesh
+- **THEN** the loader publishes a final-phase envelope with a new revision, a payload matching the final source snapshot, and `exportable` set to true
+
+#### Scenario: Final debug list is published
+- **WHEN** the current generation successfully completes with an effective debug list
+- **THEN** the loader publishes a final-phase envelope with `exportable` set to false and no retained single export source
+
+#### Scenario: Terminal load error is published
+- **WHEN** normalization, finalization, or module execution fails
+- **THEN** the loader publishes an error-phase envelope with a structured error and no exportable source
+
+#### Scenario: Final revision is distinct from progress
+- **WHEN** finalization republishes the effective final state after the last generator yield
+- **THEN** the final envelope receives a revision distinct from the progress envelope even if its sequence number is unchanged
+
 ### Requirement: Public mesh creation behavior remains compatible
 The system SHALL continue accepting the documented `create_mesh` return types
 and SHALL perform payload conversion only after existing mesh normalization and

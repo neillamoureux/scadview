@@ -49,3 +49,11 @@
 - [x] 8.4 Add fidelity tests proving exports use the retained source, including float precision, SCADview color precision, metadata, visuals, supported-format dispatch, and exporter errors.
 - [x] 8.5 Add concurrency and lifecycle tests for incremental results, reload during export, stale generations, queue behavior, loader failure, process death, and shutdown.
 - [x] 8.6 Repeat performance and memory measurements, including retained loader-process RSS and export latency, then update the benchmark evidence and PR description.
+
+## 9. Make Load State Explicit
+
+- [ ] 9.1 Add typed phase, revision, exportability, and structured terminal-error fields to the internal load-result envelope while preserving generation, sequence, feature, and parameter metadata.
+- [ ] 9.2 Introduce a loader-owned final snapshot that atomically pairs the retained normalized source `Trimesh` with its final `MeshPayload`; make finalization the only path that publishes exportable state.
+- [ ] 9.3 Update loader, controller, UI, and renderer-adjacent consumers to apply explicit result envelopes as state transitions instead of inferring finality or exportability from payload shape, sequence numbers, flags, or status.
+- [ ] 9.4 Add regression tests for progress, final, error, and cancellation phases; independent revisions; single-mesh and debug-list exportability; stale generations; and generator finalization/source-payload alignment.
+- [ ] 9.5 Run the affected suite, full preflight, and OpenSpec validation; confirm no public API or payload-only renderer boundary changes and update the decision evidence.
