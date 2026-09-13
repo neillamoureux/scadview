@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import manifold3d
-import numpy.testing as npt
 import numpy as np
+import numpy.testing as npt
 import pytest
 from trimesh import Trimesh
 from trimesh.creation import box, icosphere
@@ -17,7 +17,9 @@ from scadview.mesh_loader_process import (
     ExportError,
     ExportResult,
     ExportWorker,
+    LoadError,
     LoadMeshCommand,
+    LoadPhase,
     LoadResult,
     LoadStatus,
     LoadWorker,
@@ -115,7 +117,7 @@ def test_load_result_debug():
 
 def test_load_result_status():
     mesh = mesh_to_payload(box())
-    lr = LoadResult(1, 2, mesh, Exception())
+    lr = LoadResult(1, 2, mesh, LoadError("RuntimeError", "failed"))
     assert lr.status == LoadStatus.ERROR
     lr = LoadResult(1, 2, [mesh], None)
     assert lr.status == LoadStatus.DEBUG
@@ -127,6 +129,68 @@ def test_load_result_status():
     assert lr.status == LoadStatus.START
     lr = LoadResult(1, 2, None, None)
     assert lr.status == LoadStatus.NONE
+
+
+def test_load_result_exposes_explicit_phase_revision_and_exportability():
+    payload = mesh_to_payload(box())
+
+    progress = LoadResult(
+        1,
+        1,
+        payload=payload,
+        error=None,
+        generation=4,
+        revision=7,
+        phase=LoadPhase.PROGRESS,
+        exportable=False,
+        debug=False,
+    )
+    final = LoadResult(
+        1,
+        1,
+        payload=payload,
+        error=None,
+        generation=4,
+        revision=8,
+        phase=LoadPhase.FINAL,
+        exportable=True,
+        debug=False,
+    )
+    error = LoadResult(
+        1,
+        1,
+        payload=None,
+        error=LoadError("ValueError", "invalid mesh"),
+        generation=4,
+        revision=9,
+        phase=LoadPhase.ERROR,
+        exportable=False,
+        debug=False,
+    )
+    cancelled = LoadResult(
+        1,
+        1,
+        payload=None,
+        error=None,
+        generation=4,
+        revision=10,
+        phase=LoadPhase.CANCELLED,
+        exportable=False,
+        debug=False,
+    )
+
+    assert progress.phase is LoadPhase.PROGRESS
+    assert final.phase is LoadPhase.FINAL
+    assert final.exportable
+    assert error.phase is LoadPhase.ERROR
+    assert error.error == LoadError("ValueError", "invalid mesh")
+    assert cancelled.phase is LoadPhase.CANCELLED
+    assert [progress.revision, final.revision, error.revision, cancelled.revision] == [
+        7,
+        8,
+        9,
+        10,
+    ]
 
 
 def test_load_mesh_command_preserves_debug_features():
@@ -206,7 +270,10 @@ def test_load_worker_reuses_the_last_payload_for_the_final_result(load_queue):
     final_result = load_queue.get(timeout=1.0)
     _assert_payload_geometry(first_result.mesh, source)
     _assert_payload_geometry(final_result.mesh, source)
-    assert final_result.complete
+    assert first_result.phase is LoadPhase.PROGRESS
+    assert final_result.phase is LoadPhase.FINAL
+    assert final_result.exportable
+    assert final_result.revision != first_result.revision
 
 
 def test_load_worker_reuses_the_last_payload_for_the_final_error_result(load_queue):
@@ -223,8 +290,10 @@ def test_load_worker_reuses_the_last_payload_for_the_final_error_result(load_que
     load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
     _assert_payload_geometry(final_result.mesh, source)
-    assert isinstance(final_result.error, RuntimeError)
-    assert final_result.complete
+    assert final_result.error is not None
+    assert final_result.error.type_name == "RuntimeError"
+    assert final_result.phase is LoadPhase.ERROR
+    assert not final_result.exportable
 
 
 def test_load_worker_invalidates_export_source_for_debug_and_errors(load_queue):
@@ -255,6 +324,14 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
     npt.assert_allclose(final_result.mesh.vertices, source.vertices)
     assert worker.export_source is source
     assert worker.export_source.metadata == source.metadata
+    assert worker.final_snapshot is not None
+    assert worker.final_snapshot.source is source
+    npt.assert_array_equal(
+        worker.final_snapshot.payload.vertices, final_result.payload.vertices
+    )
+    npt.assert_array_equal(
+        worker.final_snapshot.payload.color, final_result.payload.color
+    )
     npt.assert_allclose(first_result.mesh.vertices, initial_vertices)
     npt.assert_raises(
         AssertionError,
@@ -275,7 +352,8 @@ def test_debug_single_mesh_fallback_retains_source_for_export(load_queue):
     load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
     assert isinstance(final_result.mesh, MeshPayload)
-    assert final_result.complete
+    assert final_result.phase is LoadPhase.FINAL
+    assert final_result.exportable
     assert worker.export_source is source
 
 
@@ -295,8 +373,23 @@ def test_debug_mesh_list_does_not_retain_source_for_export(load_queue):
     load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
     assert isinstance(final_result.mesh, list)
-    assert final_result.complete
+    assert final_result.phase is LoadPhase.FINAL
+    assert not final_result.exportable
     assert worker.export_source is None
+
+
+def test_cancelled_load_publishes_cancellation_phase(load_queue):
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        mock_module_loader.return_value.run_function.return_value = iter([box()])
+        worker = LoadWorker("test/path", load_queue, generation=5)
+        worker.cancel()
+        worker.load()
+
+    result = load_queue.get(timeout=1.0)
+
+    assert result.phase is LoadPhase.CANCELLED
+    assert not result.exportable
+    assert result.payload is None
 
 
 def test_export_worker_uses_the_retained_source_without_payload_reconstruction():
@@ -857,7 +950,8 @@ def test_load_worker_errors_on_nan_vertices(load_queue):
 
     result = load_queue.get(timeout=1.0)
     assert result.error is not None
-    assert isinstance(result.error, ValueError)
+    assert result.error is not None
+    assert result.error.type_name == "ValueError"
     assert result.status == LoadStatus.ERROR
 
 
@@ -877,7 +971,8 @@ def test_load_worker_errors_on_non_finite_manifold_vertices(load_queue):
 
     result = load_queue.get(timeout=1.0)
     assert result.error is not None
-    assert isinstance(result.error, ValueError)
+    assert result.error is not None
+    assert result.error.type_name == "ValueError"
     assert result.status == LoadStatus.ERROR
 
 

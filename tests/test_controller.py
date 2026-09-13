@@ -14,6 +14,7 @@ from scadview.mesh_loader_process import (
     ExportError,
     ExportResult,
     LoadMeshCommand,
+    LoadPhase,
     LoadResult,
 )
 from scadview.mesh_payload import MeshPayload, mesh_to_payload
@@ -120,6 +121,34 @@ def test_controller_retains_only_current_completed_single_payload(monkeypatch):
         controller.close()
 
 
+def test_controller_uses_explicit_exportability_in_load_result(monkeypatch):
+    controller = _controller(monkeypatch)
+    payload = mesh_to_payload(box())
+    try:
+        controller.load_mesh("/tmp/model.py")
+        controller._load_queue.items.append(
+            LoadResult(
+                1,
+                1,
+                payload=payload,
+                error=None,
+                generation=controller.current_generation,
+                revision=1,
+                phase=LoadPhase.FINAL,
+                exportable=False,
+                debug=False,
+            )
+        )
+
+        controller.check_load_queue()
+
+        assert controller.current_mesh is payload
+        assert controller.exportable_payload is None
+        assert not controller.export("/tmp/model.stl")
+    finally:
+        controller.close()
+
+
 def test_controller_rejects_stale_payload_without_replacing_current_payload(
     monkeypatch,
 ):
@@ -159,6 +188,7 @@ def test_controller_queues_export_for_the_current_generation(monkeypatch):
     controller = _controller(monkeypatch)
     try:
         controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
 
         assert controller.export("/tmp/model.stl")
@@ -180,6 +210,7 @@ def test_controller_reports_queue_submission_failure_and_clears_pending(monkeypa
     controller = Controller()
     try:
         controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
         results: list[ExportResult] = []
 
@@ -206,6 +237,7 @@ def test_controller_reports_loader_death_for_pending_export(monkeypatch):
     controller = _controller(monkeypatch)
     try:
         controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
         assert controller.export("/tmp/model.stl")
 
@@ -224,6 +256,7 @@ def test_controller_reports_loader_death_for_pending_export(monkeypatch):
 def test_controller_rejects_export_after_close(monkeypatch):
     controller = _controller(monkeypatch)
     controller.current_mesh = mesh_to_payload(box())
+    controller._exportable_payload = controller.current_mesh
     controller.load_status = LoadStatus.COMPLETE
     controller.close()
 
@@ -236,6 +269,7 @@ def test_controller_discards_unrelated_export_results_without_notification(
     controller = _controller(monkeypatch)
     try:
         controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
         controller.export("/tmp/model.stl")
         controller._loader_process.is_alive = lambda: True
@@ -265,6 +299,7 @@ def test_controller_matches_pending_export_generation_after_reload(monkeypatch):
     controller = _controller(monkeypatch)
     try:
         controller.current_mesh = mesh_to_payload(box())
+        controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
         controller._current_generation = 3
         assert controller.export("/tmp/model.stl")

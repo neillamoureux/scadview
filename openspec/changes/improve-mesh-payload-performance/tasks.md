@@ -52,8 +52,8 @@
 
 ## 9. Make Load State Explicit
 
-- [ ] 9.1 Add typed phase, revision, exportability, and structured terminal-error fields to the internal load-result envelope while preserving generation, sequence, feature, and parameter metadata.
-- [ ] 9.2 Introduce a loader-owned final snapshot that atomically pairs the retained normalized source `Trimesh` with its final `MeshPayload`; make finalization the only path that publishes exportable state.
-- [ ] 9.3 Update loader, controller, UI, and renderer-adjacent consumers to apply explicit result envelopes as state transitions instead of inferring finality or exportability from payload shape, sequence numbers, flags, or status.
-- [ ] 9.4 Add regression tests for progress, final, error, and cancellation phases; independent revisions; single-mesh and debug-list exportability; stale generations; and generator finalization/source-payload alignment.
-- [ ] 9.5 Run the affected suite, full preflight, and OpenSpec validation; confirm no public API or payload-only renderer boundary changes and update the decision evidence.
+- [x] 9.1 Add typed phase, revision, exportability, and structured terminal-error fields to the internal load-result envelope while preserving generation, sequence, feature, and parameter metadata.
+- [x] 9.2 Introduce a loader-owned final snapshot that atomically pairs the retained normalized source `Trimesh` with its final `MeshPayload`; make finalization the only path that publishes exportable state.
+- [x] 9.3 Update loader, controller, UI, and renderer-adjacent consumers to apply explicit result envelopes as state transitions instead of inferring finality or exportability from payload shape, sequence numbers, flags, or status.
+- [x] 9.4 Add regression tests for progress, final, error, and cancellation phases; independent revisions; single-mesh and debug-list exportability; stale generations; and generator finalization/source-payload alignment.
+- [x] 9.5 Run the affected suite, full preflight, and OpenSpec validation; confirm no public API or payload-only renderer boundary changes and update the decision evidence.

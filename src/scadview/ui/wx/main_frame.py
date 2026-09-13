@@ -10,7 +10,7 @@ import wx
 from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
-from scadview.mesh_loader_process import ExportResult, LoadResult
+from scadview.mesh_loader_process import ExportResult, LoadPhase, LoadResult
 from scadview.mesh_payload import MeshPayload
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
@@ -114,7 +114,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.on_load_timer, self._loader_timer)
         self._loader_load_completed = False
         self._loader_last_load_number = 0
-        self._loader_last_sequence_number = 0
+        self._loader_last_revision = -1
         self._controller.on_load_status_change.subscribe(self._indicate_load_status)
         self._controller.on_export_result.subscribe(self._handle_export_result)
         self._controller.on_features_change.subscribe(self._update_feature_controls)
@@ -514,18 +514,22 @@ class MainFrame(wx.Frame):
     def _handle_load_result(self, load_result: LoadResult) -> None:
         if load_result.generation != self._controller.current_generation:
             return
-        mesh = load_result.mesh
-        if load_result.complete:
+        mesh = load_result.payload
+        if load_result.phase is LoadPhase.FINAL:
             self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
-        if load_result.error:
-            logger.error(load_result.error)
+        if load_result.error is not None:
+            logger.error(
+                "Load failed (%s): %s",
+                load_result.error.type_name,
+                load_result.error.message,
+            )
         if self._has_mesh_changed(load_result):
             logger.debug("on_load_time: mesh has changed")
             self._load_mesh_in_view(mesh)
             if self._is_first_in_load(load_result):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
-            self._loader_last_sequence_number = load_result.sequence_number
+            self._loader_last_revision = load_result.revision
         _stop_loader_polling_if_terminal(self._controller, self._loader_timer)
 
     def _handle_export_result(self, export_result: ExportResult) -> None:
@@ -546,10 +550,10 @@ class MainFrame(wx.Frame):
     def poll_load_status(self) -> LoadStatus:
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
-        if load_result.complete:
-            return LoadStatus.COMPLETE
-        if load_result.error:
+        if load_result.phase is LoadPhase.ERROR:
             return LoadStatus.ERROR
+        if load_result.phase is LoadPhase.FINAL:
+            return load_result.status
         return self._controller.load_status
 
     def _indicate_load_status(self, status: LoadStatus):
@@ -557,10 +561,10 @@ class MainFrame(wx.Frame):
 
     def _has_mesh_changed(self, load_result: LoadResult) -> bool:
         new_load = self._loader_last_load_number != load_result.load_number
-        new_sequence = self._loader_last_sequence_number != load_result.sequence_number
-        if load_result.mesh is not None:
-            return new_load or new_sequence
-        return load_result.complete and new_load
+        new_revision = self._loader_last_revision != load_result.revision
+        if load_result.payload is not None:
+            return new_load or new_revision
+        return load_result.phase is not LoadPhase.PROGRESS and new_load
 
     def _load_mesh_in_view(self, mesh: MeshPayload | list[MeshPayload] | None):
         if mesh is None:

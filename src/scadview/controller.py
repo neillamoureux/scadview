@@ -1,6 +1,7 @@
 import logging
 import os
 import queue
+from typing import cast
 
 from trimesh.exchange import export
 
@@ -13,6 +14,7 @@ from scadview.mesh_loader_process import (
     ExportError,
     ExportResult,
     LoadMeshCommand,
+    LoadPhase,
     LoadResult,
     MeshLoaderProcess,
     MpCommandQueue,
@@ -47,6 +49,7 @@ class Controller:
         self._last_export_path = ""
         self._closed = False
         self._current_mesh: list[MeshPayload] | MeshPayload | None = None
+        self._exportable_payload: MeshPayload | None = None
         self._feature_states: list[FeatureState] = []
         self._debug_features = False
         self._parameters: list[CreateMeshParameter] = []
@@ -128,6 +131,7 @@ class Controller:
 
     def load_mesh(self, module_path: str):
         self.current_mesh = None
+        self._exportable_payload = None
         self.load_status = LoadStatus.START
         if not self._same_module(module_path):
             self._last_export_path = (
@@ -150,19 +154,33 @@ class Controller:
         try:
             load_result = self._load_queue.get_nowait()
             if load_result.generation != self.current_generation:
-                return LoadResult(0, 0, None, None, generation=load_result.generation)
+                return LoadResult(
+                    0,
+                    0,
+                    payload=None,
+                    error=None,
+                    generation=load_result.generation,
+                    phase=LoadPhase.CANCELLED,
+                )
             self._reconcile_parameters(load_result.parameters or [])
-            if load_result.mesh is not None:
+            if load_result.payload is not None:
                 logger.debug("check_load_queue got mesh")
-                self.current_mesh = load_result.mesh
+                self.current_mesh = load_result.payload
             else:
                 logger.debug("check_load_queue got mesh == None")
+            self._exportable_payload = (
+                cast(MeshPayload, load_result.payload)
+                if load_result.exportable
+                else None
+            )
             self.feature_states = load_result.features or []
             self.load_status = load_result.status
             self._notify_export_availability()
         except queue.Empty:
             logger.debug("check_load_queue empty")
-            load_result = LoadResult(0, 0, None, None, False)
+            load_result = LoadResult(
+                0, 0, payload=None, error=None, phase=LoadPhase.CANCELLED
+            )
         return load_result
 
     def set_feature_enabled(self, name: str, enabled: bool):
@@ -231,12 +249,8 @@ class Controller:
 
     @property
     def exportable_payload(self) -> MeshPayload | None:
-        """Return the completed single payload that can be exported."""
-        if self.load_status != LoadStatus.COMPLETE:
-            return None
-        if isinstance(self.current_mesh, MeshPayload):
-            return self.current_mesh
-        return None
+        """Return the payload explicitly marked exportable by the loader."""
+        return self._exportable_payload
 
     @property
     def export_pending(self) -> bool:
