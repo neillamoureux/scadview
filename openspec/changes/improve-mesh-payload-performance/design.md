@@ -108,6 +108,13 @@ One payload represents one mesh and contains:
 - one optional RGBA mesh-level color in the renderer's fixed-width form;
 - compact bounds and scale summaries used for framing and axes.
 
+`MeshPayload` is an internal transport and rendering model, not a public
+SCADview API. Its per-face normal array is required and is populated from the
+normalized source mesh's `Trimesh.face_normals` during payload conversion. The
+renderer respects those supplied normals and does not recalculate them. This
+preserves the current behavior for client-provided `face_normals`; geometric
+`triangles_cross` fallback semantics are intentionally not introduced here.
+
 Payload construction validates shapes, finite values, and that face indices are
 non-negative, in range, and representable as `uint32` before casting. It copies
 the arrays so later mutation of a source mesh cannot alter a queued result. A list

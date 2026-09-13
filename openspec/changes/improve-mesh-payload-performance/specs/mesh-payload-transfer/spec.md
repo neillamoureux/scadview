@@ -43,6 +43,14 @@ when lossless export is available.
 - **WHEN** a payload belongs to an older load generation
 - **THEN** the system discards it without replacing the current generation's mesh or metadata
 
+#### Scenario: Source face normals are transferred
+- **WHEN** a normalized source `Trimesh` provides per-face `face_normals`
+- **THEN** payload conversion preserves those normals in its required per-face normal array and the renderer uses them without recalculating geometric normals
+
+#### Scenario: Payload visibility remains internal
+- **WHEN** application code crosses a loader, controller, UI, adapter, or renderer boundary
+- **THEN** it uses the internal payload representation without requiring or exposing `MeshPayload` as a public SCADview API
+
 ### Requirement: Public mesh creation behavior remains compatible
 The system SHALL continue accepting the documented `create_mesh` return types
 and SHALL perform payload conversion only after existing mesh normalization and
