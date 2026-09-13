@@ -1,0 +1,478 @@
+"""Measure mesh transfer and rendering with one queue transfer per case."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import multiprocessing as mp
+import os
+import pickle
+import platform
+import subprocess
+import tempfile
+import tracemalloc
+from collections.abc import Callable
+from dataclasses import dataclass
+from importlib.metadata import version
+from pathlib import Path
+from time import perf_counter
+from typing import Any
+from typing import Literal
+
+import moderngl
+import numpy as np
+from trimesh import Trimesh
+
+from scadview.mesh_loader_process import (
+    ExportCommand,
+    ExportResult,
+    ExportWorker,
+    MpExportResultQueue,
+)
+from scadview.mesh_payload import mesh_to_payload
+from scadview.render.mesh_renderee import create_vao_from_arrays, expand_payload
+
+METRIC_NAMES = (
+    "vertex_count",
+    "face_count",
+    "mesh_count",
+    "pickle_size_bytes",
+    "mesh_creation_ms",
+    "payload_conversion_ms",
+    "post_create_mesh_to_first_frame_ms",
+    "queue_round_trip_ms",
+    "peak_memory_supported",
+    "peak_memory_bytes",
+    "renderer_preparation_ms",
+    "renderer_upload_ms",
+    "first_frame_ms",
+    "gpu_measurement_error",
+    "export_request_completion_ms",
+    "retained_loader_process_rss_delta_bytes",
+    "retained_loader_process_baseline_rss_bytes",
+    "retained_loader_process_final_rss_bytes",
+    "retained_source_kind",
+)
+
+
+@dataclass(frozen=True)
+class BenchmarkCase:
+    """A deterministic mesh-transfer workload."""
+
+    name: str
+    create_meshes: Callable[[], list[Trimesh]]
+
+    def meshes(self) -> list[Trimesh]:
+        return self.create_meshes()
+
+
+def main() -> None:
+    arguments = _parse_arguments()
+    report = run_benchmark(
+        measure_gpu=not arguments.no_gpu,
+        measure_peak_memory=not arguments.no_peak_memory,
+        measure_retained_source_memory=not arguments.no_retained_source_memory,
+        path=arguments.path,
+    )
+    _write_report(report, arguments.output)
+
+
+def _parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--no-gpu", action="store_true")
+    parser.add_argument("--no-peak-memory", action="store_true")
+    parser.add_argument("--no-retained-source-memory", action="store_true")
+    parser.add_argument("--path", choices=("trimesh", "payload"), default="trimesh")
+    parser.add_argument("--output", type=Path)
+    return parser.parse_args()
+
+
+def run_benchmark(
+    *,
+    measure_gpu: bool = True,
+    measure_peak_memory: bool = True,
+    measure_retained_source_memory: bool = True,
+    path: Literal["trimesh", "payload"] = "trimesh",
+) -> dict[str, Any]:
+    """Measure every workload using the selected transfer representation."""
+    return {
+        "benchmark_version": 2,
+        "command": "uv run --no-sync python -m tools.mesh_transfer_benchmark",
+        "environment": _environment_metadata(),
+        "path": path,
+        "cases": [
+            measure_case(
+                case,
+                measure_gpu=measure_gpu,
+                measure_peak_memory=measure_peak_memory,
+                measure_retained_source_memory=measure_retained_source_memory,
+                path=path,
+            )
+            for case in discover_cases()
+        ],
+    }
+
+
+def _environment_metadata() -> dict[str, str]:
+    return {
+        "machine": platform.machine(),
+        "moderngl_version": version("moderngl"),
+        "numpy_version": version("numpy"),
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "trimesh_version": version("trimesh"),
+    }
+
+
+def discover_cases() -> tuple[BenchmarkCase, ...]:
+    """Return all deterministic workloads in a stable comparison order."""
+    return (
+        BenchmarkCase("high-sharing-small", lambda: [_grid_mesh(32)]),
+        BenchmarkCase("high-sharing-large", lambda: [_grid_mesh(128)]),
+        BenchmarkCase("mixed-transparency", _mixed_transparency_meshes),
+        BenchmarkCase("representative-large-model", _representative_large_model),
+    )
+
+
+def measure_case(
+    case: BenchmarkCase,
+    *,
+    measure_gpu: bool = True,
+    measure_peak_memory: bool = True,
+    measure_retained_source_memory: bool = True,
+    path: Literal["trimesh", "payload"] = "trimesh",
+) -> dict[str, Any]:
+    """Measure one workload without making timing assertions."""
+    if measure_peak_memory:
+        tracemalloc.start()
+    try:
+        measurement = _measure_case(
+            case, measure_gpu, path, measure_retained_source_memory
+        )
+        if measure_peak_memory:
+            measurement["peak_memory_bytes"] = tracemalloc.get_traced_memory()[1]
+            measurement["peak_memory_supported"] = True
+        else:
+            measurement["peak_memory_bytes"] = None
+            measurement["peak_memory_supported"] = False
+        return measurement
+    finally:
+        if measure_peak_memory:
+            tracemalloc.stop()
+
+
+def _measure_case(
+    case: BenchmarkCase,
+    measure_gpu: bool,
+    path: Literal["trimesh", "payload"],
+    measure_retained_source_memory: bool,
+) -> dict[str, Any]:
+    start = perf_counter()
+    meshes = case.meshes()
+    mesh_creation_ms = _elapsed_ms(start)
+    aggregate_start = perf_counter()
+    payloads, payload_conversion_ms = _to_payloads(meshes, path)
+    transfer_values: list[Any] = meshes if path == "trimesh" else payloads
+    queue_round_trip_ms = _queue_round_trip(transfer_values)
+    prepared, preparation_ms = _prepare_renderer_data(meshes, payloads, path)
+    gpu_measurements = _measure_gpu(prepared) if measure_gpu else _no_gpu_measurement()
+    aggregate_ms = _elapsed_ms(aggregate_start)
+    if gpu_measurements["first_frame_ms"] is None:
+        aggregate_ms = None
+    serialized_size_bytes = _serialized_size(transfer_values)
+    export_completion_ms = (
+        _export_request_completion(meshes[-1]) if len(meshes) == 1 else None
+    )
+    retained_memory = (
+        _retained_source_memory(meshes[-1])
+        if measure_retained_source_memory and len(meshes) == 1
+        else _no_retained_source_memory()
+    )
+    return {
+        "case": case.name,
+        "mesh_count": len(meshes),
+        "vertex_count": sum(len(mesh.vertices) for mesh in meshes),
+        "face_count": sum(len(mesh.faces) for mesh in meshes),
+        "pickle_size_bytes": serialized_size_bytes,
+        "mesh_creation_ms": mesh_creation_ms,
+        "payload_conversion_ms": payload_conversion_ms,
+        "post_create_mesh_to_first_frame_ms": aggregate_ms,
+        "queue_round_trip_ms": queue_round_trip_ms,
+        "export_request_completion_ms": export_completion_ms,
+        "renderer_preparation_ms": preparation_ms,
+        **retained_memory,
+        **gpu_measurements,
+    }
+
+
+def _export_request_completion(mesh: Trimesh) -> float:
+    result_queue = MpExportResultQueue(maxsize=0, type_=ExportResult)
+    with tempfile.TemporaryDirectory() as directory:
+        command = ExportCommand(1, 0, str(Path(directory) / "mesh.stl"))
+        worker = ExportWorker(command, mesh, result_queue)
+        start = perf_counter()
+        worker.start()
+        result = result_queue.get(timeout=10)
+        worker.join(timeout=10)
+    result_queue.close()
+    if result.error is not None:
+        raise RuntimeError(result.error.message)
+    return _elapsed_ms(start)
+
+
+def _retained_source_memory(mesh: Trimesh) -> dict[str, Any]:
+    parent_connection, child_connection = mp.Pipe()
+    process = mp.Process(
+        target=_report_retained_source_memory, args=(child_connection,)
+    )
+    process.start()
+    child_connection.close()
+    try:
+        parent_connection.send(mesh)
+        if not parent_connection.poll(10):
+            return _no_retained_source_memory()
+        baseline, final, delta = parent_connection.recv()
+        return {
+            "retained_source_kind": "single-final-source",
+            "retained_loader_process_baseline_rss_bytes": baseline,
+            "retained_loader_process_final_rss_bytes": final,
+            "retained_loader_process_rss_delta_bytes": delta,
+        }
+    finally:
+        parent_connection.close()
+        process.join(timeout=10)
+        if process.is_alive():
+            process.terminate()
+            process.join()
+
+
+def _report_retained_source_memory(connection: Any) -> None:
+    mesh: Trimesh | None = None
+    try:
+        baseline = _current_rss_bytes()
+        mesh = connection.recv()
+        final = _current_rss_bytes()
+        delta = final - baseline if baseline is not None and final is not None else None
+        connection.send((baseline, final, delta))
+    finally:
+        del mesh
+        connection.close()
+
+
+def _no_retained_source_memory() -> dict[str, Any]:
+    return {
+        "retained_source_kind": "list-or-debug-not-retained",
+        "retained_loader_process_baseline_rss_bytes": None,
+        "retained_loader_process_final_rss_bytes": None,
+        "retained_loader_process_rss_delta_bytes": None,
+    }
+
+
+def _current_rss_bytes() -> int | None:
+    try:
+        output = subprocess.check_output(
+            ["ps", "-o", "rss=", "-p", str(os.getpid())], text=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return int(output.strip()) * 1024
+
+
+def _to_payloads(
+    meshes: list[Trimesh], path: Literal["trimesh", "payload"]
+) -> tuple[list[Any], float]:
+    if path == "trimesh":
+        return [], 0.0
+    start = perf_counter()
+    payloads = [mesh_to_payload(mesh) for mesh in meshes]
+    return payloads, _elapsed_ms(start)
+
+
+def _grid_mesh(
+    cells: int, *, offset: tuple[float, float, float] = (0, 0, 0)
+) -> Trimesh:
+    coordinates = np.linspace(-1.0, 1.0, cells + 1, dtype=np.float64)
+    x_values, y_values = np.meshgrid(coordinates, coordinates, indexing="xy")
+    vertices = np.column_stack(
+        (x_values.ravel(), y_values.ravel(), np.zeros(x_values.size))
+    )
+    vertices += np.asarray(offset)
+    row = np.arange(cells, dtype=np.int64)[:, None] * (cells + 1)
+    column = np.arange(cells, dtype=np.int64)[None, :]
+    bottom_left = (row + column).ravel()
+    faces = np.column_stack(
+        (
+            np.concatenate((bottom_left, bottom_left + 1)),
+            np.concatenate((bottom_left + cells + 1, bottom_left + cells + 2)),
+            np.concatenate((bottom_left + cells + 2, bottom_left + cells + 1)),
+        )
+    )
+    return Trimesh(vertices=vertices, faces=faces, process=False)
+
+
+def _mixed_transparency_meshes() -> list[Trimesh]:
+    meshes = [_grid_mesh(24, offset=(index * 2.5, 0, index)) for index in range(3)]
+    _set_color(meshes[0], [0.2, 0.4, 0.8, 1.0])
+    _set_color(meshes[1], [0.9, 0.3, 0.2, 0.45])
+    _set_color(meshes[2], [0.3, 0.8, 0.4, 0.7])
+    return meshes
+
+
+def _representative_large_model() -> list[Trimesh]:
+    return [
+        _grid_mesh(128, offset=(x * 2.1, y * 2.1, z * 0.2))
+        for x, y, z in ((0, 0, 0), (1, 0, 1), (0, 1, 2), (1, 1, 3), (2, 1, 4))
+    ]
+
+
+def _set_color(mesh: Trimesh, color: list[float]) -> None:
+    mesh.metadata["scadview"] = {"color": color}
+
+
+def _serialized_size(meshes: list[Any]) -> int:
+    return len(pickle.dumps(meshes, protocol=pickle.HIGHEST_PROTOCOL))
+
+
+def _queue_round_trip(meshes: list[Any]) -> float:
+    queue: mp.Queue[list[Any]] = mp.Queue(maxsize=1)
+    try:
+        start = perf_counter()
+        queue.put(meshes)
+        queue.get()
+        return _elapsed_ms(start)
+    finally:
+        queue.close()
+        queue.join_thread()
+
+
+def _prepare_renderer_data(
+    meshes: list[Trimesh],
+    payloads: list[Any],
+    path: Literal["trimesh", "payload"],
+) -> tuple[list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]], float]:
+    start = perf_counter()
+    if path == "trimesh":
+        prepared = [_expand_trimesh(mesh) for mesh in meshes]
+    else:
+        prepared = [expand_payload(payload) for payload in payloads]
+    return prepared, _elapsed_ms(start)
+
+
+def _expand_trimesh(
+    mesh: Trimesh,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    triangles = np.ascontiguousarray(mesh.triangles, dtype="f4")
+    normals = np.ascontiguousarray(
+        np.broadcast_to(mesh.triangles_cross[:, np.newaxis, :], triangles.shape),
+        dtype="f4",
+    )
+    color = [128, 128, 128, 255]
+    metadata = mesh.metadata
+    if isinstance(metadata, dict) and metadata.get("scadview") is not None:
+        color = (
+            np.rint(np.asarray(metadata["scadview"]["color"]) * 255)
+            .astype(np.uint8)
+            .tolist()
+        )
+    colors = np.broadcast_to(
+        np.asarray(color, dtype=np.uint8), (len(triangles), 3, 4)
+    ).copy()
+    edges = np.tile(
+        np.array([255, 0, 0, 0, 255, 0, 0, 0, 255], dtype=np.uint8),
+        (len(triangles), 1),
+    )
+    return triangles, normals, colors, edges
+
+
+def _measure_gpu(
+    prepared: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
+) -> dict[str, float | str | None]:
+    try:
+        return _measure_gpu_with_context(prepared)
+    except (moderngl.Error, OSError, RuntimeError, ValueError) as error:
+        return {
+            "renderer_upload_ms": None,
+            "first_frame_ms": None,
+            "gpu_measurement_error": str(error),
+        }
+
+
+def _measure_gpu_with_context(
+    prepared: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
+) -> dict[str, float | str | None]:
+    context = moderngl.create_standalone_context()
+    try:
+        program = context.program(
+            vertex_shader=_VERTEX_SHADER, fragment_shader=_FRAGMENT_SHADER
+        )
+        start = perf_counter()
+        vaos = [
+            create_vao_from_arrays(context, program, triangles, normals, colors, edges)
+            for triangles, normals, colors, edges in prepared
+        ]
+        context.finish()
+        upload_ms = _elapsed_ms(start)
+        start = perf_counter()
+        for vao in vaos:
+            vao.render()
+        context.finish()
+        return {
+            "renderer_upload_ms": upload_ms,
+            "first_frame_ms": _elapsed_ms(start),
+            "gpu_measurement_error": None,
+        }
+    finally:
+        context.release()
+
+
+def _no_gpu_measurement() -> dict[str, float | str | None]:
+    return {
+        "renderer_upload_ms": None,
+        "first_frame_ms": None,
+        "gpu_measurement_error": "GPU measurement disabled",
+    }
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((perf_counter() - start) * 1000, 3)
+
+
+def _write_report(report: dict[str, Any], output: Path | None) -> None:
+    serialized = json.dumps(report, indent=4, sort_keys=True)
+    if output is None:
+        print(serialized)
+        return
+    output.write_text(f"{serialized}\n", encoding="utf-8")
+
+
+_VERTEX_SHADER = """
+#version 330
+in vec3 in_position;
+in vec3 in_normal;
+in vec4 in_color;
+in vec3 in_edge_detect;
+out vec3 normal;
+out vec4 color;
+out vec3 edge_detect;
+void main() {
+    normal = in_normal;
+    color = in_color;
+    edge_detect = in_edge_detect;
+    gl_Position = vec4(in_position, 1.0);
+}
+"""
+
+_FRAGMENT_SHADER = """
+#version 330
+in vec3 normal;
+in vec4 color;
+in vec3 edge_detect;
+out vec4 frag_color;
+void main() {
+    frag_color = color + vec4(normal + edge_detect, 0.0) * 0.0;
+}
+"""
+
+
+if __name__ == "__main__":
+    main()

@@ -17,7 +17,8 @@ SCADview follows a layered, event-driven desktop architecture with explicit proc
 ## 3. Background work is process-isolated
 
 - Mesh generation runs in a separate process (`MeshLoaderProcess`) and worker thread.
-- Main process and loader process communicate only through typed command/result queues (`MpCommandQueue`, `MpLoadQueue`).
+- Main process and loader process communicate through typed queues: `MpCommandQueue` for commands, `MpLoadQueue` for latest-wins display results, and the reliable `MpExportResultQueue` for export results.
+- The loader process owns the normalized source `Trimesh` for the current exportable generation and performs export execution; controller, UI, and renderer boundaries carry payload-only mesh data.
 
 ## 4. State changes flow through observables
 

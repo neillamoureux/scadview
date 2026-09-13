@@ -1,8 +1,8 @@
 import logging
 import os
 import queue
+from typing import cast
 
-from trimesh import Trimesh
 from trimesh.exchange import export
 
 from scadview.features import FeatureState
@@ -10,13 +10,19 @@ from scadview.load_status import LoadStatus
 from scadview.logging_main import log_queue
 from scadview.mesh_loader_process import (
     Command,
+    ExportCommand,
+    ExportError,
+    ExportResult,
     LoadMeshCommand,
+    LoadPhase,
     LoadResult,
     MeshLoaderProcess,
     MpCommandQueue,
+    MpExportResultQueue,
     MpLoadQueue,
     ShutDownCommand,
 )
+from scadview.mesh_payload import MeshPayload
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.observable import Observable
 
@@ -42,30 +48,38 @@ class Controller:
         self.module_path = ""
         self._last_export_path = ""
         self._closed = False
-        self._current_mesh: list[Trimesh] | Trimesh | None = None
+        self._current_mesh: list[MeshPayload] | MeshPayload | None = None
+        self._exportable_payload: MeshPayload | None = None
         self._feature_states: list[FeatureState] = []
         self._debug_features = False
         self._parameters: list[CreateMeshParameter] = []
         self._parameter_values: dict[str, ScalarParameterValue] = {}
         self._current_generation = 0
+        self._next_export_request_id = 1
+        self._pending_export_request_id: int | None = None
+        self._pending_export_generation: int | None = None
         self._load_queue = MpLoadQueue(maxsize=1, type_=LoadResult)
         self._command_queue = MpCommandQueue(maxsize=0, type_=Command)
+        self._export_result_queue = MpExportResultQueue(maxsize=0, type_=ExportResult)
         self._loader_process = MeshLoaderProcess(
             self._command_queue,
             self._load_queue,
+            self._export_result_queue,
             log_queue=log_queue,
             log_level=logger.getEffectiveLevel(),
         )
         self._loader_process.start()
         self.on_load_status_change = Observable()
+        self.on_export_result = Observable()
+        self.on_export_availability_change = Observable()
         self._load_status = LoadStatus.NONE
 
     @property
-    def current_mesh(self) -> list[Trimesh] | Trimesh | None:
+    def current_mesh(self) -> list[MeshPayload] | MeshPayload | None:
         return self._current_mesh
 
     @current_mesh.setter
-    def current_mesh(self, value: list[Trimesh] | Trimesh | None):
+    def current_mesh(self, value: list[MeshPayload] | MeshPayload | None):
         self._current_mesh = value
 
     @property
@@ -117,6 +131,7 @@ class Controller:
 
     def load_mesh(self, module_path: str):
         self.current_mesh = None
+        self._exportable_payload = None
         self.load_status = LoadStatus.START
         if not self._same_module(module_path):
             self._last_export_path = (
@@ -139,18 +154,33 @@ class Controller:
         try:
             load_result = self._load_queue.get_nowait()
             if load_result.generation != self.current_generation:
-                return LoadResult(0, 0, None, None, generation=load_result.generation)
+                return LoadResult(
+                    0,
+                    0,
+                    payload=None,
+                    error=None,
+                    generation=load_result.generation,
+                    phase=LoadPhase.CANCELLED,
+                )
             self._reconcile_parameters(load_result.parameters or [])
-            if load_result.mesh is not None:
+            if load_result.payload is not None:
                 logger.debug("check_load_queue got mesh")
-                self.current_mesh = load_result.mesh
+                self.current_mesh = load_result.payload
             else:
                 logger.debug("check_load_queue got mesh == None")
+            self._exportable_payload = (
+                cast(MeshPayload, load_result.payload)
+                if load_result.exportable
+                else None
+            )
             self.feature_states = load_result.features or []
             self.load_status = load_result.status
+            self._notify_export_availability()
         except queue.Empty:
             logger.debug("check_load_queue empty")
-            load_result = LoadResult(0, 0, None, None, False)
+            load_result = LoadResult(
+                0, 0, payload=None, error=None, phase=LoadPhase.CANCELLED
+            )
         return load_result
 
     def set_feature_enabled(self, name: str, enabled: bool):
@@ -191,19 +221,86 @@ class Controller:
         self._queue_feature_reload(self._feature_state_map())
         return True
 
-    def export(self, file_path: str):
-        # Cache the property so type narrowing is stable for the selected mesh.
-        current_mesh = self.current_mesh
-        if not current_mesh:
+    def export(self, file_path: str) -> bool:
+        if self._closed or not self.exportable_payload or self.export_pending:
             logger.info("No mesh to export")
-            return
-        if isinstance(current_mesh, list):
-            export_mesh = current_mesh[-1]
-        else:
-            export_mesh = current_mesh
+            return False
         self._last_export_path = file_path
-        # Trimesh exposes export at runtime, but its stubs do not model it.
-        export_mesh.export(file_path)  # ty: ignore[unresolved-attribute]
+        request_id = self._next_export_request_id
+        self._next_export_request_id += 1
+        self._pending_export_request_id = request_id
+        self._pending_export_generation = self.current_generation
+        self._notify_export_availability()
+        command = ExportCommand(request_id, self.current_generation, file_path)
+        try:
+            self._command_queue.put(command)
+        except (BrokenPipeError, EOFError, OSError, ValueError) as error:
+            self._clear_pending_export()
+            self._notify_export_availability()
+            self.on_export_result.notify(
+                ExportResult(
+                    request_id,
+                    command.generation,
+                    ExportError(type(error).__name__, str(error)),
+                )
+            )
+            return False
+        return True
+
+    @property
+    def exportable_payload(self) -> MeshPayload | None:
+        """Return the payload explicitly marked exportable by the loader."""
+        return self._exportable_payload
+
+    @property
+    def export_pending(self) -> bool:
+        return self._pending_export_request_id is not None
+
+    @property
+    def export_available(self) -> bool:
+        return self.exportable_payload is not None and not self.export_pending
+
+    def check_export_queue(self) -> ExportResult | None:
+        while True:
+            try:
+                result = self._export_result_queue.get_nowait()
+            except queue.Empty:
+                return self._loader_death_result()
+            except (OSError, ValueError):
+                return self._loader_death_result()
+            if (
+                result.request_id == self._pending_export_request_id
+                and result.generation == self._pending_export_generation
+            ):
+                self._clear_pending_export()
+                self._notify_export_availability()
+                self.on_export_result.notify(result)
+                return result
+            logger.warning(
+                "Discarding unrelated export result request=%s generation=%s",
+                result.request_id,
+                result.generation,
+            )
+
+    def _loader_death_result(self) -> ExportResult | None:
+        if self._pending_export_request_id is None:
+            return None
+        if self._loader_process.is_alive():
+            return None
+        request_id = self._pending_export_request_id
+        generation = self._pending_export_generation
+        if generation is None:
+            return None
+        self._clear_pending_export()
+        return ExportResult(
+            request_id,
+            generation,
+            ExportError("LoaderProcessDied", "Mesh loader process exited"),
+        )
+
+    def _clear_pending_export(self) -> None:
+        self._pending_export_request_id = None
+        self._pending_export_generation = None
 
     def default_export_path(self) -> str:
         if self._last_export_path != "":
@@ -232,6 +329,7 @@ class Controller:
 
         self._command_queue.close()
         self._load_queue.close()
+        self._export_result_queue.close()
 
     def _feature_state_map(self) -> dict[str, bool]:
         return {feature.name: feature.enabled for feature in self.feature_states}
@@ -259,6 +357,7 @@ class Controller:
     def _queue_load(self, feature_states: dict[str, bool]):
         self.current_mesh = None
         self.load_status = LoadStatus.START
+        self._notify_export_availability()
         self._current_generation += 1
         self._command_queue.put(
             LoadMeshCommand(
@@ -269,6 +368,9 @@ class Controller:
                 generation=self.current_generation,
             )
         )
+
+    def _notify_export_availability(self) -> None:
+        self.on_export_availability_change.notify(self.export_available)
 
     def _reconcile_parameters(self, parameters: list[CreateMeshParameter]) -> None:
         values = {

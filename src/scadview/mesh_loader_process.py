@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import colorsys
+import hashlib
 import logging
 import queue
 from dataclasses import dataclass
+from enum import Enum
 from multiprocessing import Process, Queue
 from multiprocessing import queues as mp_queues
 from threading import Thread
-from time import time
-from typing import Any, Generator, Generic, Type, TypeVar
+from time import monotonic, time
+from typing import Any, Generator, Generic, Type, TypeVar, cast
 
 import numpy as np
 from manifold3d import Error as ManifoldError
@@ -29,6 +31,7 @@ from scadview.features import (
 )
 from scadview.load_status import LoadStatus
 from scadview.logging_worker import configure_worker_logging
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.module_loader import (
     CreateMeshParameter,
     ModuleLoader,
@@ -107,45 +110,115 @@ class CancelLoadCommand(Command):
     pass
 
 
+@dataclass(frozen=True)
+class ExportCommand(Command):
+    request_id: int
+    generation: int
+    path: str
+
+
 class ShutDownCommand(Command):
     pass
 
 
-MeshType = Trimesh | list[Trimesh]
+SourceMeshType = Trimesh | list[Trimesh]
+MeshType = MeshPayload | list[MeshPayload]
 CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
+
+
+@dataclass
+class LoadError:
+    type_name: str
+    message: str
+
+
+class LoadPhase(Enum):
+    PROGRESS = "progress"
+    FINAL = "final"
+    ERROR = "error"
+    CANCELLED = "cancelled"
+    CANCELLATION = "cancelled"
+
+
+@dataclass(frozen=True)
+class FinalMeshSnapshot:
+    source: Trimesh
+    payload: MeshPayload
 
 
 @dataclass
 class LoadResult:
     load_number: int
     sequence_number: int
-    mesh: MeshType | None
-    error: Exception | None
+    payload: MeshType | None
+    error: LoadError | None
     complete: bool = False
     features: list[FeatureState] | None = None
     parameters: list[CreateMeshParameter] | None = None
     generation: int = 0
+    revision: int = 0
+    phase: LoadPhase | None = None
+    exportable: bool | None = None
+    debug: bool = False
+
+    def __post_init__(self) -> None:
+        if self.phase is None:
+            if self.error is not None:
+                self.phase = LoadPhase.ERROR
+            elif self.complete or isinstance(self.payload, list):
+                self.phase = LoadPhase.FINAL
+            else:
+                self.phase = LoadPhase.PROGRESS
+        if self.exportable is None:
+            self.exportable = (
+                self.phase is LoadPhase.FINAL
+                and isinstance(self.payload, MeshPayload)
+                and not self.debug
+            )
+        if self.debug is False and isinstance(self.payload, list):
+            self.debug = True
 
     @property
-    def debug(self) -> bool:
-        return isinstance(self.mesh, list)
+    def mesh(self) -> MeshType | None:
+        return self.payload
 
     @property
     def status(self) -> LoadStatus:
-        if self.error is not None:
+        if self.phase is LoadPhase.ERROR:
             return LoadStatus.ERROR
-        if self.debug:
+        if self.phase is LoadPhase.CANCELLED:
+            return LoadStatus.START
+        if self.phase is LoadPhase.FINAL and self.debug:
             return LoadStatus.DEBUG
-        if self.complete:
+        if self.phase is LoadPhase.FINAL:
             return LoadStatus.COMPLETE
-        if self.mesh is not None:
+        if self.phase is LoadPhase.PROGRESS and self.payload is not None:
             return LoadStatus.START
         return LoadStatus.NONE
 
 
+@dataclass(frozen=True)
+class ExportError:
+    type_name: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ExportResult:
+    request_id: int
+    generation: int
+    error: ExportError | None = None
+
+
 MpLoadQueue = MpQueue[LoadResult]
 MpCommandQueue = MpQueue[Command]
+MpExportResultQueue = MpQueue[ExportResult]
+
+
+def _array_signature(values: Any) -> bytes:
+    array = np.ascontiguousarray(values)
+    return hashlib.blake2b(array.tobytes(), digest_size=16).digest()
 
 
 def debug_color() -> Generator[tuple[float, float, float], None, None]:
@@ -182,6 +255,14 @@ class LoadWorker(Thread):
         self._parameters: list[CreateMeshParameter] | None = None
         self._loaded_feature_states: list[FeatureState] = []
         self._feature_sources = []
+        self.final_snapshot: FinalMeshSnapshot | None = None
+        self._revision = 0
+
+    @property
+    def export_source(self) -> Trimesh | None:
+        if self.final_snapshot is None:
+            return None
+        return self.final_snapshot.source
 
     def run(self):
         LoadWorker.load_number += 1
@@ -190,46 +271,136 @@ class LoadWorker(Thread):
     def load(self):
         sequence_number = 0
         self.load_start_time = time()
-        last_mesh = None
+        last_mesh: SourceMeshType | None = None
+        last_payload: MeshType | None = None
+        last_source_signature: tuple[bytes, bytes, bytes, bytes, str] | None = None
         try:
             for mesh in self.run_mesh_module():
-                last_mesh = mesh
                 sequence_number += 1
                 if self.cancelled:
                     logger.info("LoadWorker cancelled, stopping load")
+                    self._publish_result(
+                        sequence_number,
+                        last_payload,
+                        phase=LoadPhase.CANCELLED,
+                        allow_cancelled=True,
+                    )
                     return
-                self._update_mesh(sequence_number, mesh)
+                last_mesh, last_payload = self._prepare_mesh(mesh)
+                last_source_signature = self._source_signature(last_mesh)
+                self._publish_result(sequence_number, last_payload)
         except Exception as e:
             logger.exception("Failed to load mesh from %s", self.module_path)
-            self._update_mesh(sequence_number, last_mesh, final=True, error=e)
+            self._publish_final_result(
+                sequence_number,
+                last_mesh,
+                last_payload,
+                last_source_signature,
+                LoadError(type(e).__name__, str(e)),
+            )
             return
-        self._update_mesh(sequence_number, last_mesh, final=True)
+        self._publish_final_result(
+            sequence_number, last_mesh, last_payload, last_source_signature
+        )
 
-    def _update_mesh(
+    def _prepare_mesh(
         self,
-        sequence_number: int,
-        mesh: CreateMeshResultType | None,
-        final: bool = False,
-        error: Exception | None = None,
-    ):
+        mesh: CreateMeshResultType | SourceMeshType | None,
+    ) -> tuple[SourceMeshType | None, MeshType | None]:
         tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
         tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
+        return tmesh, self._payload_mesh(tmesh)
 
+    def _publish_result(
+        self,
+        sequence_number: int,
+        payload: MeshType | None,
+        error: LoadError | None = None,
+        phase: LoadPhase = LoadPhase.PROGRESS,
+        allow_cancelled: bool = False,
+        exportable: bool = False,
+        debug: bool = False,
+    ) -> None:
+        self._revision += 1
         self.put_in_queue(
             LoadResult(
                 self.load_number,
                 sequence_number,
-                tmesh,
+                payload=payload,
                 error=error,
-                complete=final,
+                complete=phase
+                in (LoadPhase.FINAL, LoadPhase.ERROR, LoadPhase.CANCELLED),
                 features=self._current_feature_states(),
                 parameters=self._parameters,
                 generation=self.generation,
-            )
+                revision=self._revision,
+                phase=phase,
+                exportable=exportable,
+                debug=debug,
+            ),
+            allow_cancelled=allow_cancelled,
         )
 
-    def _ensure_trimesh(self, mesh: CreateMeshResultType | None) -> MeshType | None:
+    def _publish_final_result(
+        self,
+        sequence_number: int,
+        mesh: SourceMeshType | None,
+        payload: MeshType | None,
+        source_signature: tuple[bytes, bytes, bytes, bytes, str] | None,
+        error: LoadError | None = None,
+    ) -> None:
+        if error is None and (
+            self.debug_features or self._source_changed(mesh, source_signature)
+        ):
+            mesh, payload = self._prepare_mesh(mesh)
+        snapshot = self._final_snapshot(mesh, payload, error)
+        self.final_snapshot = snapshot
+        self._publish_result(
+            sequence_number,
+            payload,
+            error,
+            phase=LoadPhase.ERROR if error is not None else LoadPhase.FINAL,
+            exportable=snapshot is not None,
+            debug=isinstance(mesh, list),
+        )
+
+    def _source_signature(
+        self, mesh: SourceMeshType | None
+    ) -> tuple[bytes, bytes, bytes, bytes, str] | None:
+        if not isinstance(mesh, Trimesh):
+            return None
+        face_colors = getattr(mesh.visual, "face_colors", np.empty((0, 4)))
+        return (
+            _array_signature(mesh.vertices),
+            _array_signature(mesh.faces),
+            _array_signature(mesh.face_normals),
+            _array_signature(face_colors),
+            repr(mesh.metadata),
+        )
+
+    def _source_changed(
+        self,
+        mesh: SourceMeshType | None,
+        source_signature: tuple[bytes, bytes, bytes, bytes, str] | None,
+    ) -> bool:
+        return source_signature != self._source_signature(mesh)
+
+    def _final_snapshot(
+        self,
+        mesh: SourceMeshType | None,
+        payload: MeshType | None,
+        error: LoadError | None,
+    ) -> FinalMeshSnapshot | None:
+        if error is not None or not isinstance(mesh, Trimesh):
+            return None
+        if not isinstance(payload, MeshPayload):
+            return None
+        return FinalMeshSnapshot(mesh, payload)
+
+    def _ensure_trimesh(
+        self, mesh: CreateMeshResultType | SourceMeshType | None
+    ) -> SourceMeshType | None:
         if mesh is None:
             return None
         if isinstance(mesh, NullFeatureMesh):
@@ -270,7 +441,7 @@ class LoadWorker(Thread):
             f"Manifold, or list[Manifold], got {type(mesh)}"
         )
 
-    def _select_debug_mesh(self, mesh: MeshType | None) -> MeshType | None:
+    def _select_debug_mesh(self, mesh: SourceMeshType | None) -> SourceMeshType | None:
         if not self.debug_features:
             return mesh
         sources = [source.mesh for source in self._feature_sources if source.enabled]
@@ -278,16 +449,24 @@ class LoadWorker(Thread):
             return mesh
         return self._ensure_trimesh(sources)
 
-    def _color_if_debug(self, tmesh: MeshType | None):
+    def _color_if_debug(self, tmesh: SourceMeshType | None):
         if isinstance(tmesh, list):
             for tm, color in zip(tmesh, debug_color()):
                 if "scadview" not in tm.metadata:
                     set_mesh_color(tm, color, alpha=DEBUG_COLOR_ALPHA)
 
-    def put_in_queue(self, result: LoadResult):
+    def _payload_mesh(self, mesh: SourceMeshType | None) -> MeshType | None:
+        if mesh is None:
+            return None
+        if isinstance(mesh, list):
+            source_meshes = cast(list[Trimesh], mesh)
+            return [mesh_to_payload(item) for item in source_meshes]
+        return mesh_to_payload(mesh)
+
+    def put_in_queue(self, result: LoadResult, allow_cancelled: bool = False):
         result_put = False
         while not result_put:  # tends to be race conditions between full and empty
-            if self.cancelled:
+            if self.cancelled and not allow_cancelled:
                 logger.info("LoadWorker cancelled, stopping load")
                 return
             try:
@@ -438,18 +617,23 @@ class LoadWorker(Thread):
 
 class MeshLoaderProcess(Process):
     COMMAND_QUEUE_CHECK_TIMEOUT = 0.1
+    EXPORT_SHUTDOWN_TIMEOUT = 1.0
 
     def __init__(
         self,
         command_queue: MpCommandQueue,
         load_queue: MpLoadQueue,
+        export_result_queue: MpExportResultQueue,
         log_queue: mp_queues.Queue[logging.LogRecord],
         log_level: int,
     ):
         super().__init__()
         self._command_queue = command_queue
         self._load_queue = load_queue
+        self._export_result_queue = export_result_queue
         self._worker: LoadWorker | None = None
+        self._active_export_workers: set[ExportWorker] = set()
+        self._accepting_exports = True
         self._log_queue = log_queue
         self._log_level = log_level
 
@@ -483,9 +667,11 @@ class MeshLoaderProcess(Process):
                 logger.info("Load cancelled")
                 self.cancel()
                 continue
+            elif isinstance(command, ExportCommand):
+                self._start_export(command)
             elif isinstance(command, ShutDownCommand):
                 logger.info("Shutting down loader process")
-                self.cancel(close_queues=True)
+                self._shutdown()
                 return
             else:
                 logger.warning(f"Unknown command received: {command}")
@@ -497,4 +683,81 @@ class MeshLoaderProcess(Process):
         if close_queues:
             self._command_queue.close()
             self._load_queue.close()
+            self._export_result_queue.close()
         self._worker = None
+
+    def _shutdown(self) -> None:
+        self._accepting_exports = False
+        self.cancel()
+        deadline = monotonic() + self.EXPORT_SHUTDOWN_TIMEOUT
+        for worker in tuple(self._active_export_workers):
+            worker.join(timeout=max(0.0, deadline - monotonic()))
+            if worker.is_alive():
+                logger.warning(
+                    "Export worker did not finish before loader shutdown deadline"
+                )
+                return
+            self._active_export_workers.remove(worker)
+        self._command_queue.close()
+        self._load_queue.close()
+        self._export_result_queue.close()
+
+    def _start_export(self, command: ExportCommand) -> None:
+        if not self._accepting_exports:
+            self._publish_export_result(
+                command,
+                ExportError("ShuttingDown", "Loader is shutting down"),
+            )
+            return
+        source = self._export_source(command.generation)
+        if source is None:
+            self._publish_export_result(
+                command,
+                ExportError(
+                    "StaleSource", "No export source for the requested generation"
+                ),
+            )
+            return
+        worker = ExportWorker(command, source, self._export_result_queue)
+        self._active_export_workers.add(worker)
+        worker.start()
+
+    def _export_source(self, generation: int) -> Trimesh | None:
+        if self._worker is None or self._worker.generation != generation:
+            return None
+        return self._worker.export_source
+
+    def _publish_export_result(
+        self, command: ExportCommand, error: ExportError | None
+    ) -> None:
+        self._export_result_queue.put(
+            ExportResult(command.request_id, command.generation, error)
+        )
+
+
+class ExportWorker(Thread):
+    def __init__(
+        self,
+        command: ExportCommand,
+        source: Trimesh,
+        result_queue: MpExportResultQueue,
+    ) -> None:
+        super().__init__()
+        self._command = command
+        self._source = source
+        self._result_queue = result_queue
+
+    def run(self) -> None:
+        try:
+            self._source.export(self._command.path)
+        except Exception as error:
+            export_error = ExportError(type(error).__name__, str(error))
+        else:
+            export_error = None
+        self._result_queue.put(
+            ExportResult(
+                self._command.request_id,
+                self._command.generation,
+                export_error,
+            )
+        )

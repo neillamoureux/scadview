@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import cast
 
 import wx
-from trimesh import Trimesh
 
 from scadview.controller import Controller, export_formats
 from scadview.features import FeatureState
 from scadview.load_status import LoadStatus
-from scadview.mesh_loader_process import LoadResult
+from scadview.mesh_loader_process import ExportResult, LoadPhase, LoadResult
+from scadview.mesh_payload import MeshPayload
 from scadview.module_loader import CreateMeshParameter, ScalarParameterValue
 from scadview.render.gl_widget_adapter import GlWidgetAdapter
 from scadview.ui.view_state import ViewState
@@ -45,6 +45,17 @@ def convert_parameter_value(
     if parameter.type == "float":
         return float(value)
     return value
+
+
+def _stop_loader_polling_if_terminal(controller: Controller, timer: wx.Timer) -> None:
+    if controller.export_pending:
+        return
+    if controller.load_status in {
+        LoadStatus.COMPLETE,
+        LoadStatus.DEBUG,
+        LoadStatus.ERROR,
+    }:
+        timer.Stop()
 
 
 class MainFrame(wx.Frame):
@@ -103,8 +114,9 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.on_load_timer, self._loader_timer)
         self._loader_load_completed = False
         self._loader_last_load_number = 0
-        self._loader_last_sequence_number = 0
+        self._loader_last_revision = -1
         self._controller.on_load_status_change.subscribe(self._indicate_load_status)
+        self._controller.on_export_result.subscribe(self._handle_export_result)
         self._controller.on_features_change.subscribe(self._update_feature_controls)
         self._controller.on_parameters_change.subscribe(self._update_parameter_controls)
 
@@ -116,11 +128,11 @@ class MainFrame(wx.Frame):
             on_value_change=self._controller.on_module_path_set,
             enable_func=self._on_module_path_set,
         )
-        self._export_action = EnableableAction[LoadStatus](
+        self._export_action = EnableableAction[bool](
             Action("Export...", self.export, accelerator="E"),
-            initial_value=LoadStatus.NONE,
-            on_value_change=self._controller.on_load_status_change,
-            enable_func=self._can_be_exported,
+            initial_value=self._controller.export_available,
+            on_value_change=self._controller.on_export_availability_change,
+            enable_func=lambda available: available,
         )
         self._debug_features_action = CheckableAction[bool](
             Action("Debug features", self._on_debug_features_toggle, checkable=True),
@@ -359,7 +371,8 @@ class MainFrame(wx.Frame):
 
     def _can_be_exported(self, status: LoadStatus) -> bool:
         return (
-            status == LoadStatus.COMPLETE and self._controller.current_mesh is not None
+            status == LoadStatus.COMPLETE
+            and self._controller.exportable_payload is not None
         )
 
     def _add_view_buttons(self):
@@ -494,25 +507,49 @@ class MainFrame(wx.Frame):
         self._load_progress_gauge.Pulse()
 
     def on_load_timer(self, _: wx.Event):
+        self._controller.check_export_queue()
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
 
     def _handle_load_result(self, load_result: LoadResult) -> None:
         if load_result.generation != self._controller.current_generation:
             return
-        mesh = load_result.mesh
-        if load_result.complete:
-            self._loader_timer.Stop()
+        mesh = load_result.payload
+        if load_result.phase is LoadPhase.FINAL:
             self._load_progress_gauge.SetValue(self._load_progress_gauge.GetRange())
-        if load_result.error:
-            logger.error(load_result.error)
+        elif load_result.phase in (LoadPhase.ERROR, LoadPhase.CANCELLED):
+            self._load_progress_gauge.SetValue(0)
+        if load_result.error is not None:
+            logger.error(
+                "Load failed (%s): %s",
+                load_result.error.type_name,
+                load_result.error.message,
+            )
         if self._has_mesh_changed(load_result):
             logger.debug("on_load_time: mesh has changed")
             self._load_mesh_in_view(mesh)
             if self._is_first_in_load(load_result):
                 self._gl_widget.frame()
             self._loader_last_load_number = load_result.load_number
-            self._loader_last_sequence_number = load_result.sequence_number
+            self._loader_last_revision = load_result.revision
+        _stop_loader_polling_if_terminal(self._controller, self._loader_timer)
+
+    def _handle_export_result(self, export_result: ExportResult) -> None:
+        if export_result.error is not None:
+            logger.error(
+                "Export failed (request=%s generation=%s): %s (%s)",
+                export_result.request_id,
+                export_result.generation,
+                export_result.error.type_name,
+                export_result.error.message,
+            )
+        else:
+            logger.info(
+                "Export completed (request=%s generation=%s)",
+                export_result.request_id,
+                export_result.generation,
+            )
+        _stop_loader_polling_if_terminal(self._controller, self._loader_timer)
 
     def load_module(self, module_path: Path, *, start_timer: bool = True) -> None:
         self._controller.load_mesh(str(module_path))
@@ -523,10 +560,10 @@ class MainFrame(wx.Frame):
     def poll_load_status(self) -> LoadStatus:
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
-        if load_result.complete:
-            return LoadStatus.COMPLETE
-        if load_result.error:
+        if load_result.phase is LoadPhase.ERROR:
             return LoadStatus.ERROR
+        if load_result.phase is LoadPhase.FINAL:
+            return load_result.status
         return self._controller.load_status
 
     def _indicate_load_status(self, status: LoadStatus):
@@ -534,12 +571,12 @@ class MainFrame(wx.Frame):
 
     def _has_mesh_changed(self, load_result: LoadResult) -> bool:
         new_load = self._loader_last_load_number != load_result.load_number
-        new_sequence = self._loader_last_sequence_number != load_result.sequence_number
-        if load_result.mesh is not None:
-            return new_load or new_sequence
-        return load_result.complete and new_load
+        new_revision = self._loader_last_revision != load_result.revision
+        if load_result.payload is not None:
+            return new_load or new_revision
+        return load_result.phase is not LoadPhase.PROGRESS and new_load
 
-    def _load_mesh_in_view(self, mesh: Trimesh | list[Trimesh] | None):
+    def _load_mesh_in_view(self, mesh: MeshPayload | list[MeshPayload] | None):
         if mesh is None:
             self._gl_widget.load_mesh([], "loaded mesh")
             return
@@ -562,10 +599,8 @@ class MainFrame(wx.Frame):
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as dlg:
             if dlg.ShowModal() == wx.ID_OK:
-                try:
-                    self._controller.export(dlg.GetPath())
-                except Exception as e:
-                    logger.error(f"Failure on export: {e}")
+                if self._controller.export(dlg.GetPath()):
+                    self._loader_timer.Start(LOAD_CHECK_INTERVAL_MS)
 
     def on_toggle_grid(self, _: wx.Event):
         self._gl_widget.toggle_grid()
