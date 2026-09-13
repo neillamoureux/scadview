@@ -701,6 +701,7 @@ class MeshLoaderProcess(Process):
         logger.setLevel(self._log_level)
 
         while True:
+            self._reap_export_workers()
             try:
                 command = self._command_queue.get(
                     timeout=self.COMMAND_QUEUE_CHECK_TIMEOUT
@@ -731,6 +732,11 @@ class MeshLoaderProcess(Process):
                 return
             else:
                 logger.warning(f"Unknown command received: {command}")
+
+    def _reap_export_workers(self) -> None:
+        for worker in tuple(self._active_export_workers):
+            if not worker.is_alive():
+                self._active_export_workers.remove(worker)
 
     def cancel(self, close_queues: bool = False):
         if self._worker is not None and self._worker.is_alive():

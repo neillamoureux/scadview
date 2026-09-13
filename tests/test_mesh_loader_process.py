@@ -1,4 +1,7 @@
+import gc
+import logging
 import queue
+import weakref
 from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -26,6 +29,7 @@ from scadview.mesh_loader_process import (
     MeshLoaderProcess,
     MpLoadQueue,
     MpQueue,
+    ShutDownCommand,
 )
 from scadview.mesh_payload import MeshPayload, mesh_to_payload
 
@@ -655,6 +659,87 @@ def test_export_completes_from_old_source_after_reload():
     assert result_queue.put.call_args.args[0] == ExportResult(7, 1)
 
 
+def test_loader_event_loop_reaps_completed_export_workers_before_polling():
+    source = box()
+    source.export = Mock()
+    result_queue = Mock()
+    export_worker = ExportWorker(
+        ExportCommand(7, 1, "/tmp/model.stl"), source, result_queue
+    )
+    export_worker.start()
+    export_worker.join(timeout=1.0)
+    assert not export_worker.is_alive()
+
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = None
+    process._command_queue = Mock()
+    process._load_queue = Mock()
+    process._export_result_queue = result_queue
+    process._active_export_workers = {export_worker}
+    process._accepting_exports = True
+    process._log_queue = Mock()
+    process._log_level = logging.INFO
+
+    def shutdown_after_reap(timeout):
+        assert timeout == process.COMMAND_QUEUE_CHECK_TIMEOUT
+        assert not process._active_export_workers
+        return ShutDownCommand()
+
+    process._command_queue.get.side_effect = shutdown_after_reap
+    with patch("scadview.mesh_loader_process.configure_worker_logging"):
+        process.run()
+
+
+def test_loader_reaps_only_completed_export_workers():
+    export_started = Event()
+    release_export = Event()
+    source = box()
+
+    def blocking_export(_: str) -> None:
+        export_started.set()
+        release_export.wait(timeout=2.0)
+
+    source.export = blocking_export
+    process = _export_process(source)
+    process._start_export(ExportCommand(7, 1, "/tmp/model.stl"))
+    assert export_started.wait(timeout=1.0)
+
+    process._reap_export_workers()
+
+    assert len(process._active_export_workers) == 1
+    release_export.set()
+    _join_export_workers(process)
+    process._reap_export_workers()
+    assert not process._active_export_workers
+
+
+def test_repeated_exports_release_finished_workers_and_old_generation_sources():
+    process = _export_process(None)
+    source_refs = []
+
+    for generation in range(1, 4):
+        source = box()
+        source.export = Mock()
+        source_ref = weakref.ref(source)
+        source_refs.append(source_ref)
+        process._worker = SimpleNamespace(
+            generation=generation,
+            export_source=source,
+        )
+
+        process._start_export(ExportCommand(generation, generation, "/tmp/model.stl"))
+        _join_export_workers(process)
+        process._reap_export_workers()
+
+        assert not process._active_export_workers
+        process._worker = None
+        del source
+        gc.collect()
+        assert source_ref() is None
+
+    assert all(source_ref() is None for source_ref in source_refs)
+
+
 def test_loader_process_rejects_export_after_shutdown_begins():
     process = object.__new__(MeshLoaderProcess)
     process._accepting_exports = False
@@ -717,6 +802,21 @@ def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
 
     assert not shutdown.is_alive()
     assert events == ["put", "close"]
+
+
+def _export_process(source):
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = SimpleNamespace(generation=1, export_source=source)
+    process._export_result_queue = Mock()
+    process._active_export_workers = set()
+    process._accepting_exports = True
+    return process
+
+
+def _join_export_workers(process):
+    for worker in tuple(process._active_export_workers):
+        worker.join(timeout=2.0)
+        assert not worker.is_alive()
 
 
 def _raise_mesh_error():
