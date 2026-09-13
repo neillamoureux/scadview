@@ -141,6 +141,44 @@ ranged from 12.0–15.7 MB for the counterfactual and 16.4–16.5 MB for payload
 runs; allocator noise makes these deltas approximate. Correlated STL export
 completion took 8.2–9.0 ms across those four runs.
 
+### Human visual validation evidence
+
+Task 7.3 was completed through a user-confirmed manual before/after GUI
+comparison and originally recorded in commit `f2cf097` on 2026-09-11 at 18:14
+MDT. This section restores that contemporaneous result after it was removed by a
+later benchmark-evidence rewrite. Automated renderer tests and benchmark output
+are not being substituted for the human result.
+
+The local `.scadview/debug_info.json` runtime snapshot was captured separately
+at `2026-09-13T03:25:25.167385+00:00`. It corroborates the detailed environment
+used for this evidence but is not itself treated as proof of visual parity:
+
+- macOS 26.6.2 / Darwin 25.6.0 on an Apple M3 Max, with the Python process
+  reporting `x86_64` architecture;
+- CPython 3.11.13 built with Clang 20.1.4;
+- wxPython 4.2.5 using wxWidgets 3.2.9 and the macOS Cocoa backend;
+- ModernGL 5.12.0 with Apple OpenGL 4.1, renderer `Apple M3 Max`, and version
+  `4.1 Metal - 90.5`;
+- NumPy 2.3.4 and Trimesh 4.9.0.
+
+The user-confirmed comparison recorded visual parity for every required scene:
+
+| Scene | Manual checks | Recorded result |
+| --- | --- | --- |
+| Startup | Geometry, default color, framing, axes, labels, and gnomon | Pass — parity confirmed |
+| Loading | Placeholder geometry, background color, axes, and transition | Pass — parity confirmed |
+| Base axes | Visibility, labels, and scale while framing small and large meshes | Pass — parity confirmed |
+| Opaque single mesh | Flat shading, color, framing, and depth behavior | Pass — parity confirmed |
+| Transparent multi-mesh | Per-mesh colors, global triangle ordering, and depth/blend behavior | Pass — parity confirmed |
+| Feature-debug list | Ordering, per-mesh colors, background, and export state | Pass — parity confirmed |
+| Incremental generator | Intermediate replacement and final completion behavior | Pass — parity confirmed |
+| Edges on/off | Every triangle boundary, including shared vertices | Pass — parity confirmed |
+| Framing | Each supported view and framing after resize/orbit operations | Pass — parity confirmed |
+
+No required checklist item lacks evidence in the user-confirmed record, so task
+7.3 remains checked. The result establishes parity on the recorded macOS/OpenGL
+configuration; it does not claim validation on untested platforms.
+
 ### Interpretation and indexed-renderer gate
 
 The payload final envelope is about 81% smaller for all four deterministic cases.
@@ -152,7 +190,9 @@ largest measured stage. Upload plus first draw remains about 10–11 ms.
 
 These same-version observations continue to support deferring a fully indexed
 renderer: expansion/upload is not the dominant current cost, and shader work
-would add portability and visual-regression risk. This gate is a conservative
-diagnostic decision, not proof that the OpenSpec's chronological baseline
-requirement was met. A future performance claim requiring before/after acceptance
-must establish a valid baseline before changing production behavior.
+would add portability and visual-regression risk. The user-confirmed visual
+checklist found no parity regression on the recorded Apple OpenGL platform. This
+gate is a conservative diagnostic decision, not proof that the OpenSpec's
+chronological baseline requirement was met. A future performance claim requiring
+before/after acceptance must establish a valid baseline before changing
+production behavior.
