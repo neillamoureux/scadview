@@ -13,6 +13,7 @@ from scadview.render.mesh_renderee import (
     create_mesh_renderee,
     expand_payload,
     expand_payloads_without_edges,
+    payload_corners,
 )
 from scadview.render.shader_program import ShaderVar
 
@@ -285,15 +286,55 @@ def test_transparent_payloads_sort_globally_and_retain_colors():
 
 
 def test_empty_payload_list_has_safe_framing_points():
+    ctx = mock.MagicMock()
+
+    with mock.patch.object(
+        mesh_renderee.np,
+        "empty",
+        side_effect=AssertionError("empty framing used uninitialized memory"),
+    ):
+        first = create_mesh_renderee(
+            ctx,
+            mock.MagicMock(),
+            [],
+            np.eye(4, dtype="f4"),
+            np.eye(4, dtype="f4"),
+        )
+        second = create_mesh_renderee(
+            ctx,
+            mock.MagicMock(),
+            [],
+            np.eye(4, dtype="f4"),
+            np.eye(4, dtype="f4"),
+        )
+
+    expected = np.zeros((2, 3), dtype=np.float32)
+    np.testing.assert_array_equal(first.points, expected)
+    np.testing.assert_array_equal(second.points, expected)
+    np.testing.assert_array_equal(first.points, second.points)
+    assert first.points.dtype == np.float32
+    assert np.isfinite(first.points).all()
+    ctx.buffer.assert_not_called()
+
+
+def test_non_empty_payload_list_preserves_bounds_corner_order():
+    first_mesh = box()
+    second_mesh = box()
+    second_mesh.apply_translation([10.0, 20.0, 30.0])
+    second_mesh.metadata["scadview"] = {"color": [1.0, 1.0, 1.0, 0.5]}
+    first = mesh_to_payload(first_mesh)
+    second = mesh_to_payload(second_mesh)
+
     renderee = create_mesh_renderee(
         mock.MagicMock(),
         mock.MagicMock(),
-        [],
+        [first, second],
         np.eye(4, dtype="f4"),
         np.eye(4, dtype="f4"),
     )
 
-    assert renderee.points.shape == (2, 3)
+    expected = np.concatenate([payload_corners(first), payload_corners(second)])
+    np.testing.assert_array_equal(renderee.points, expected)
 
 
 def test_render_package_has_no_trimesh_dependency_or_reconstruction():

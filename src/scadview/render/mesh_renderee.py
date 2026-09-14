@@ -259,7 +259,7 @@ class OpaqueMeshRenderee(MeshRenderee):
 
 class MeshNullRenderee(MeshRenderee):
     def __init__(self):
-        self._points = np.empty((1, 3), dtype="f4")
+        self._points = np.zeros((1, 3), dtype="f4")
 
     @property
     def points(self) -> NDArray[np.float32]:

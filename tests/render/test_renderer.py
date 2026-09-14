@@ -57,6 +57,33 @@ def test_frame(scene_assets):
         camera.frame.assert_called()
 
 
+def test_empty_mesh_list_framing_keeps_renderer_and_camera_state_finite(scene_assets):
+    context = MagicMock()
+    camera = Camera()
+    with patch("scadview.render.shader_program.isinstance") as mock_isinstance:
+        mock_isinstance.return_value = True
+        renderer = Renderer(context, camera, (320, 200), scene_assets)
+        context.buffer.reset_mock()
+
+        with patch(
+            "scadview.render.mesh_renderee.np.empty",
+            side_effect=AssertionError("empty framing used uninitialized memory"),
+        ):
+            renderer.load_mesh([])
+        renderer.frame()
+
+    expected = np.zeros((2, 3), dtype=np.float32)
+    np.testing.assert_array_equal(renderer._main_renderee.points, expected)
+    np.testing.assert_array_equal(renderer._framing_points, expected)
+    np.testing.assert_array_equal(camera._last_framing_points, expected)
+    assert np.isfinite(camera.position).all()
+    assert np.isfinite(camera.look_at).all()
+    assert np.isfinite(camera.direction).all()
+    assert np.isfinite(camera.up).all()
+    assert np.isfinite([camera.near, camera.far]).all()
+    context.buffer.assert_not_called()
+
+
 def test_renderer_reraises_shader_creation_failure(scene_assets):
     context = MagicMock()
     camera = Camera()
