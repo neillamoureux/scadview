@@ -1,4 +1,4 @@
-## Mesh-transfer performance evidence, methodology version 3
+## Mesh-transfer performance evidence, recorded methodology version 3
 
 ### Requirement status and chronology
 
@@ -37,6 +37,18 @@ All four reports identify benchmark version 3 and
 `same-version-counterfactual`. The environment was macOS 26.6.2 x86_64 with
 CPython 3.11.13, NumPy 2.3.4, Trimesh 4.9.0, ModernGL 5.12.0, and the `spawn`
 multiprocessing start method.
+
+### Retained-memory portability schema
+
+Benchmark version 4 adds `retained_memory_supported` and
+`retained_memory_error` without changing the recorded version 3 timing evidence
+below. `retained_source_kind` now describes only whether the case has a retained
+single source or a list/debug result with no retained source. The support field is
+true for a completed RSS measurement, false with an error for an unavailable or
+timed-out attempt, and null when measurement is disabled or not applicable. RSS
+values remain null unless measurement succeeds, so a measured zero delta is
+unambiguous. The numeric tables remain historical version 3 results and were not
+relabeled as version 4 output.
 
 ### Measured path and aggregate definition
 

@@ -1,4 +1,5 @@
 import os
+from unittest.mock import Mock, patch
 
 import numpy as np
 from trimesh import Trimesh
@@ -11,6 +12,7 @@ from tools.mesh_transfer_benchmark import (
     _finalize_envelope,
     _grid_mesh,
     _measure_publication_transfer,
+    _retained_source_memory,
     discover_cases,
     measure_case,
     run_benchmark,
@@ -54,7 +56,7 @@ def test_grid_mesh_faces_are_non_degenerate():
 def test_run_benchmark_reports_environment_and_planned_metrics():
     report = run_benchmark(measure_gpu=False)
 
-    assert report["benchmark_version"] == 3
+    assert report["benchmark_version"] == 4
     assert report["path"] == "trimesh"
     assert report["comparison_kind"] == "same-version-counterfactual"
     assert report["transfer_boundary"] == "child-to-main-process"
@@ -90,9 +92,16 @@ def test_measurement_reports_one_queue_transfer_and_optional_memory():
     assert measurement["loader_publication_peak_memory_bytes"] is not None
     assert measurement["export_request_completion_ms"] >= 0
     assert measurement["retained_source_kind"] == "single-final-source"
-    assert measurement["retained_loader_process_rss_delta_bytes"] is not None
-    assert measurement["retained_loader_process_baseline_rss_bytes"] > 0
-    assert measurement["retained_loader_process_final_rss_bytes"] > 0
+    if measurement["retained_memory_supported"]:
+        assert measurement["retained_memory_error"] is None
+        assert measurement["retained_loader_process_rss_delta_bytes"] is not None
+        assert measurement["retained_loader_process_baseline_rss_bytes"] > 0
+        assert measurement["retained_loader_process_final_rss_bytes"] > 0
+    else:
+        assert measurement["retained_memory_error"]
+        assert measurement["retained_loader_process_rss_delta_bytes"] is None
+        assert measurement["retained_loader_process_baseline_rss_bytes"] is None
+        assert measurement["retained_loader_process_final_rss_bytes"] is None
 
 
 def test_aggregate_metric_is_emitted_for_both_transfer_paths():
@@ -179,7 +188,96 @@ def test_memory_measurement_can_be_disabled():
     assert measurement["main_process_peak_memory_bytes"] is None
     assert measurement["loader_publication_peak_memory_bytes"] is None
     assert measurement["retained_source_kind"] == "single-final-source"
-    assert measurement["retained_loader_process_rss_delta_bytes"] is not None
+    assert measurement["retained_memory_supported"] in (True, False)
+
+
+def test_retained_memory_measurement_can_be_disabled_without_relabeling_source():
+    measurement = measure_case(
+        discover_cases()[0],
+        measure_gpu=False,
+        measure_peak_memory=False,
+        measure_retained_source_memory=False,
+    )
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is None
+    assert measurement["retained_memory_error"] is None
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+
+
+def test_retained_memory_timeout_preserves_single_source_kind():
+    parent_connection = Mock()
+    parent_connection.poll.return_value = False
+    child_connection = Mock()
+    process = Mock()
+    process.is_alive.return_value = False
+
+    with (
+        patch(
+            "tools.mesh_transfer_benchmark.mp.Pipe",
+            return_value=(parent_connection, child_connection),
+        ),
+        patch("tools.mesh_transfer_benchmark.mp.Process", return_value=process),
+    ):
+        measurement = _retained_source_memory(_grid_mesh(1))
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is False
+    assert "Timed out" in measurement["retained_memory_error"]
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+
+
+def test_retained_memory_zero_delta_is_a_successful_measurement():
+    parent_connection = Mock()
+    parent_connection.poll.return_value = True
+    parent_connection.recv.return_value = (4096, 4096, 0, None)
+    child_connection = Mock()
+    process = Mock()
+    process.is_alive.return_value = False
+
+    with (
+        patch(
+            "tools.mesh_transfer_benchmark.mp.Pipe",
+            return_value=(parent_connection, child_connection),
+        ),
+        patch("tools.mesh_transfer_benchmark.mp.Process", return_value=process),
+    ):
+        measurement = _retained_source_memory(_grid_mesh(1))
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is True
+    assert measurement["retained_memory_error"] is None
+    assert measurement["retained_loader_process_rss_delta_bytes"] == 0
+
+
+def test_retained_memory_unavailable_reports_child_error():
+    parent_connection = Mock()
+    parent_connection.poll.return_value = True
+    parent_connection.recv.return_value = (
+        None,
+        None,
+        None,
+        "FileNotFoundError: ps is unavailable",
+    )
+    child_connection = Mock()
+    process = Mock()
+    process.is_alive.return_value = False
+
+    with (
+        patch(
+            "tools.mesh_transfer_benchmark.mp.Pipe",
+            return_value=(parent_connection, child_connection),
+        ),
+        patch("tools.mesh_transfer_benchmark.mp.Process", return_value=process),
+    ):
+        measurement = _retained_source_memory(_grid_mesh(1))
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is False
+    assert (
+        measurement["retained_memory_error"] == "FileNotFoundError: ps is unavailable"
+    )
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
 
 
 def test_list_cases_report_separate_non_retained_memory_and_export_metrics():
@@ -191,5 +289,7 @@ def test_list_cases_report_separate_non_retained_memory_and_export_metrics():
     )
 
     assert measurement["retained_source_kind"] == "list-or-debug-not-retained"
+    assert measurement["retained_memory_supported"] is None
+    assert measurement["retained_memory_error"] is None
     assert measurement["retained_loader_process_rss_delta_bytes"] is None
     assert measurement["export_request_completion_ms"] is None

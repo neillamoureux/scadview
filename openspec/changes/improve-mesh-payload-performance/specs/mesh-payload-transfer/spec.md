@@ -10,6 +10,9 @@ The change SHALL provide a repeatable comparison of the existing mesh path and
 the compact-payload path using the same representative meshes and environment.
 The comparison SHALL report serialized size, conversion and transfer time, peak
 memory where supported, and time until the first rendered frame.
+Retained-source RSS output SHALL identify the source kind independently from
+whether measurement was attempted or supported and SHALL report an explicit
+error when an attempted measurement is unavailable.
 
 #### Scenario: Baseline is captured before transport changes
 - **WHEN** implementation begins on the mesh transfer path
@@ -18,6 +21,10 @@ memory where supported, and time until the first rendered frame.
 #### Scenario: Compact path is compared fairly
 - **WHEN** the compact-payload stage is complete
 - **THEN** the same measurements are repeated with the same inputs and environment and the before-and-after results are recorded
+
+#### Scenario: Retained-source RSS is unavailable
+- **WHEN** the platform cannot report retained-source RSS or the measurement process fails or times out
+- **THEN** the benchmark preserves the actual source kind, marks RSS measurement unsupported, reports the reason, and does not represent missing values as a successful zero measurement
 
 ### Requirement: Loader results use compact mesh data
 The system SHALL represent each successfully normalized mesh crossing the loader

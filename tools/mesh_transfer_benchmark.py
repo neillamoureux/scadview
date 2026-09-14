@@ -78,6 +78,8 @@ METRIC_NAMES = (
     "retained_loader_process_baseline_rss_bytes",
     "retained_loader_process_final_rss_bytes",
     "retained_source_kind",
+    "retained_memory_supported",
+    "retained_memory_error",
 )
 
 
@@ -150,7 +152,7 @@ def run_benchmark(
 ) -> dict[str, Any]:
     """Measure every workload using the selected transfer representation."""
     return {
-        "benchmark_version": 3,
+        "benchmark_version": 4,
         "command": "uv run --no-sync python -m tools.mesh_transfer_benchmark",
         "comparison_kind": "same-version-counterfactual",
         "transfer_boundary": "child-to-main-process",
@@ -249,10 +251,8 @@ def _measure_case(
     export_completion_ms = (
         _export_request_completion(meshes[-1]) if len(meshes) == 1 else None
     )
-    retained_memory = (
-        _retained_source_memory(meshes[-1])
-        if measure_retained_source_memory and len(meshes) == 1
-        else _no_retained_source_memory()
+    retained_memory = _retained_source_memory_for_case(
+        meshes, measure_retained_source_memory
     )
     measurement = {
         "case": case.name,
@@ -487,6 +487,16 @@ def _export_request_completion(mesh: Trimesh) -> float:
     return _elapsed_ms(start)
 
 
+def _retained_source_memory_for_case(
+    meshes: list[Trimesh], enabled: bool
+) -> dict[str, Any]:
+    if len(meshes) != 1:
+        return _unmeasured_retained_source_memory("list-or-debug-not-retained")
+    if not enabled:
+        return _unmeasured_retained_source_memory("single-final-source")
+    return _retained_source_memory(meshes[-1])
+
+
 def _retained_source_memory(mesh: Trimesh) -> dict[str, Any]:
     parent_connection, child_connection = mp.Pipe()
     process = mp.Process(
@@ -497,14 +507,19 @@ def _retained_source_memory(mesh: Trimesh) -> dict[str, Any]:
     try:
         parent_connection.send(mesh)
         if not parent_connection.poll(10):
-            return _no_retained_source_memory()
-        baseline, final, delta = parent_connection.recv()
-        return {
-            "retained_source_kind": "single-final-source",
-            "retained_loader_process_baseline_rss_bytes": baseline,
-            "retained_loader_process_final_rss_bytes": final,
-            "retained_loader_process_rss_delta_bytes": delta,
-        }
+            return _unavailable_retained_source_memory(
+                "Timed out waiting for retained-memory measurement"
+            )
+        baseline, final, delta, error = parent_connection.recv()
+        if error is not None:
+            return _unavailable_retained_source_memory(error)
+        if baseline is None or final is None or delta is None:
+            return _unavailable_retained_source_memory(
+                "Retained-memory measurement returned incomplete RSS values"
+            )
+        return _measured_retained_source_memory(baseline, final, delta)
+    except (EOFError, OSError, TypeError, ValueError) as error:
+        return _unavailable_retained_source_memory(f"{type(error).__name__}: {error}")
     finally:
         parent_connection.close()
         process.join(timeout=10)
@@ -516,33 +531,60 @@ def _retained_source_memory(mesh: Trimesh) -> dict[str, Any]:
 def _report_retained_source_memory(connection: Any) -> None:
     mesh: Trimesh | None = None
     try:
-        baseline = _current_rss_bytes()
+        baseline, baseline_error = _current_rss_bytes()
         mesh = connection.recv()
-        final = _current_rss_bytes()
+        final, final_error = _current_rss_bytes()
+        error = baseline_error or final_error
         delta = final - baseline if baseline is not None and final is not None else None
-        connection.send((baseline, final, delta))
+        connection.send((baseline, final, delta, error))
     finally:
         del mesh
         connection.close()
 
 
-def _no_retained_source_memory() -> dict[str, Any]:
+def _measured_retained_source_memory(
+    baseline: int, final: int, delta: int
+) -> dict[str, Any]:
     return {
-        "retained_source_kind": "list-or-debug-not-retained",
+        "retained_source_kind": "single-final-source",
+        "retained_memory_supported": True,
+        "retained_memory_error": None,
+        "retained_loader_process_baseline_rss_bytes": baseline,
+        "retained_loader_process_final_rss_bytes": final,
+        "retained_loader_process_rss_delta_bytes": delta,
+    }
+
+
+def _unavailable_retained_source_memory(error: str) -> dict[str, Any]:
+    return {
+        "retained_source_kind": "single-final-source",
+        "retained_memory_supported": False,
+        "retained_memory_error": error,
         "retained_loader_process_baseline_rss_bytes": None,
         "retained_loader_process_final_rss_bytes": None,
         "retained_loader_process_rss_delta_bytes": None,
     }
 
 
-def _current_rss_bytes() -> int | None:
+def _unmeasured_retained_source_memory(source_kind: str) -> dict[str, Any]:
+    return {
+        "retained_source_kind": source_kind,
+        "retained_memory_supported": None,
+        "retained_memory_error": None,
+        "retained_loader_process_baseline_rss_bytes": None,
+        "retained_loader_process_final_rss_bytes": None,
+        "retained_loader_process_rss_delta_bytes": None,
+    }
+
+
+def _current_rss_bytes() -> tuple[int | None, str | None]:
     try:
         output = subprocess.check_output(
             ["ps", "-o", "rss=", "-p", str(os.getpid())], text=True
         )
-    except (OSError, subprocess.CalledProcessError):
-        return None
-    return int(output.strip()) * 1024
+        return int(output.strip()) * 1024, None
+    except (OSError, subprocess.CalledProcessError, ValueError) as error:
+        return None, f"{type(error).__name__}: {error}"
 
 
 def _grid_mesh(

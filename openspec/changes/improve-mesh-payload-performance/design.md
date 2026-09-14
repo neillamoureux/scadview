@@ -70,6 +70,14 @@ the change evidence. The indexed-renderer gate asks whether CPU expansion, uploa
 or retained render buffers remain a material contributor after transport is
 compacted; it does not assume the answer.
 
+Retained-source memory reports keep source classification separate from
+measurement availability. `retained_source_kind` identifies a single retained
+source or a list/debug result with no retained source. A separate support field is
+true after a successful RSS measurement, false with a structured reason after an
+attempted but unavailable measurement, and null when measurement is disabled or
+not applicable. Numeric RSS values are present only for successful measurements,
+including a valid zero delta.
+
 Alternative: redesign the renderer first. Rejected because no current measurement
 identifies the renderer rather than serialization as the dominant cost.
 
