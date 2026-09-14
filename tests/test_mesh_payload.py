@@ -1,4 +1,6 @@
+import ast
 import pickle
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -7,7 +9,8 @@ from trimesh import Trimesh
 from trimesh.creation import icosphere
 
 import scadview
-from scadview.mesh_payload import MeshPayload, mesh_to_payload, payload_to_trimesh
+import scadview.mesh_payload as mesh_payload_module
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
 
 
 def _source(vertices, faces):
@@ -21,6 +24,38 @@ def _source(vertices, faces):
 
 def test_payload_module_is_not_a_top_level_public_export():
     assert not hasattr(scadview, "MeshPayload")
+
+
+def test_payload_module_has_no_reverse_conversion_surface():
+    assert not hasattr(mesh_payload_module, "payload_to_trimesh")
+
+
+def test_display_and_export_paths_do_not_reconstruct_payloads():
+    package_root = Path(__file__).parents[1] / "src" / "scadview"
+    boundary_paths = [
+        package_root / "controller.py",
+        package_root / "mesh_loader_process.py",
+        *sorted((package_root / "ui").rglob("*.py")),
+        *sorted((package_root / "render").rglob("*.py")),
+    ]
+
+    for path in boundary_paths:
+        source = path.read_text()
+        calls = [
+            node for node in ast.walk(ast.parse(source)) if isinstance(node, ast.Call)
+        ]
+        direct_trimesh_calls = [
+            node
+            for node in calls
+            if (
+                isinstance(node.func, ast.Name)
+                and node.func.id == "Trimesh"
+                or isinstance(node.func, ast.Attribute)
+                and node.func.attr == "Trimesh"
+            )
+        ]
+        assert "payload_to_trimesh" not in source, path
+        assert not direct_trimesh_calls, path
 
 
 def test_mesh_to_payload_uses_compact_shapes_dtypes_and_contiguous_arrays(mesh):
@@ -128,16 +163,6 @@ def test_mesh_to_payload_handles_empty_geometry():
     assert payload.face_normals.shape == (0, 3)
     np.testing.assert_array_equal(payload.bounds, np.zeros((2, 3), dtype=np.float32))
     assert payload.scale == 0.0
-
-
-def test_payload_to_trimesh_round_trips_geometry_and_color(mesh):
-    mesh.metadata["scadview"] = {"color": [0.2, 0.4, 0.6, 0.8]}
-
-    exported = payload_to_trimesh(mesh_to_payload(mesh))
-
-    np.testing.assert_allclose(exported.vertices, mesh.vertices)
-    np.testing.assert_array_equal(exported.faces, mesh.faces)
-    assert exported.metadata["scadview"]["color"] == [0.2, 0.4, 0.6, 0.8]
 
 
 @pytest.mark.parametrize(

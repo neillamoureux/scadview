@@ -125,13 +125,3 @@ def _metadata_color(metadata: Any) -> tuple[float, ...] | None:
     if not all(0.0 <= component <= 1.0 for component in components):
         raise ValueError("SCADview color components must be in the range [0.0, 1.0]")
     return components
-
-
-def payload_to_trimesh(payload: MeshPayload) -> Trimesh:
-    """Reconstruct an export mesh from compact internal data."""
-    mesh = Trimesh(
-        vertices=payload.vertices.copy(), faces=payload.faces.copy(), process=False
-    )
-    if payload.color is not None:
-        mesh.metadata["scadview"] = {"color": (payload.color / 255).tolist()}
-    return mesh
