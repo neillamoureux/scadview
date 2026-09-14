@@ -816,7 +816,11 @@ class MeshLoaderProcess(Process):
                 ),
             )
             return
-        worker = ExportWorker(command, source, self._export_result_queue)
+        snapshot = _snapshot_export_source_at_protocol_boundary(source)
+        if isinstance(snapshot, ExportError):
+            self._publish_export_result(command, snapshot)
+            return
+        worker = ExportWorker(command, snapshot, self._export_result_queue)
         self._active_export_workers.add(worker)
         worker.start()
 
@@ -831,6 +835,15 @@ class MeshLoaderProcess(Process):
         self._export_result_queue.put(
             ExportResult(command.request_id, command.generation, error)
         )
+
+
+def _snapshot_export_source_at_protocol_boundary(
+    source: Trimesh,
+) -> Trimesh | ExportError:
+    try:
+        return source.copy()
+    except Exception as error:
+        return ExportError(type(error).__name__, str(error))
 
 
 class ExportWorker(Thread):

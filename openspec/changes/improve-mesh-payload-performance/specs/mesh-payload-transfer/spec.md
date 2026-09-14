@@ -162,7 +162,9 @@ feature-debug lists, incremental results, and triangle-edge display.
 The system SHALL keep export available for the final successfully loaded,
 non-debug mesh and SHALL export the retained normalized source `Trimesh` without
 reconstructing it from `MeshPayload`. Export SHALL remain asynchronous to the UI
-and SHALL preserve the existing supported formats and error reporting.
+and SHALL preserve the existing supported formats and error reporting. When the
+loader accepts an export request, it SHALL isolate a point-in-time value copy of
+the retained source before starting asynchronous export execution.
 
 #### Scenario: Loaded mesh is exported
 - **WHEN** the user exports a completed single-mesh load to a currently supported format
@@ -175,6 +177,14 @@ and SHALL preserve the existing supported formats and error reporting.
 #### Scenario: Export completes after a reload begins
 - **WHEN** an accepted export request is followed by a new load
 - **THEN** the export result remains correlated to its request id and reports completion or a structured error without replacing the new generation's display state
+
+#### Scenario: Accepted export source is mutated or replaced
+- **WHEN** user-retained source state is mutated or the loader's current source is replaced after an export request is accepted
+- **THEN** the export uses the isolated source value captured at acceptance, including its geometry, metadata, visuals, and color state
+
+#### Scenario: Export source snapshot fails
+- **WHEN** the loader cannot copy the retained source while accepting an export request
+- **THEN** it starts no export worker and returns one correlated structured error
 
 #### Scenario: Export fails
 - **WHEN** the exporter raises an expected file or format error

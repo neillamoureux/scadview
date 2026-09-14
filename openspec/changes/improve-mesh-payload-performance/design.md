@@ -197,13 +197,23 @@ accepted export completes and reports its own request id. Shutdown stops accepti
 new export work and applies the existing bounded process-termination policy if an
 export cannot finish.
 
-Exporter invocation is isolated in a named asynchronous protocol-boundary adapter.
-The adapter catches `Exception`, but not `BaseException`, because exporters and
-their plugins can fail with exception types the application cannot enumerate and
-an uncaught worker-thread failure would strand an accepted request. Its catch
-covers only exporter invocation and converts the failure to one structured
-`ExportResult`; the worker publishes that terminal result exactly once outside the
-adapter.
+The loader accepts an export by copying the retained source before starting the
+export worker. The copy is an isolated point-in-time value of the source geometry,
+visuals, attributes, and metadata; replacing or mutating the user-retained source
+after acceptance cannot change the export. Copying occurs synchronously in the
+loader command loop so a subsequently queued reload cannot start before the
+snapshot exists, while the main process and wx event loop remain asynchronous.
+Only accepted exports pay the temporary copy cost, and reaping the export worker
+releases its snapshot. A copy failure produces a correlated structured export
+error and starts no worker.
+
+Snapshot creation and exporter invocation are isolated in named asynchronous
+protocol-boundary adapters. The adapters catch `Exception`, but not
+`BaseException`, because copying and exporter plugins can fail with exception
+types the application cannot enumerate and an uncaught boundary failure would
+strand the request. Each catch covers only its external operation and converts the
+failure to a structured export error; the terminal result is published exactly
+once outside the adapter.
 
 ### Inject built-in geometry as SceneAssets
 
@@ -265,8 +275,9 @@ reproduce corner markers for vertices shared by multiple triangles.
   successful non-debug source, measure child-process RSS, and revisit spooling
   only if retained memory is material.
 - [Export protocol races with reload or shutdown] -> Correlate request ids,
-  require generation-aware source selection, use a reliable result queue, and
-  test cancellation, process death, and shutdown.
+  require generation-aware source selection, copy the source at acceptance, use a
+  reliable result queue, and test mutation, cancellation, process death, and
+  shutdown.
 - [A compact payload may improve pickle size but not first-frame latency] -> Keep
   measurement as an acceptance activity and defer shader work unless the remaining
   cost is material.

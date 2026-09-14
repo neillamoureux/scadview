@@ -87,6 +87,7 @@ def _write_reloadable_module(
     module_path = tmp_path / "reloadable_mesh.py"
     module_path.write_text(
         f"""
+from copy import deepcopy
 from pathlib import Path
 from time import monotonic, sleep
 
@@ -99,6 +100,16 @@ EXPORT_RELEASE = Path({str(export_release)!r})
 
 
 class BlockingExportMesh(Trimesh):
+    def copy(self, include_cache=False, include_visual=True):
+        return type(self)(
+            vertices=self.vertices.copy(),
+            faces=self.faces.copy(),
+            face_normals=self.face_normals.copy(),
+            visual=self.visual.copy() if include_visual else None,
+            metadata=deepcopy(self.metadata),
+            process=False,
+        )
+
     def export(self, file_obj=None, file_type=None, **kwargs):
         EXPORT_STARTED.write_text(
             self.metadata["integration-source"], encoding="utf-8"

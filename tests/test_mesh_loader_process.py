@@ -874,16 +874,46 @@ def test_loader_process_rejects_export_for_stale_generation():
     )
 
 
-def test_export_completes_from_old_source_after_reload():
+def test_loader_process_reports_export_snapshot_failure():
+    source = box()
+    source.copy = Mock(side_effect=MemoryError("snapshot allocation failed"))
+    process = _export_process(source)
+
+    process._start_export(ExportCommand(7, 1, "/tmp/model.stl"))
+
+    process._export_result_queue.put.assert_called_once_with(
+        ExportResult(
+            7,
+            1,
+            ExportError("MemoryError", "snapshot allocation failed"),
+        )
+    )
+    assert not process._active_export_workers
+
+
+def test_accepted_export_uses_snapshot_after_source_mutation_and_reload():
     export_started = Event()
     release_export = Event()
     source = box()
+    source.vertices[0] = (0.125, 0.25, 0.5)
+    source.metadata["accepted"] = {"value": "before"}
+    source.visual.face_colors[:] = (10, 20, 30, 40)
+    snapshot = source.copy()
+    exported: dict[str, object] = {}
 
-    def blocking_export(_: str) -> None:
-        export_started.set()
-        release_export.wait(timeout=2.0)
+    def blocking_export(export_source):
+        def export(_: str) -> None:
+            export_started.set()
+            release_export.wait(timeout=2.0)
+            exported["vertices"] = export_source.vertices.copy()
+            exported["metadata"] = export_source.metadata.copy()
+            exported["face_colors"] = export_source.visual.face_colors.copy()
 
-    source.export = blocking_export
+        return export
+
+    source.export = blocking_export(source)
+    snapshot.export = blocking_export(snapshot)
+    source.copy = Mock(return_value=snapshot)
     result_queue = Mock()
     process = object.__new__(MeshLoaderProcess)
     process._worker = SimpleNamespace(generation=1, export_source=source)
@@ -893,6 +923,9 @@ def test_export_completes_from_old_source_after_reload():
 
     process._start_export(ExportCommand(7, 1, "/tmp/model.stl"))
     assert export_started.wait(timeout=1.0)
+    source.vertices[0] = (9.0, 8.0, 7.0)
+    source.metadata["accepted"]["value"] = "after"
+    source.visual.face_colors[:] = (90, 80, 70, 60)
     process._worker = SimpleNamespace(generation=2, export_source=box())
     release_export.set()
     workers = tuple(process._active_export_workers)
@@ -900,7 +933,11 @@ def test_export_completes_from_old_source_after_reload():
         worker.join(timeout=2.0)
 
     assert all(not worker.is_alive() for worker in workers)
-    assert result_queue.put.call_args.args[0] == ExportResult(7, 1)
+    source.copy.assert_called_once_with()
+    npt.assert_array_equal(exported["vertices"], snapshot.vertices)
+    assert exported["metadata"] == snapshot.metadata
+    npt.assert_array_equal(exported["face_colors"], snapshot.visual.face_colors)
+    result_queue.put.assert_called_once_with(ExportResult(7, 1))
 
 
 def test_loader_event_loop_reaps_completed_export_workers_before_polling():
@@ -938,12 +975,14 @@ def test_loader_reaps_only_completed_export_workers():
     export_started = Event()
     release_export = Event()
     source = box()
+    snapshot = source.copy()
 
     def blocking_export(_: str) -> None:
         export_started.set()
         release_export.wait(timeout=2.0)
 
-    source.export = blocking_export
+    snapshot.export = blocking_export
+    source.copy = Mock(return_value=snapshot)
     process = _export_process(source)
     process._start_export(ExportCommand(7, 1, "/tmp/model.stl"))
     assert export_started.wait(timeout=1.0)
@@ -960,12 +999,17 @@ def test_loader_reaps_only_completed_export_workers():
 def test_repeated_exports_release_finished_workers_and_old_generation_sources():
     process = _export_process(None)
     source_refs = []
+    snapshot_refs = []
 
     for generation in range(1, 4):
         source = box()
-        source.export = Mock()
+        snapshot = source.copy()
+        snapshot.export = Mock()
+        source.copy = Mock(return_value=snapshot)
         source_ref = weakref.ref(source)
+        snapshot_ref = weakref.ref(snapshot)
         source_refs.append(source_ref)
+        snapshot_refs.append(snapshot_ref)
         process._worker = SimpleNamespace(
             generation=generation,
             export_source=source,
@@ -978,10 +1022,13 @@ def test_repeated_exports_release_finished_workers_and_old_generation_sources():
         assert not process._active_export_workers
         process._worker = None
         del source
+        del snapshot
         gc.collect()
         assert source_ref() is None
+        assert snapshot_ref() is None
 
     assert all(source_ref() is None for source_ref in source_refs)
+    assert all(snapshot_ref() is None for snapshot_ref in snapshot_refs)
 
 
 def test_loader_process_rejects_export_after_shutdown_begins():
