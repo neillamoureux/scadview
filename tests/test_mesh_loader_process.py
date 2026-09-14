@@ -133,7 +133,7 @@ def test_load_result_preserves_explicit_debug_state():
         None,
         phase=LoadPhase.FINAL,
         revision=1,
-        exportable=False,
+        exportable=True,
         debug=False,
     )
     assert not lr.debug
@@ -340,6 +340,7 @@ def test_load_result_has_one_immutable_explicit_payload_surface():
         (LoadPhase.PROGRESS, "single", None, True, False),
         (LoadPhase.CANCELLED, "single", None, True, False),
         (LoadPhase.FINAL, "list", None, True, True),
+        (LoadPhase.FINAL, "single", None, False, False),
         (LoadPhase.FINAL, "single", None, False, True),
         (LoadPhase.FINAL, "list", None, False, False),
     ],
@@ -361,6 +362,34 @@ def test_load_result_rejects_inconsistent_state(
             exportable=exportable,
             debug=debug,
         )
+
+
+@pytest.mark.parametrize(
+    ("phase", "error"),
+    [
+        (LoadPhase.ERROR, LoadError("RuntimeError", "failed")),
+        (LoadPhase.CANCELLED, None),
+    ],
+)
+def test_terminal_result_can_retain_nonexportable_prior_display_payload(
+    phase,
+    error,
+):
+    payload = mesh_to_payload(box())
+
+    result = LoadResult(
+        1,
+        1,
+        payload,
+        error,
+        phase=phase,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
+
+    assert result.payload is payload
+    assert not result.exportable
 
 
 @pytest.mark.parametrize(
@@ -448,25 +477,29 @@ def test_load_worker_retains_only_the_final_successful_single_source(load_queue)
     assert worker.export_source is final
 
 
-def test_load_worker_reuses_the_last_payload_for_the_final_result(load_queue):
+def test_load_worker_scalar_final_snapshot_is_atomic():
+    publication_queue = queue.Queue()
     source = box()
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
         loader = mock_module_loader.return_value
         loader.run_function.return_value = iter([source])
         with patch("scadview.mesh_loader_process.mesh_to_payload") as to_payload:
             to_payload.return_value = mesh_to_payload(source)
-            worker = LoadWorker("test/path", load_queue)
+            worker = LoadWorker("test/path", publication_queue)
             worker.load()
 
     assert to_payload.call_count == 1
-    first_result = load_queue.get(timeout=1.0)
-    final_result = load_queue.get(timeout=1.0)
+    first_result = publication_queue.get(timeout=1.0)
+    final_result = publication_queue.get(timeout=1.0)
     _assert_payload_geometry(first_result.payload, source)
     _assert_payload_geometry(final_result.payload, source)
     assert first_result.phase is LoadPhase.PROGRESS
     assert final_result.phase is LoadPhase.FINAL
     assert final_result.exportable
     assert final_result.revision != first_result.revision
+    assert worker.final_snapshot is not None
+    assert worker.final_snapshot.source is source
+    assert worker.final_snapshot.payload is final_result.payload
 
 
 def test_load_worker_reuses_the_last_payload_for_the_final_error_result(load_queue):
@@ -499,19 +532,18 @@ def test_load_worker_invalidates_export_source_for_debug_and_errors(load_queue):
     assert worker.export_source is None
 
 
-def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
-    load_queue,
-):
+def test_load_worker_refreshes_final_payload_after_generator_mutates_source():
+    publication_queue = queue.Queue()
     source = box()
     initial_vertices = source.vertices.copy()
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
         loader = mock_module_loader.return_value
         loader.run_function.return_value = _mutate_after_last_yield(source)
-        worker = LoadWorker("test/path", load_queue)
+        worker = LoadWorker("test/path", publication_queue)
         worker.load()
 
-    first_result = load_queue.get(timeout=1.0)
-    final_result = load_queue.get(timeout=1.0)
+    first_result = publication_queue.get(timeout=1.0)
+    final_result = publication_queue.get(timeout=1.0)
     assert isinstance(final_result.payload, MeshPayload)
     assert final_result.payload.color.tolist() == [32, 61, 92, 122]
     npt.assert_allclose(final_result.payload.vertices, source.vertices)
@@ -519,6 +551,8 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
     assert worker.export_source.metadata == source.metadata
     assert worker.final_snapshot is not None
     assert worker.final_snapshot.source is source
+    assert worker.final_snapshot.payload is final_result.payload
+    assert final_result.exportable
     npt.assert_array_equal(
         worker.final_snapshot.payload.vertices, final_result.payload.vertices
     )

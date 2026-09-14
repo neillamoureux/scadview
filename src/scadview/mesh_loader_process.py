@@ -193,12 +193,17 @@ class LoadResult:
             raise ValueError("Load result debug state must match a payload list")
 
     def _validate_exportable_state(self) -> None:
-        if self.exportable and (
-            self.phase is not LoadPhase.FINAL
-            or not isinstance(self.payload, MeshPayload)
-            or self.debug
-        ):
+        final_single_payload = (
+            self.phase is LoadPhase.FINAL
+            and isinstance(self.payload, MeshPayload)
+            and not self.debug
+        )
+        if self.exportable and not final_single_payload:
             raise ValueError("Only final single-payload load results are exportable")
+        if final_single_payload and not self.exportable:
+            raise ValueError(
+                "Final non-debug single-payload load results must be exportable"
+            )
 
     @property
     def complete(self) -> bool:

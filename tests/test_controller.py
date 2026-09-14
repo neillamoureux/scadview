@@ -226,16 +226,20 @@ def test_controller_retains_only_current_completed_single_payload(monkeypatch):
 
         assert controller.current_mesh is payload
         assert controller.exportable_payload is payload
+        assert controller.export_available
     finally:
         controller.close()
 
 
-def test_controller_uses_explicit_exportability_in_load_result(monkeypatch):
+def test_controller_cannot_receive_nonexportable_final_single_payload(monkeypatch):
     controller = _controller(monkeypatch)
     payload = mesh_to_payload(box())
     try:
         controller.load_mesh("/tmp/model.py")
-        controller._load_queue.items.append(
+        with pytest.raises(
+            ValueError,
+            match="Final non-debug single-payload load results must be exportable",
+        ):
             LoadResult(
                 1,
                 1,
@@ -247,13 +251,9 @@ def test_controller_uses_explicit_exportability_in_load_result(monkeypatch):
                 exportable=False,
                 debug=False,
             )
-        )
 
-        controller.check_load_queue()
-
-        assert controller.current_mesh is payload
+        assert controller.current_mesh is None
         assert controller.exportable_payload is None
-        assert not controller.export("/tmp/model.stl")
     finally:
         controller.close()
 
