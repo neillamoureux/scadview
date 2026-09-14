@@ -275,7 +275,7 @@ class LoadWorker(Thread):
         parameter_values: dict[str, ScalarParameterValue] | None = None,
         generation: int = 0,
     ):
-        super().__init__()
+        super().__init__(daemon=True)
         self.module_path = module_path
         self.load_queue = load_queue
         self.cancelled = False
@@ -730,11 +730,14 @@ class MeshLoaderProcess(Process):
         self._worker: LoadWorker | None = None
         self._active_load_workers: set[LoadWorker] = set()
         self._active_export_workers: set[ExportWorker] = set()
+        self._export_completions: queue.SimpleQueue[ExportResult] | None = None
         self._accepting_exports = True
         self._log_queue = log_queue
         self._log_level = log_level
 
     def run(self) -> None:
+        if self._export_completions is None:
+            self._export_completions = queue.SimpleQueue()
         # Set logging level for the loaded module; it can be changed in that module
         configure_worker_logging(self._log_queue, logging.DEBUG)
 
@@ -771,9 +774,22 @@ class MeshLoaderProcess(Process):
                 self._active_load_workers.remove(worker)
 
     def _reap_export_workers(self) -> None:
+        self._drain_export_completions()
         for worker in tuple(self._active_export_workers):
             if not worker.is_alive():
+                worker.join()
+                self._drain_export_completions()
                 self._active_export_workers.remove(worker)
+
+    def _drain_export_completions(self) -> None:
+        if self._export_completions is None:
+            raise RuntimeError("Export completion channel is not initialized")
+        while True:
+            try:
+                result = self._export_completions.get_nowait()
+            except queue.Empty:
+                return
+            self._publish_completed_export_result(result)
 
     def _start_load(self, command: LoadMeshCommand) -> None:
         self.cancel()
@@ -805,17 +821,12 @@ class MeshLoaderProcess(Process):
         self._accepting_exports = False
         self.cancel()
         load_deadline = monotonic() + self.LOAD_SHUTDOWN_TIMEOUT
-        if not self._join_load_workers(load_deadline):
+        load_workers_finished = self._join_load_workers(load_deadline)
+        export_deadline = monotonic() + self.EXPORT_SHUTDOWN_TIMEOUT
+        export_workers_finished = self._join_export_workers(export_deadline)
+        if not load_workers_finished or not export_workers_finished:
             return
-        deadline = monotonic() + self.EXPORT_SHUTDOWN_TIMEOUT
-        for worker in tuple(self._active_export_workers):
-            worker.join(timeout=max(0.0, deadline - monotonic()))
-            if worker.is_alive():
-                logger.warning(
-                    "Export worker did not finish before loader shutdown deadline"
-                )
-                return
-            self._active_export_workers.remove(worker)
+        self._drain_export_completions()
         self._command_queue.close()
         self._load_queue.close()
         self._export_result_queue.close()
@@ -831,6 +842,21 @@ class MeshLoaderProcess(Process):
                 all_finished = False
                 continue
             self._active_load_workers.remove(worker)
+        return all_finished
+
+    def _join_export_workers(self, deadline: float) -> bool:
+        all_finished = True
+        for worker in tuple(self._active_export_workers):
+            worker.join(timeout=max(0.0, deadline - monotonic()))
+            if worker.is_alive():
+                logger.warning(
+                    "Export worker did not finish before loader shutdown deadline"
+                )
+                all_finished = False
+                continue
+            self._drain_export_completions()
+            self._active_export_workers.remove(worker)
+        self._drain_export_completions()
         return all_finished
 
     def _start_export(self, command: ExportCommand) -> None:
@@ -853,7 +879,9 @@ class MeshLoaderProcess(Process):
         if isinstance(snapshot, ExportError):
             self._publish_export_result(command, snapshot)
             return
-        worker = ExportWorker(command, snapshot, self._export_result_queue)
+        if self._export_completions is None:
+            raise RuntimeError("Export completion channel is not initialized")
+        worker = ExportWorker(command, snapshot, self._export_completions)
         self._active_export_workers.add(worker)
         worker.start()
 
@@ -865,9 +893,12 @@ class MeshLoaderProcess(Process):
     def _publish_export_result(
         self, command: ExportCommand, error: ExportError | None
     ) -> None:
-        self._export_result_queue.put(
+        self._publish_completed_export_result(
             ExportResult(command.request_id, command.generation, error)
         )
+
+    def _publish_completed_export_result(self, result: ExportResult) -> None:
+        self._export_result_queue.put(result)
 
 
 def _snapshot_export_source_at_protocol_boundary(
@@ -884,16 +915,16 @@ class ExportWorker(Thread):
         self,
         command: ExportCommand,
         source: Trimesh,
-        result_queue: MpExportResultQueue,
+        completion_queue: queue.SimpleQueue[ExportResult],
     ) -> None:
-        super().__init__()
+        super().__init__(daemon=True)
         self._command = command
         self._source = source
-        self._result_queue = result_queue
+        self._completion_queue = completion_queue
 
     def run(self) -> None:
         result = _export_result_at_protocol_boundary(self._command, self._source)
-        self._result_queue.put(result)
+        self._completion_queue.put(result)
 
 
 def _export_result_at_protocol_boundary(

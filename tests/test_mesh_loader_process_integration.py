@@ -14,6 +14,7 @@ from scadview.features import FeatureState
 from scadview.mesh_loader_process import (
     Command,
     ExportCommand,
+    ExportError,
     ExportResult,
     LoadError,
     LoadMeshCommand,
@@ -28,6 +29,22 @@ from scadview.mesh_loader_process import (
 from scadview.mesh_payload import MeshPayload
 
 TIMEOUT_SECONDS = 5.0
+
+
+class ChildFailingExportResultQueue(MpExportResultQueue):
+    def __init__(self, maxsize: int, type_: type[ExportResult]):
+        super().__init__(maxsize, type_)
+        self._owner_pid = os.getpid()
+
+    def put(
+        self,
+        item: ExportResult,
+        block: bool = True,
+        timeout: float | None = None,
+    ):
+        if os.getpid() != self._owner_pid:
+            raise BrokenPipeError("injected child export publication failure")
+        return super().put(item, block=block, timeout=timeout)
 
 
 @dataclass
@@ -401,6 +418,86 @@ def test_controller_translates_forced_real_loader_death_once(tmp_path):
         assert repeated.phase is LoadPhase.CANCELLED
     finally:
         controller.close(timeout=TIMEOUT_SECONDS)
+
+
+def test_controller_translates_real_export_publication_failure_once(
+    tmp_path,
+    monkeypatch,
+):
+    module_path = _write_exportable_module(tmp_path)
+    monkeypatch.setattr(
+        "scadview.controller.MpExportResultQueue",
+        ChildFailingExportResultQueue,
+    )
+    controller = Controller()
+
+    try:
+        controller.load_mesh(str(module_path))
+        _wait_for_controller_load(controller, LoadPhase.FINAL)
+        export_path = tmp_path / "publication-failure.stl"
+        assert controller.export(str(export_path))
+        availability: list[bool] = []
+        results: list[ExportResult] = []
+
+        def record_availability(available: bool) -> None:
+            availability.append(available)
+
+        def record_result(result: ExportResult) -> None:
+            results.append(result)
+
+        controller.on_export_availability_change.subscribe(record_availability)
+        controller.on_export_result.subscribe(record_result)
+
+        deadline = monotonic() + TIMEOUT_SECONDS
+        while controller._loader_process.is_alive() and monotonic() < deadline:
+            sleep(0.01)
+        controller._loader_process.join(timeout=TIMEOUT_SECONDS)
+        assert not controller._loader_process.is_alive()
+        assert controller._loader_process.exitcode != 0
+        assert export_path.exists()
+
+        controller.check_export_queue()
+        controller.check_export_queue()
+
+        assert not controller.export_pending
+        assert availability == [True]
+        assert results == [
+            ExportResult(
+                1,
+                controller.current_generation,
+                error=ExportError("LoaderProcessDied", "Mesh loader process exited"),
+            )
+        ]
+    finally:
+        controller.close(timeout=TIMEOUT_SECONDS)
+
+
+def _write_exportable_module(tmp_path: Path) -> Path:
+    module_path = tmp_path / "exportable_mesh.py"
+    module_path.write_text(
+        """
+from trimesh.creation import box
+
+
+def create_mesh():
+    return box()
+""".lstrip(),
+        encoding="utf-8",
+    )
+    return module_path
+
+
+def _wait_for_controller_load(
+    controller: Controller,
+    phase: LoadPhase,
+) -> LoadResult:
+    deadline = monotonic() + TIMEOUT_SECONDS
+    while monotonic() < deadline:
+        result = controller.check_load_queue()
+        if result.phase is phase:
+            return result
+        sleep(0.01)
+    raise AssertionError(f"Timed out waiting for controller {phase.value}")
 
 
 def _write_blocking_module(tmp_path: Path, started_path: Path) -> Path:

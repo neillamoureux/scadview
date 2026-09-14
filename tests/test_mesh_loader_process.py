@@ -785,14 +785,16 @@ def test_export_worker_uses_the_retained_source_without_payload_reconstruction()
     source = box()
     source.metadata["scadview"] = {"color": [0.123456, 0.2, 0.3, 0.4]}
     source.metadata["preserved"] = {"value": "exact"}
-    result_queue = Mock()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
     exported: list[Trimesh] = []
 
     source.export = lambda _: exported.append(source)
-    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
+    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, completion_queue).run()
 
     assert exported == [source]
-    assert result_queue.put.call_args.args[0] == ExportResult(3, 4)
+    assert completion_queue.get_nowait() == ExportResult(3, 4)
+    with pytest.raises(queue.Empty):
+        completion_queue.get_nowait()
     assert source.metadata["preserved"] == {"value": "exact"}
 
 
@@ -832,55 +834,57 @@ def test_retained_source_export_preserves_precision_metadata_and_visuals(load_qu
         exported["face_colors"] = retained.visual.face_colors.copy()
 
     source.export = record_export
-    result_queue = Mock()
-    ExportWorker(ExportCommand(9, 9, "/tmp/model.ply"), retained, result_queue).run()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
+    ExportWorker(
+        ExportCommand(9, 9, "/tmp/model.ply"), retained, completion_queue
+    ).run()
 
     np.testing.assert_array_equal(exported["vertices"], source.vertices)
     assert exported["metadata"] == source.metadata
     np.testing.assert_array_equal(exported["face_colors"], face_colors)
     assert exported["path"] == "/tmp/model.ply"
-    assert result_queue.put.call_args.args[0] == ExportResult(9, 9)
+    assert completion_queue.get_nowait() == ExportResult(9, 9)
 
 
 @pytest.mark.parametrize("extension", ["stl", "obj", "ply", "off"])
 def test_export_worker_dispatches_supported_format_by_path(extension, tmp_path):
     source = box()
-    result_queue = Mock()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
     output_path = tmp_path / f"model.{extension}"
 
-    ExportWorker(ExportCommand(10, 2, str(output_path)), source, result_queue).run()
+    ExportWorker(ExportCommand(10, 2, str(output_path)), source, completion_queue).run()
 
     assert output_path.exists()
-    assert result_queue.put.call_args.args[0] == ExportResult(10, 2)
+    assert completion_queue.get_nowait() == ExportResult(10, 2)
 
 
 def test_export_worker_reports_exporter_errors():
     source = box()
-    result_queue = Mock()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
 
     def fail_export(_: str) -> None:
         raise OSError("disk full")
 
     source.export = fail_export
-    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
+    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, completion_queue).run()
 
-    assert result_queue.put.call_args.args[0] == ExportResult(
+    assert completion_queue.get_nowait() == ExportResult(
         3, 4, ExportError("OSError", "disk full")
     )
 
 
 def test_export_worker_reports_unexpected_exporter_errors():
     source = box()
-    result_queue = Mock()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
 
     def fail_export(_: str) -> None:
         raise RuntimeError("unexpected exporter failure")
 
     source.export = fail_export
-    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
+    ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, completion_queue).run()
 
-    result_queue.put.assert_called_once_with(
-        ExportResult(3, 4, ExportError("RuntimeError", "unexpected exporter failure"))
+    assert completion_queue.get_nowait() == ExportResult(
+        3, 4, ExportError("RuntimeError", "unexpected exporter failure")
     )
 
 
@@ -971,6 +975,7 @@ def test_accepted_export_uses_snapshot_after_source_mutation_and_reload():
     process = object.__new__(MeshLoaderProcess)
     process._worker = SimpleNamespace(generation=1, export_source=source)
     process._export_result_queue = result_queue
+    process._export_completions = queue.SimpleQueue()
     process._active_export_workers = set()
     process._accepting_exports = True
 
@@ -984,6 +989,7 @@ def test_accepted_export_uses_snapshot_after_source_mutation_and_reload():
     workers = tuple(process._active_export_workers)
     for worker in workers:
         worker.join(timeout=2.0)
+    process._reap_export_workers()
 
     assert all(not worker.is_alive() for worker in workers)
     source.copy.assert_called_once_with()
@@ -993,12 +999,13 @@ def test_accepted_export_uses_snapshot_after_source_mutation_and_reload():
     result_queue.put.assert_called_once_with(ExportResult(7, 1))
 
 
-def test_loader_event_loop_reaps_completed_export_workers_before_polling():
+def test_loader_event_loop_publishes_completed_exports_before_reaping_and_polling():
     source = box()
     source.export = Mock()
     result_queue = Mock()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
     export_worker = ExportWorker(
-        ExportCommand(7, 1, "/tmp/model.stl"), source, result_queue
+        ExportCommand(7, 1, "/tmp/model.stl"), source, completion_queue
     )
     export_worker.start()
     export_worker.join(timeout=1.0)
@@ -1009,6 +1016,7 @@ def test_loader_event_loop_reaps_completed_export_workers_before_polling():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = result_queue
+    process._export_completions = completion_queue
     process._active_load_workers = set()
     process._active_export_workers = {export_worker}
     process._accepting_exports = True
@@ -1018,11 +1026,56 @@ def test_loader_event_loop_reaps_completed_export_workers_before_polling():
     def shutdown_after_reap(timeout):
         assert timeout == process.COMMAND_QUEUE_CHECK_TIMEOUT
         assert not process._active_export_workers
+        result_queue.put.assert_called_once_with(ExportResult(7, 1))
         return ShutDownCommand()
 
     process._command_queue.get.side_effect = shutdown_after_reap
     with patch("scadview.mesh_loader_process.configure_worker_logging"):
         process.run()
+
+    result_queue.put.assert_called_once_with(ExportResult(7, 1))
+
+
+def test_loader_repeated_completion_drains_do_not_publish_duplicates():
+    process = _export_process(None)
+    process._export_completions.put(ExportResult(7, 1))
+
+    process._drain_export_completions()
+    process._drain_export_completions()
+
+    process._export_result_queue.put.assert_called_once_with(ExportResult(7, 1))
+
+
+@pytest.mark.parametrize(
+    "publication_error",
+    [
+        BrokenPipeError("export result pipe broken"),
+        EOFError("export result pipe closed"),
+        OSError("export result queue closed"),
+        ValueError("export result queue unavailable"),
+    ],
+)
+def test_loader_export_publication_failure_is_fatal_and_prevents_silent_reap(
+    publication_error,
+):
+    source = box()
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
+    worker = ExportWorker(
+        ExportCommand(7, 1, "/tmp/model.stl"), source, completion_queue
+    )
+    worker.start()
+    worker.join(timeout=1.0)
+    assert not worker.is_alive()
+    process = _export_process(None)
+    process._export_completions = completion_queue
+    process._active_export_workers = {worker}
+    process._export_result_queue.put.side_effect = publication_error
+
+    with pytest.raises(type(publication_error), match=str(publication_error)):
+        process._reap_export_workers()
+
+    assert process._active_export_workers == {worker}
+    process._export_result_queue.put.assert_called_once_with(ExportResult(7, 1))
 
 
 def test_loader_tracks_cancelled_worker_while_starting_reload():
@@ -1080,6 +1133,18 @@ def test_loader_reaps_only_completed_export_workers():
     _join_export_workers(process)
     process._reap_export_workers()
     assert not process._active_export_workers
+    process._export_result_queue.put.assert_called_once_with(ExportResult(7, 1))
+
+
+def test_loader_workers_are_daemons_but_remain_explicitly_tracked(load_queue):
+    load_worker = LoadWorker("test/path", load_queue)
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
+    export_worker = ExportWorker(
+        ExportCommand(7, 1, "/tmp/model.stl"), box(), completion_queue
+    )
+
+    assert load_worker.daemon
+    assert export_worker.daemon
 
 
 def test_repeated_exports_release_finished_workers_and_old_generation_sources():
@@ -1121,6 +1186,7 @@ def test_loader_process_rejects_export_after_shutdown_begins():
     process = object.__new__(MeshLoaderProcess)
     process._accepting_exports = False
     process._export_result_queue = Mock()
+    process._export_completions = queue.SimpleQueue()
 
     process._start_export(ExportCommand(3, 4, "/tmp/model.stl"))
 
@@ -1137,6 +1203,7 @@ def test_loader_process_shutdown_closes_the_export_result_queue():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = Mock()
+    process._export_completions = queue.SimpleQueue()
     process._active_load_workers = set()
     process._active_export_workers = set()
     process._accepting_exports = True
@@ -1157,6 +1224,7 @@ def test_loader_shutdown_cancels_and_bounded_joins_all_load_workers():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = Mock()
+    process._export_completions = queue.SimpleQueue()
     process._active_load_workers = set(workers)
     process._active_export_workers = set()
     process._accepting_exports = True
@@ -1188,7 +1256,10 @@ def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
     result_queue = Mock()
     result_queue.put.side_effect = lambda _: events.append("put")
     result_queue.close.side_effect = lambda: events.append("close")
-    worker = ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue)
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
+    worker = ExportWorker(
+        ExportCommand(3, 4, "/tmp/model.stl"), source, completion_queue
+    )
     worker.start()
     assert export_started.wait(timeout=1.0)
 
@@ -1197,6 +1268,7 @@ def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = result_queue
+    process._export_completions = completion_queue
     process._active_load_workers = set()
     process._active_export_workers = {worker}
     process._accepting_exports = True
@@ -1209,10 +1281,57 @@ def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
     assert events == ["put", "close"]
 
 
+def test_loader_shutdown_publishes_completed_export_when_load_join_times_out():
+    load_worker = Mock()
+    load_worker.is_alive.return_value = True
+    completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
+    export_worker = ExportWorker(
+        ExportCommand(3, 4, "/tmp/model.stl"), box(), completion_queue
+    )
+    export_worker.start()
+    export_worker.join(timeout=1.0)
+    assert not export_worker.is_alive()
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = load_worker
+    process._command_queue = Mock()
+    process._load_queue = Mock()
+    process._export_result_queue = Mock()
+    process._export_completions = completion_queue
+    process._active_load_workers = {load_worker}
+    process._active_export_workers = {export_worker}
+    process._accepting_exports = True
+
+    process._shutdown()
+
+    process._export_result_queue.put.assert_called_once_with(ExportResult(3, 4))
+    assert not process._active_export_workers
+    process._export_result_queue.close.assert_not_called()
+
+
+def test_export_shutdown_joins_multiple_workers_against_one_deadline():
+    first_worker = Mock()
+    first_worker.is_alive.return_value = False
+    second_worker = Mock()
+    second_worker.is_alive.return_value = False
+    process = _export_process(None)
+    process._active_export_workers = {first_worker, second_worker}
+
+    with patch("scadview.mesh_loader_process.monotonic", side_effect=[90.0, 95.0]):
+        assert process._join_export_workers(100.0)
+
+    timeouts = {
+        first_worker.join.call_args.kwargs["timeout"],
+        second_worker.join.call_args.kwargs["timeout"],
+    }
+    assert timeouts == {5.0, 10.0}
+    assert not process._active_export_workers
+
+
 def _export_process(source):
     process = object.__new__(MeshLoaderProcess)
     process._worker = SimpleNamespace(generation=1, export_source=source)
     process._export_result_queue = Mock()
+    process._export_completions = queue.SimpleQueue()
     process._active_export_workers = set()
     process._accepting_exports = True
     return process
