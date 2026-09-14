@@ -665,6 +665,78 @@ def test_controller_reports_loader_death_as_current_load_error_once(monkeypatch)
 @pytest.mark.parametrize(
     "queue_error",
     [
+        None,
+        EOFError("load result pipe closed"),
+        OSError("load result queue closed"),
+        ValueError("load result queue unavailable"),
+    ],
+)
+def test_payloadless_progress_remains_active_until_terminal_failure(
+    monkeypatch,
+    queue_error,
+):
+    controller = _controller(monkeypatch)
+    try:
+        controller.load_mesh("/tmp/model.py")
+        generation = controller.current_generation
+        controller._load_queue.items.append(
+            LoadResult(
+                7,
+                3,
+                payload=None,
+                error=None,
+                generation=generation,
+                revision=4,
+                phase=LoadPhase.PROGRESS,
+                exportable=False,
+                debug=False,
+                features=[FeatureState("cutout", True)],
+                parameters=[CreateMeshParameter("width", "float", 2.5)],
+            )
+        )
+
+        progress = controller.check_load_queue()
+
+        assert progress.status is LoadStatus.START
+        assert controller.load_status is LoadStatus.START
+        assert controller._load_is_active()
+        if queue_error is not None:
+            controller._loader_process.is_alive = lambda: True
+            controller._load_queue.get_nowait = Mock(side_effect=queue_error)
+
+        terminal = controller.check_load_queue()
+
+        expected_error = (
+            LoadError("LoaderProcessDied", "Mesh loader process exited")
+            if queue_error is None
+            else LoadError(type(queue_error).__name__, str(queue_error))
+        )
+        assert terminal == LoadResult(
+            7,
+            3,
+            payload=None,
+            error=expected_error,
+            generation=generation,
+            revision=5,
+            phase=LoadPhase.ERROR,
+            exportable=False,
+            debug=False,
+            features=[FeatureState("cutout", True)],
+            parameters=[CreateMeshParameter("width", "float", 2.5)],
+        )
+        assert not controller._load_is_active()
+
+        repeated = controller.check_load_queue()
+
+        assert repeated.phase is LoadPhase.CANCELLED
+        assert controller.load_status is LoadStatus.ERROR
+    finally:
+        controller.close()
+
+
+@pytest.mark.parametrize(
+    "queue_error",
+    [
         EOFError("load result pipe closed"),
         OSError("load result queue closed"),
         ValueError("load result queue unavailable"),
@@ -692,6 +764,167 @@ def test_controller_reports_load_queue_transport_failure_once(
 
         assert repeated_result.phase is LoadPhase.CANCELLED
         assert controller.load_status is LoadStatus.ERROR
+    finally:
+        controller.close()
+
+
+def _invoke_load_trigger(controller: Controller, trigger: str) -> object:
+    if trigger == "initial":
+        return controller.load_mesh("/tmp/new-model.py")
+    if trigger == "reload":
+        return controller.reload_mesh()
+    if trigger == "feature":
+        return controller.set_feature_enabled("cutout", False)
+    if trigger == "debug":
+        return controller.set_debug_features(True)
+    if trigger == "parameter":
+        return controller.set_parameter_value("width", 4.0)
+    if trigger == "reset":
+        return controller.reset_parameter_values()
+    raise AssertionError(f"Unknown trigger: {trigger}")
+
+
+@pytest.mark.parametrize(
+    "queue_error",
+    [
+        EOFError("load command pipe closed"),
+        OSError("load command queue closed"),
+        ValueError("load command queue unavailable"),
+    ],
+)
+@pytest.mark.parametrize(
+    "trigger",
+    ["initial", "reload", "feature", "debug", "parameter", "reset"],
+)
+def test_load_trigger_terminalizes_command_submission_failure_once(
+    monkeypatch,
+    queue_error,
+    trigger,
+):
+    controller = _controller(monkeypatch)
+    payload = mesh_to_payload(box())
+    controller._module_path = "/tmp/model.py"
+    controller.current_mesh = payload
+    controller._exportable_payload = payload
+    controller.load_status = LoadStatus.COMPLETE
+    controller._feature_states = [FeatureState("cutout", True)]
+    controller._parameters = [CreateMeshParameter("width", "float", 2.5)]
+    controller._parameter_values = {"width": 3.5}
+    previous_generation = controller.current_generation
+    observed_at_put: list[tuple[object, ...]] = []
+    availability: list[bool] = []
+
+    def fail_put(command, block=True, timeout=None):
+        observed_at_put.append(
+            (
+                command,
+                controller.current_mesh,
+                controller.exportable_payload,
+                controller.load_status,
+                controller.current_generation,
+            )
+        )
+        raise queue_error
+
+    def record_availability(available: bool) -> None:
+        availability.append(available)
+
+    controller._command_queue.put = fail_put
+    controller.on_export_availability_change.subscribe(record_availability)
+    try:
+        trigger_result = _invoke_load_trigger(controller, trigger)
+
+        if trigger in {"debug", "reset"}:
+            assert trigger_result is True
+        else:
+            assert trigger_result is None
+        assert len(observed_at_put) == 1
+        command, mesh, exportable, status, generation = observed_at_put[0]
+        assert isinstance(command, LoadMeshCommand)
+        assert mesh is None
+        assert exportable is None
+        assert status is LoadStatus.START
+        assert generation == previous_generation + 1
+        assert controller._command_queue.items == []
+        assert availability == [False, False]
+        assert controller.load_status is LoadStatus.ERROR
+        assert not controller._load_is_active()
+
+        terminal = controller.check_load_queue()
+
+        assert terminal.generation == controller.current_generation
+        assert terminal.revision == 1
+        assert terminal.phase is LoadPhase.ERROR
+        assert terminal.error == LoadError(type(queue_error).__name__, str(queue_error))
+        assert terminal.payload is None
+        assert terminal.features == controller.feature_states
+        assert terminal.parameters == controller.parameters
+
+        repeated = controller.check_load_queue()
+
+        assert repeated.phase is LoadPhase.CANCELLED
+        assert availability == [False, False]
+    finally:
+        controller.close()
+
+
+def test_new_generation_discards_unconsumed_submission_error(monkeypatch):
+    controller = _controller(monkeypatch)
+    controller._loader_process.is_alive = lambda: True
+    original_put = controller._command_queue.put
+    controller._command_queue.put = Mock(side_effect=OSError("queue closed"))
+    try:
+        controller.load_mesh("/tmp/model.py")
+        failed_generation = controller.current_generation
+        controller._command_queue.put = original_put
+
+        controller.reload_mesh()
+
+        assert controller.current_generation == failed_generation + 1
+        assert controller.load_status is LoadStatus.START
+        assert controller._load_is_active()
+        result = controller.check_load_queue()
+        assert result.phase is LoadPhase.CANCELLED
+        assert controller.load_status is LoadStatus.START
+    finally:
+        controller.close()
+
+
+def test_load_submission_failure_stops_main_frame_timer(monkeypatch, caplog):
+    pytest.importorskip("wx")
+    from scadview.ui.wx.main_frame import MainFrame
+
+    controller = _controller(monkeypatch)
+    controller._command_queue.put = Mock(side_effect=OSError("queue closed"))
+    try:
+        controller.load_mesh("/tmp/model.py")
+        timer = Mock()
+        gauge = Mock()
+        frame = SimpleNamespace(
+            _controller=controller,
+            _loader_timer=timer,
+            _load_progress_gauge=gauge,
+            _loader_last_load_number=0,
+            _loader_last_revision=-1,
+            _has_mesh_changed=lambda result: False,
+        )
+        handled: list[LoadResult] = []
+
+        def handle_load_result(result: LoadResult) -> None:
+            handled.append(result)
+            MainFrame._handle_load_result(frame, result)
+
+        frame._handle_load_result = handle_load_result
+
+        with caplog.at_level("ERROR"):
+            MainFrame.on_load_timer(frame, Mock())
+
+        assert len(handled) == 1
+        assert handled[0].phase is LoadPhase.ERROR
+        assert handled[0].error == LoadError("OSError", "queue closed")
+        gauge.SetValue.assert_called_once_with(0)
+        timer.Stop.assert_called_once_with()
+        assert caplog.text.count("queue closed") == 1
     finally:
         controller.close()
 

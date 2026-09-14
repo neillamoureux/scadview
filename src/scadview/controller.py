@@ -59,7 +59,8 @@ class Controller:
         self._current_load_number = 0
         self._current_load_sequence_number = 0
         self._current_load_revision = 0
-        self._terminal_load_generation: int | None = None
+        self._active_load_generation: int | None = None
+        self._local_load_result: LoadResult | None = None
         self._next_export_request_id = 1
         self._pending_export_request_id: int | None = None
         self._pending_export_generation: int | None = None
@@ -153,6 +154,9 @@ class Controller:
         self.load_mesh(self.module_path)
 
     def check_load_queue(self) -> LoadResult:
+        local_load_result = self._take_local_load_result()
+        if local_load_result is not None:
+            return local_load_result
         try:
             load_result = self._load_queue.get_nowait()
         except queue.Empty:
@@ -160,6 +164,11 @@ class Controller:
         except (EOFError, OSError, ValueError) as error:
             return self._load_result_for_queue_error(error)
         return self._apply_load_result(load_result)
+
+    def _take_local_load_result(self) -> LoadResult | None:
+        load_result = self._local_load_result
+        self._local_load_result = None
+        return load_result
 
     def _load_result_for_empty_queue(self) -> LoadResult:
         if self._load_is_active() and not self._loader_process.is_alive():
@@ -211,7 +220,7 @@ class Controller:
             LoadPhase.ERROR,
             LoadPhase.CANCELLED,
         }:
-            self._terminal_load_generation = load_result.generation
+            self._active_load_generation = None
 
     def _apply_load_payload(self, load_result: LoadResult) -> None:
         if load_result.payload is not None:
@@ -224,10 +233,7 @@ class Controller:
         )
 
     def _load_is_active(self) -> bool:
-        return (
-            self.load_status is LoadStatus.START
-            and self._terminal_load_generation != self.current_generation
-        )
+        return self._active_load_generation == self.current_generation
 
     def _stale_load_result(self, generation: int) -> LoadResult:
         return LoadResult(
@@ -434,17 +440,23 @@ class Controller:
         self._current_load_number = 0
         self._current_load_sequence_number = 0
         self._current_load_revision = 0
-        self._terminal_load_generation = None
+        self._active_load_generation = self.current_generation
+        self._local_load_result = None
         self._notify_export_availability()
-        self._command_queue.put(
-            LoadMeshCommand(
-                self.module_path,
-                feature_states,
-                debug_features=self.debug_features,
-                parameter_values=self.parameter_values,
-                generation=self.current_generation,
+        try:
+            self._command_queue.put(
+                LoadMeshCommand(
+                    self.module_path,
+                    feature_states,
+                    debug_features=self.debug_features,
+                    parameter_values=self.parameter_values,
+                    generation=self.current_generation,
+                )
             )
-        )
+        except (EOFError, OSError, ValueError) as error:
+            self._local_load_result = self._complete_load_error(
+                LoadError(type(error).__name__, str(error))
+            )
 
     def _notify_export_availability(self) -> None:
         self.on_export_availability_change.notify(self.export_available)

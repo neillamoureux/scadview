@@ -218,7 +218,7 @@ class LoadResult:
             return LoadStatus.DEBUG
         if self.phase is LoadPhase.FINAL:
             return LoadStatus.COMPLETE
-        if self.phase is LoadPhase.PROGRESS and self.payload is not None:
+        if self.phase is LoadPhase.PROGRESS:
             return LoadStatus.START
         return LoadStatus.NONE
 

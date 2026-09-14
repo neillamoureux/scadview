@@ -195,7 +195,7 @@ def test_load_result_status():
         exportable=False,
         debug=False,
     )
-    assert lr.status == LoadStatus.NONE
+    assert lr.status == LoadStatus.START
     lr = LoadResult(
         1,
         2,
