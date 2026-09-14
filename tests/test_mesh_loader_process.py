@@ -30,6 +30,7 @@ from scadview.mesh_loader_process import (
     MpLoadQueue,
     MpQueue,
     ShutDownCommand,
+    _export_result_at_protocol_boundary,
 )
 from scadview.mesh_payload import MeshPayload, mesh_to_payload
 
@@ -825,9 +826,22 @@ def test_export_worker_reports_unexpected_exporter_errors():
     source.export = fail_export
     ExportWorker(ExportCommand(3, 4, "/tmp/model.stl"), source, result_queue).run()
 
-    assert result_queue.put.call_args.args[0] == ExportResult(
-        3, 4, ExportError("RuntimeError", "unexpected exporter failure")
+    result_queue.put.assert_called_once_with(
+        ExportResult(3, 4, ExportError("RuntimeError", "unexpected exporter failure"))
     )
+
+
+def test_export_protocol_boundary_does_not_catch_process_control_exceptions():
+    source = box()
+
+    def interrupt_export(_: str) -> None:
+        raise KeyboardInterrupt
+
+    source.export = interrupt_export
+    command = ExportCommand(3, 4, "/tmp/model.stl")
+
+    with pytest.raises(KeyboardInterrupt):
+        _export_result_at_protocol_boundary(command, source)
 
 
 def test_loader_process_reports_stale_export_requests_reliably():

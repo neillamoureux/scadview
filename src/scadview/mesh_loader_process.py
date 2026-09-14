@@ -846,16 +846,17 @@ class ExportWorker(Thread):
         self._result_queue = result_queue
 
     def run(self) -> None:
-        try:
-            self._source.export(self._command.path)
-        except Exception as error:
-            export_error = ExportError(type(error).__name__, str(error))
-        else:
-            export_error = None
-        self._result_queue.put(
-            ExportResult(
-                self._command.request_id,
-                self._command.generation,
-                export_error,
-            )
-        )
+        result = _export_result_at_protocol_boundary(self._command, self._source)
+        self._result_queue.put(result)
+
+
+def _export_result_at_protocol_boundary(
+    command: ExportCommand, source: Trimesh
+) -> ExportResult:
+    try:
+        source.export(command.path)
+    except Exception as error:
+        export_error = ExportError(type(error).__name__, str(error))
+    else:
+        export_error = None
+    return ExportResult(command.request_id, command.generation, export_error)

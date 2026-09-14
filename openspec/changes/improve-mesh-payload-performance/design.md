@@ -197,6 +197,14 @@ accepted export completes and reports its own request id. Shutdown stops accepti
 new export work and applies the existing bounded process-termination policy if an
 export cannot finish.
 
+Exporter invocation is isolated in a named asynchronous protocol-boundary adapter.
+The adapter catches `Exception`, but not `BaseException`, because exporters and
+their plugins can fail with exception types the application cannot enumerate and
+an uncaught worker-thread failure would strand an accepted request. Its catch
+covers only exporter invocation and converts the failure to one structured
+`ExportResult`; the worker publishes that terminal result exactly once outside the
+adapter.
+
 ### Inject built-in geometry as SceneAssets
 
 Introduce an immutable `SceneAssets` value containing payloads for the startup
