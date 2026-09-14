@@ -104,15 +104,38 @@ def expand_payload(
     NDArray[np.uint8],
     NDArray[np.uint8],
 ]:
-    triangles = np.ascontiguousarray(payload.vertices[payload.faces], dtype="f4")
-    normals = np.ascontiguousarray(
-        np.broadcast_to(payload.face_normals[:, np.newaxis, :], triangles.shape),
-        dtype="f4",
-    )
-    color = payload.color if payload.color is not None else DEFAULT_COLOR
-    colors = np.broadcast_to(color, (len(payload.faces), 3, 4)).copy()
+    triangles, normals, colors = expand_payloads_without_edges([payload])
     edges = create_edge_detect_array(len(payload.faces))
     return triangles, normals, colors, edges
+
+
+def expand_payloads_without_edges(
+    payloads: list[MeshPayload],
+) -> tuple[
+    NDArray[np.float32],
+    NDArray[np.float32],
+    NDArray[np.uint8],
+]:
+    total_faces = sum(len(payload.faces) for payload in payloads)
+    triangles = np.empty((total_faces, 3, 3), dtype=np.float32)
+    normals = np.empty((total_faces, 3, 3), dtype=np.float32)
+    colors = np.empty((total_faces, 3, 4), dtype=np.uint8)
+    face_start = 0
+    for payload in payloads:
+        face_end = face_start + len(payload.faces)
+        if face_end == face_start:
+            continue
+        np.take(
+            payload.vertices,
+            payload.faces,
+            axis=0,
+            out=triangles[face_start:face_end],
+        )
+        normals[face_start:face_end] = payload.face_normals[:, np.newaxis, :]
+        color = payload.color if payload.color is not None else DEFAULT_COLOR
+        colors[face_start:face_end] = color
+        face_start = face_end
+    return triangles, normals, colors
 
 
 def create_colors_array(
@@ -337,7 +360,7 @@ class AlphaMeshRenderee(MeshRenderee):
         view_matrix: NDArray[np.float32],
         name: str = "Unknown AlphaMesh",
     ):
-        triangles, normals, colors, _ = expand_payload(mesh)
+        triangles, normals, colors = expand_payloads_without_edges([mesh])
         self._alpha_renderee = AlphaRenderee(
             ctx, program, triangles, normals, colors, model_matrix, view_matrix, name
         )
@@ -388,13 +411,13 @@ class MeshListAlphaRenderee(MeshRenderee):
         view_matrix: NDArray[np.float32],
         name: str = "Unknown MeshListAlpha",
     ):
-        expanded = [expand_payload(mesh) for mesh in meshes]
+        triangles, normals, colors = expand_payloads_without_edges(meshes)
         self._alpha_renderee = AlphaRenderee(
             ctx,
             program,
-            np.ascontiguousarray(np.concatenate([item[0] for item in expanded])),
-            np.ascontiguousarray(np.concatenate([item[1] for item in expanded])),
-            np.ascontiguousarray(np.concatenate([item[2] for item in expanded])),
+            triangles,
+            normals,
+            colors,
             model_matrix,
             view_matrix,
             name,
@@ -440,6 +463,8 @@ def sort_triangles(
     model_matrix: NDArray[np.float32],
     view_matrix: NDArray[np.float32],
 ) -> NDArray[np.intp]:
+    if not len(triangles):
+        return np.empty(0, dtype=np.intp)
     vertices = triangles.reshape(-1, 3)
     vertices_4d = np.hstack([vertices, np.ones((len(vertices), 1), dtype="f4")])
     eye_verts = vertices_4d @ model_matrix @ view_matrix

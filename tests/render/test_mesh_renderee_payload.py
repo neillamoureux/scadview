@@ -4,12 +4,17 @@ from unittest import mock
 import numpy as np
 from trimesh.creation import box
 
-from scadview.mesh_payload import mesh_to_payload
+from scadview.mesh_payload import MeshPayload, mesh_to_payload
+from scadview.observable import Observable
+from scadview.render import mesh_renderee
 from scadview.render.mesh_renderee import (
+    MeshListAlphaRenderee,
     OpaqueMeshRenderee,
     create_mesh_renderee,
     expand_payload,
+    expand_payloads_without_edges,
 )
+from scadview.render.shader_program import ShaderVar
 
 
 def test_expand_payload_uses_indexed_vertices_and_flat_normals():
@@ -23,6 +28,230 @@ def test_expand_payload_uses_indexed_vertices_and_flat_normals():
     assert edges.shape == (len(payload.faces), 9)
     np.testing.assert_array_equal(normals[:, 0], payload.face_normals)
     np.testing.assert_array_equal(triangles[0], payload.vertices[payload.faces[0]])
+
+
+def test_edge_free_payload_aggregation_preserves_order_normals_and_colors():
+    first = _payload(
+        vertices=[[0, 0, 3], [1, 0, 3], [0, 1, 3], [1, 1, 3]],
+        faces=[[0, 1, 2], [1, 3, 2]],
+        normals=[[1, 2, 3], [4, 5, 6]],
+        color=[10, 20, 30, 40],
+    )
+    empty = _payload(
+        vertices=[],
+        faces=[],
+        normals=[],
+        color=[50, 60, 70, 80],
+    )
+    second = _payload(
+        vertices=[[10, 0, -2], [11, 0, -2], [10, 1, -2]],
+        faces=[[0, 1, 2]],
+        normals=[[7, 8, 9]],
+        color=[90, 100, 110, 120],
+    )
+
+    triangles, normals, colors = expand_payloads_without_edges([first, empty, second])
+
+    np.testing.assert_array_equal(
+        triangles,
+        np.array(
+            [
+                [[0, 0, 3], [1, 0, 3], [0, 1, 3]],
+                [[1, 0, 3], [1, 1, 3], [0, 1, 3]],
+                [[10, 0, -2], [11, 0, -2], [10, 1, -2]],
+            ],
+            dtype=np.float32,
+        ),
+    )
+    np.testing.assert_array_equal(
+        normals,
+        np.array(
+            [
+                [[1, 2, 3]] * 3,
+                [[4, 5, 6]] * 3,
+                [[7, 8, 9]] * 3,
+            ],
+            dtype=np.float32,
+        ),
+    )
+    np.testing.assert_array_equal(
+        colors,
+        np.array(
+            [
+                [[10, 20, 30, 40]] * 3,
+                [[10, 20, 30, 40]] * 3,
+                [[90, 100, 110, 120]] * 3,
+            ],
+            dtype=np.uint8,
+        ),
+    )
+    assert triangles.dtype == np.float32
+    assert normals.dtype == np.float32
+    assert colors.dtype == np.uint8
+    assert triangles.flags.c_contiguous
+    assert normals.flags.c_contiguous
+    assert colors.flags.c_contiguous
+
+
+def test_edge_free_payload_aggregation_handles_no_faces():
+    payload = _payload(
+        vertices=[],
+        faces=[],
+        normals=[],
+        color=None,
+    )
+
+    triangles, normals, colors = expand_payloads_without_edges([payload])
+
+    assert triangles.shape == (0, 3, 3)
+    assert normals.shape == (0, 3, 3)
+    assert colors.shape == (0, 3, 4)
+    assert triangles.dtype == np.float32
+    assert normals.dtype == np.float32
+    assert colors.dtype == np.uint8
+    assert triangles.flags.c_contiguous
+    assert normals.flags.c_contiguous
+    assert colors.flags.c_contiguous
+
+
+def test_edge_free_payload_aggregation_allocates_each_final_array_once():
+    first = mesh_to_payload(box())
+    second = mesh_to_payload(box())
+    total_faces = len(first.faces) + len(second.faces)
+
+    with mock.patch.object(mesh_renderee.np, "empty", wraps=np.empty) as allocate_array:
+        expand_payloads_without_edges([first, second])
+
+    assert allocate_array.call_args_list == [
+        mock.call((total_faces, 3, 3), dtype=np.float32),
+        mock.call((total_faces, 3, 3), dtype=np.float32),
+        mock.call((total_faces, 3, 4), dtype=np.uint8),
+    ]
+
+
+def test_transparent_list_aggregates_without_per_mesh_edges_or_expansions():
+    first = _payload(
+        vertices=[[0, 0, 2], [1, 0, 2], [0, 1, 2], [1, 1, 2]],
+        faces=[[0, 1, 2], [1, 3, 2]],
+        normals=[[1, 0, 0], [0, 1, 0]],
+        color=[255, 0, 0, 128],
+    )
+    empty = _payload(
+        vertices=[],
+        faces=[],
+        normals=[],
+        color=[0, 0, 255, 128],
+    )
+    second = _payload(
+        vertices=[[0, 0, -2], [1, 0, -2], [0, 1, -2]],
+        faces=[[0, 1, 2]],
+        normals=[[0, 0, 1]],
+        color=[0, 255, 0, 64],
+    )
+    ctx = mock.MagicMock()
+
+    with (
+        mock.patch.object(
+            mesh_renderee,
+            "expand_payload",
+            side_effect=AssertionError("transparent preparation expanded a mesh"),
+        ),
+        mock.patch.object(
+            mesh_renderee,
+            "create_edge_detect_array",
+            wraps=mesh_renderee.create_edge_detect_array,
+        ) as create_edges,
+        mock.patch.object(
+            mesh_renderee,
+            "create_vao_from_arrays",
+            wraps=mesh_renderee.create_vao_from_arrays,
+        ) as create_vao,
+    ):
+        renderee = MeshListAlphaRenderee(
+            ctx,
+            mock.MagicMock(),
+            [first, empty, second],
+            np.eye(4, dtype="f4"),
+            np.eye(4, dtype="f4"),
+        )
+        updates = Observable()
+        renderee.subscribe_to_updates(updates)
+        create_edges.assert_not_called()
+
+        renderee.render()
+        updates.notify(
+            ShaderVar.VIEW_MATRIX,
+            np.diag([1, 1, -1, 1]).astype(np.float32),
+        )
+        renderee.render()
+
+    assert create_edges.call_args_list == [mock.call(3), mock.call(3)]
+    assert create_vao.call_count == 2
+    triangles, normals, colors, edges = create_vao.call_args_list[0].args[2:]
+    np.testing.assert_array_equal(triangles[:, :, 2], [[-2] * 3, [2] * 3, [2] * 3])
+    np.testing.assert_array_equal(colors[0, 0], [0, 255, 0, 64])
+    np.testing.assert_array_equal(colors[1:, 0], [[255, 0, 0, 128]] * 2)
+    np.testing.assert_array_equal(normals[0, 0], [0, 0, 1])
+    assert edges.shape == (3, 9)
+    resorted_colors = create_vao.call_args_list[1].args[4]
+    np.testing.assert_array_equal(resorted_colors[:2, 0], [[255, 0, 0, 128]] * 2)
+    np.testing.assert_array_equal(resorted_colors[2, 0], [0, 255, 0, 64])
+
+
+def test_transparent_single_payload_avoids_discarded_edge_allocation():
+    mesh = box()
+    mesh.metadata["scadview"] = {"color": [0.2, 0.3, 0.4, 0.5]}
+    payload = mesh_to_payload(mesh)
+
+    with (
+        mock.patch.object(
+            mesh_renderee,
+            "expand_payload",
+            side_effect=AssertionError("transparent preparation expanded a mesh"),
+        ),
+        mock.patch.object(
+            mesh_renderee,
+            "create_edge_detect_array",
+            wraps=mesh_renderee.create_edge_detect_array,
+        ) as create_edges,
+    ):
+        renderee = create_mesh_renderee(
+            mock.MagicMock(),
+            mock.MagicMock(),
+            payload,
+            np.eye(4, dtype="f4"),
+            np.eye(4, dtype="f4"),
+        )
+        create_edges.assert_not_called()
+        renderee.render()
+
+    create_edges.assert_called_once_with(len(payload.faces))
+
+
+def test_transparent_list_with_only_zero_face_payload_builds_empty_buffers():
+    payload = _payload(
+        vertices=[],
+        faces=[],
+        normals=[],
+        color=[10, 20, 30, 128],
+    )
+
+    with mock.patch.object(mesh_renderee, "create_vao_from_arrays") as create_vao:
+        renderee = MeshListAlphaRenderee(
+            mock.MagicMock(),
+            mock.MagicMock(),
+            [payload],
+            np.eye(4, dtype="f4"),
+            np.eye(4, dtype="f4"),
+        )
+        renderee.render()
+
+    triangles, normals, colors, edges = create_vao.call_args.args[2:]
+    assert triangles.shape == (0, 3, 3)
+    assert normals.shape == (0, 3, 3)
+    assert colors.shape == (0, 3, 4)
+    assert edges.shape == (0, 9)
+    assert renderee.points.shape == (8, 3)
 
 
 def test_opaque_payload_upload_is_lazy():
@@ -74,3 +303,30 @@ def test_render_package_has_no_trimesh_dependency_or_reconstruction():
 
     assert "Trimesh" not in source
     assert "payload_to_trimesh" not in source
+
+
+def _payload(
+    *,
+    vertices,
+    faces,
+    normals,
+    color,
+) -> MeshPayload:
+    vertex_array = np.asarray(vertices, dtype=np.float32).reshape((-1, 3))
+    face_array = np.asarray(faces, dtype=np.uint32).reshape((-1, 3))
+    normal_array = np.asarray(normals, dtype=np.float32).reshape((-1, 3))
+    color_array = None if color is None else np.asarray(color, dtype=np.uint8)
+    if len(vertex_array):
+        bounds = np.array(
+            [vertex_array.min(axis=0), vertex_array.max(axis=0)], dtype=np.float32
+        )
+    else:
+        bounds = np.zeros((2, 3), dtype=np.float32)
+    return MeshPayload(
+        vertices=vertex_array,
+        faces=face_array,
+        face_normals=normal_array,
+        color=color_array,
+        bounds=bounds,
+        scale=0.0,
+    )
