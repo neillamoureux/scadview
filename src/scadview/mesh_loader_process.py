@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from multiprocessing import Process, Queue
 from multiprocessing import queues as mp_queues
-from threading import Thread
+from threading import Lock, Thread
 from time import monotonic, time
 from typing import Any, Generator, Generic, Type, TypeVar, cast
 
@@ -259,6 +259,7 @@ def debug_color() -> Generator[tuple[float, float, float], None, None]:
 class LoadWorker(Thread):
     PUT_QUEUE_TIMEOUT = 0.1
     load_number = 0
+    _load_number_lock = Lock()
 
     def __init__(
         self,
@@ -290,7 +291,9 @@ class LoadWorker(Thread):
         return self.final_snapshot.source
 
     def run(self):
-        LoadWorker.load_number += 1
+        with self._load_number_lock:
+            LoadWorker.load_number += 1
+            self.load_number = LoadWorker.load_number
         self.load()
 
     def load(self):
@@ -704,6 +707,7 @@ class LoadWorker(Thread):
 
 class MeshLoaderProcess(Process):
     COMMAND_QUEUE_CHECK_TIMEOUT = 0.1
+    LOAD_SHUTDOWN_TIMEOUT = 1.0
     EXPORT_SHUTDOWN_TIMEOUT = 1.0
 
     def __init__(
@@ -719,6 +723,7 @@ class MeshLoaderProcess(Process):
         self._load_queue = load_queue
         self._export_result_queue = export_result_queue
         self._worker: LoadWorker | None = None
+        self._active_load_workers: set[LoadWorker] = set()
         self._active_export_workers: set[ExportWorker] = set()
         self._accepting_exports = True
         self._log_queue = log_queue
@@ -732,6 +737,7 @@ class MeshLoaderProcess(Process):
         logger.setLevel(self._log_level)
 
         while True:
+            self._reap_load_workers()
             self._reap_export_workers()
             try:
                 command = self._command_queue.get(
@@ -740,17 +746,7 @@ class MeshLoaderProcess(Process):
             except queue.Empty:
                 continue
             if isinstance(command, LoadMeshCommand):
-                self.cancel()
-                logger.info(f"Loading mesh from {command.module_path}")
-                self._worker = LoadWorker(
-                    command.module_path,
-                    self._load_queue,
-                    feature_states=command.feature_states,
-                    debug_features=command.debug_features,
-                    parameter_values=command.parameter_values,
-                    generation=command.generation,
-                )
-                self._worker.start()
+                self._start_load(command)
             elif isinstance(command, CancelLoadCommand):
                 logger.info("Load cancelled")
                 self.cancel()
@@ -764,15 +760,36 @@ class MeshLoaderProcess(Process):
             else:
                 logger.warning(f"Unknown command received: {command}")
 
+    def _reap_load_workers(self) -> None:
+        for worker in tuple(self._active_load_workers):
+            if not worker.is_alive():
+                self._active_load_workers.remove(worker)
+
     def _reap_export_workers(self) -> None:
         for worker in tuple(self._active_export_workers):
             if not worker.is_alive():
                 self._active_export_workers.remove(worker)
 
+    def _start_load(self, command: LoadMeshCommand) -> None:
+        self.cancel()
+        logger.info(f"Loading mesh from {command.module_path}")
+        worker = LoadWorker(
+            command.module_path,
+            self._load_queue,
+            feature_states=command.feature_states,
+            debug_features=command.debug_features,
+            parameter_values=command.parameter_values,
+            generation=command.generation,
+        )
+        self._worker = worker
+        self._active_load_workers.add(worker)
+        worker.start()
+
     def cancel(self, close_queues: bool = False):
-        if self._worker is not None and self._worker.is_alive():
-            logger.info("Cancelling in progress load")
-            self._worker.cancel()
+        for worker in tuple(self._active_load_workers):
+            if worker.is_alive():
+                logger.info("Cancelling in progress load")
+                worker.cancel()
         if close_queues:
             self._command_queue.close()
             self._load_queue.close()
@@ -782,6 +799,9 @@ class MeshLoaderProcess(Process):
     def _shutdown(self) -> None:
         self._accepting_exports = False
         self.cancel()
+        load_deadline = monotonic() + self.LOAD_SHUTDOWN_TIMEOUT
+        if not self._join_load_workers(load_deadline):
+            return
         deadline = monotonic() + self.EXPORT_SHUTDOWN_TIMEOUT
         for worker in tuple(self._active_export_workers):
             worker.join(timeout=max(0.0, deadline - monotonic()))
@@ -794,6 +814,19 @@ class MeshLoaderProcess(Process):
         self._command_queue.close()
         self._load_queue.close()
         self._export_result_queue.close()
+
+    def _join_load_workers(self, deadline: float) -> bool:
+        all_finished = True
+        for worker in tuple(self._active_load_workers):
+            worker.join(timeout=max(0.0, deadline - monotonic()))
+            if worker.is_alive():
+                logger.warning(
+                    "Load worker did not finish before loader shutdown deadline"
+                )
+                all_finished = False
+                continue
+            self._active_load_workers.remove(worker)
+        return all_finished
 
     def _start_export(self, command: ExportCommand) -> None:
         if not self._accepting_exports:

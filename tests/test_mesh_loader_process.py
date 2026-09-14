@@ -5,7 +5,7 @@ import weakref
 from dataclasses import FrozenInstanceError
 from threading import Event, Thread
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import manifold3d
 import numpy as np
@@ -975,6 +975,7 @@ def test_loader_event_loop_reaps_completed_export_workers_before_polling():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = result_queue
+    process._active_load_workers = set()
     process._active_export_workers = {export_worker}
     process._accepting_exports = True
     process._log_queue = Mock()
@@ -988,6 +989,38 @@ def test_loader_event_loop_reaps_completed_export_workers_before_polling():
     process._command_queue.get.side_effect = shutdown_after_reap
     with patch("scadview.mesh_loader_process.configure_worker_logging"):
         process.run()
+
+
+def test_loader_tracks_cancelled_worker_while_starting_reload():
+    previous_worker = Mock()
+    previous_worker.is_alive.return_value = True
+    current_worker = Mock()
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = previous_worker
+    process._load_queue = Mock()
+    process._active_load_workers = {previous_worker}
+    command = LoadMeshCommand("test/path", generation=2)
+
+    with patch("scadview.mesh_loader_process.LoadWorker", return_value=current_worker):
+        process._start_load(command)
+
+    previous_worker.cancel.assert_called_once_with()
+    current_worker.start.assert_called_once_with()
+    assert process._worker is current_worker
+    assert process._active_load_workers == {previous_worker, current_worker}
+
+
+def test_loader_reaps_only_completed_load_workers():
+    completed_worker = Mock()
+    completed_worker.is_alive.return_value = False
+    active_worker = Mock()
+    active_worker.is_alive.return_value = True
+    process = object.__new__(MeshLoaderProcess)
+    process._active_load_workers = {completed_worker, active_worker}
+
+    process._reap_load_workers()
+
+    assert process._active_load_workers == {active_worker}
 
 
 def test_loader_reaps_only_completed_export_workers():
@@ -1070,11 +1103,38 @@ def test_loader_process_shutdown_closes_the_export_result_queue():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = Mock()
+    process._active_load_workers = set()
     process._active_export_workers = set()
     process._accepting_exports = True
 
     process._shutdown()
 
+    process._command_queue.close.assert_called_once_with()
+    process._load_queue.close.assert_called_once_with()
+    process._export_result_queue.close.assert_called_once_with()
+
+
+def test_loader_shutdown_cancels_and_bounded_joins_all_load_workers():
+    workers = [Mock(), Mock()]
+    for worker in workers:
+        worker.is_alive.side_effect = [True, False]
+    process = object.__new__(MeshLoaderProcess)
+    process._worker = workers[0]
+    process._command_queue = Mock()
+    process._load_queue = Mock()
+    process._export_result_queue = Mock()
+    process._active_load_workers = set(workers)
+    process._active_export_workers = set()
+    process._accepting_exports = True
+
+    process._shutdown()
+
+    for worker in workers:
+        worker.cancel.assert_called_once_with()
+        worker.join.assert_called_once_with(timeout=ANY)
+        assert 0.0 <= worker.join.call_args.kwargs["timeout"] <= 1.0
+    assert not process._active_load_workers
+    assert process._worker is None
     process._command_queue.close.assert_called_once_with()
     process._load_queue.close.assert_called_once_with()
     process._export_result_queue.close.assert_called_once_with()
@@ -1103,6 +1163,7 @@ def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
     process._command_queue = Mock()
     process._load_queue = Mock()
     process._export_result_queue = result_queue
+    process._active_load_workers = set()
     process._active_export_workers = {worker}
     process._accepting_exports = True
     shutdown = Thread(target=process._shutdown)

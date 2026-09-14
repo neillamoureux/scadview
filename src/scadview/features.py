@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from functools import wraps
+from threading import local
 from typing import (
     Any,
     Callable,
@@ -230,7 +231,12 @@ class _FeatureContext:
         return list(self._sources)
 
 
-_FEATURE_CONTEXT = _FeatureContext()
+class _ThreadFeatureContext(local):
+    def __init__(self) -> None:
+        self.current = _FeatureContext()
+
+
+_FEATURE_CONTEXT = _ThreadFeatureContext()
 _PATCHED_MEMBERS: set[tuple[type[Any], str]] = set()
 _NATIVE_BOOLEAN_MEMBERS: dict[type[Any], tuple[str, ...]] = {
     Trimesh: ("union", "difference", "intersection"),
@@ -239,23 +245,23 @@ _NATIVE_BOOLEAN_MEMBERS: dict[type[Any], tuple[str, ...]] = {
 
 
 def set_enabled_feature_states(states: dict[str, bool] | None) -> None:
-    _FEATURE_CONTEXT.set_enabled_states(states)
+    _FEATURE_CONTEXT.current.set_enabled_states(states)
 
 
 def get_feature_states() -> list[FeatureState]:
-    return _FEATURE_CONTEXT.states()
+    return _FEATURE_CONTEXT.current.states()
 
 
 def begin_feature_capture() -> None:
-    _FEATURE_CONTEXT.begin_capture()
+    _FEATURE_CONTEXT.current.begin_capture()
 
 
 def get_feature_sources() -> list[FeatureSource]:
-    return _FEATURE_CONTEXT.sources()
+    return _FEATURE_CONTEXT.current.sources()
 
 
 def feature_default(name: str, enabled: bool = True) -> None:
-    _FEATURE_CONTEXT.set_default(name, enabled)
+    _FEATURE_CONTEXT.current.set_default(name, enabled)
 
 
 @overload
@@ -310,8 +316,9 @@ def feature(
 def _feature_mesh(name: str, mesh: FeatureNativeMesh) -> FeatureMesh:
     if not _is_native_mesh(mesh):
         raise TypeError(f"feature mesh must be Trimesh or Manifold, got {type(mesh)}")
-    enabled = _FEATURE_CONTEXT.register(name)
-    _FEATURE_CONTEXT.capture(name, mesh, enabled)
+    context = _FEATURE_CONTEXT.current
+    enabled = context.register(name)
+    context.capture(name, mesh, enabled)
     return FeatureMesh(name, mesh, enabled)
 
 

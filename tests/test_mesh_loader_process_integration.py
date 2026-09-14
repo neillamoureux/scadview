@@ -10,6 +10,7 @@ from typing import Any
 from trimesh import Trimesh
 
 from scadview.controller import Controller
+from scadview.features import FeatureState
 from scadview.mesh_loader_process import (
     Command,
     ExportCommand,
@@ -252,6 +253,129 @@ def _close_harness(harness: LoaderHarness) -> None:
     harness.export_result_queue.close(discard=True)
     harness.log_queue.cancel_join_thread()
     harness.log_queue.close()
+
+
+def test_overlapping_real_loads_isolate_feature_state_and_debug_sources(tmp_path):
+    first_started = tmp_path / "first-started"
+    first_release = tmp_path / "first-release"
+    second_started = tmp_path / "second-started"
+    second_release = tmp_path / "second-release"
+    module_path = _write_overlapping_feature_module(
+        tmp_path,
+        first_started,
+        first_release,
+        second_started,
+        second_release,
+    )
+    harness = _start_loader_process()
+
+    try:
+        harness.command_queue.put(
+            LoadMeshCommand(
+                str(module_path),
+                feature_states={"old": False},
+                debug_features=True,
+                parameter_values={"run": 1},
+                generation=1,
+            )
+        )
+        _wait_for_path(first_started)
+
+        harness.command_queue.put(
+            LoadMeshCommand(
+                str(module_path),
+                feature_states={"before": True, "after": False},
+                debug_features=True,
+                parameter_values={"run": 2},
+                generation=2,
+            )
+        )
+        _wait_for_path(second_started)
+
+        first_release.touch()
+        cancelled = _get_load_result(harness.load_queue, 1, LoadPhase.CANCELLED)
+        assert cancelled.generation == 1
+
+        second_release.touch()
+        final = _get_load_result(harness.load_queue, 2, LoadPhase.FINAL)
+
+        assert final.features == [
+            FeatureState("before", True),
+            FeatureState("after", False),
+        ]
+        assert final.debug
+        assert not final.exportable
+        assert isinstance(final.payload, list)
+        assert len(final.payload) == 1
+        assert final.payload[0].vertices[0, 0] == 10.0
+        _shutdown_cleanly(harness)
+    finally:
+        _close_harness(harness)
+
+
+def _write_overlapping_feature_module(
+    tmp_path: Path,
+    first_started: Path,
+    first_release: Path,
+    second_started: Path,
+    second_release: Path,
+) -> Path:
+    module_path = tmp_path / "overlapping_feature_mesh.py"
+    module_path.write_text(
+        f"""
+from pathlib import Path
+from time import monotonic, sleep
+
+import numpy as np
+from trimesh import Trimesh
+
+from scadview import feature
+
+FIRST_STARTED = Path({str(first_started)!r})
+FIRST_RELEASE = Path({str(first_release)!r})
+SECOND_STARTED = Path({str(second_started)!r})
+SECOND_RELEASE = Path({str(second_release)!r})
+
+
+def create_mesh(run=0):
+    if run == 1:
+        feature("old", _triangle(1.0))
+        FIRST_STARTED.touch()
+        _wait_for(FIRST_RELEASE)
+        return _triangle(2.0)
+
+    feature("before", _triangle(10.0))
+    SECOND_STARTED.touch()
+    _wait_for(SECOND_RELEASE)
+    feature("after", _triangle(20.0))
+    return _triangle(30.0)
+
+
+def _triangle(offset):
+    return Trimesh(
+        vertices=np.array(
+            [
+                [offset, 0.0, 0.0],
+                [offset + 1.0, 0.0, 0.0],
+                [offset, 1.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+        faces=np.array([[0, 1, 2]], dtype=np.int64),
+        process=False,
+    )
+
+
+def _wait_for(path):
+    deadline = monotonic() + {TIMEOUT_SECONDS!r}
+    while not path.exists():
+        if monotonic() >= deadline:
+            raise TimeoutError(f"timed out waiting for {{path.name}}")
+        sleep(0.01)
+""".lstrip(),
+        encoding="utf-8",
+    )
+    return module_path
 
 
 def test_controller_translates_forced_real_loader_death_once(tmp_path):
