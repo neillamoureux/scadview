@@ -176,6 +176,11 @@ applies each accepted envelope as one state transition, and the UI uses its
 explicit phase, revision, and exportability instead of reconstructing those
 values independently.
 
+`LoadResult` is immutable after construction. `CANCELLED` is the sole cancellation
+phase member, `payload` is the sole mesh-bearing envelope field, and terminal
+completion is a read-only property derived from `phase`; there are no legacy
+phase, mesh, or stored-completion aliases.
+
 ### Retain payloads and export from the loader-owned source
 
 The controller retains the latest payload for rendering, while the loader retains

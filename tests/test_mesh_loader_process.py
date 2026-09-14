@@ -2,6 +2,7 @@ import gc
 import logging
 import queue
 import weakref
+from dataclasses import FrozenInstanceError
 from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -306,6 +307,24 @@ def test_load_result_completion_is_derived_from_phase():
         setattr(final, "complete", False)
 
 
+def test_load_result_has_one_immutable_explicit_payload_surface():
+    result = LoadResult(
+        1,
+        1,
+        payload=mesh_to_payload(box()),
+        error=None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=True,
+        debug=False,
+    )
+
+    assert "CANCELLATION" not in LoadPhase.__members__
+    assert not hasattr(result, "mesh")
+    with pytest.raises(FrozenInstanceError):
+        setattr(result, "payload", None)
+
+
 @pytest.mark.parametrize(
     ("phase", "payload_kind", "error", "exportable", "debug"),
     [
@@ -442,8 +461,8 @@ def test_load_worker_reuses_the_last_payload_for_the_final_result(load_queue):
     assert to_payload.call_count == 1
     first_result = load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
-    _assert_payload_geometry(first_result.mesh, source)
-    _assert_payload_geometry(final_result.mesh, source)
+    _assert_payload_geometry(first_result.payload, source)
+    _assert_payload_geometry(final_result.payload, source)
     assert first_result.phase is LoadPhase.PROGRESS
     assert final_result.phase is LoadPhase.FINAL
     assert final_result.exportable
@@ -463,7 +482,7 @@ def test_load_worker_reuses_the_last_payload_for_the_final_error_result(load_que
     assert to_payload.call_count == 1
     load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
-    _assert_payload_geometry(final_result.mesh, source)
+    _assert_payload_geometry(final_result.payload, source)
     assert final_result.error is not None
     assert final_result.error.type_name == "RuntimeError"
     assert final_result.phase is LoadPhase.ERROR
@@ -493,9 +512,9 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
 
     first_result = load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
-    assert isinstance(final_result.mesh, MeshPayload)
-    assert final_result.mesh.color.tolist() == [32, 61, 92, 122]
-    npt.assert_allclose(final_result.mesh.vertices, source.vertices)
+    assert isinstance(final_result.payload, MeshPayload)
+    assert final_result.payload.color.tolist() == [32, 61, 92, 122]
+    npt.assert_allclose(final_result.payload.vertices, source.vertices)
     assert worker.export_source is source
     assert worker.export_source.metadata == source.metadata
     assert worker.final_snapshot is not None
@@ -506,11 +525,11 @@ def test_load_worker_refreshes_final_payload_after_generator_mutates_source(
     npt.assert_array_equal(
         worker.final_snapshot.payload.color, final_result.payload.color
     )
-    npt.assert_allclose(first_result.mesh.vertices, initial_vertices)
+    npt.assert_allclose(first_result.payload.vertices, initial_vertices)
     npt.assert_raises(
         AssertionError,
         npt.assert_allclose,
-        first_result.mesh.vertices,
+        first_result.payload.vertices,
         source.vertices,
     )
 
@@ -687,7 +706,7 @@ def test_debug_single_mesh_fallback_retains_source_for_export(load_queue):
 
     load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
-    assert isinstance(final_result.mesh, MeshPayload)
+    assert isinstance(final_result.payload, MeshPayload)
     assert final_result.phase is LoadPhase.FINAL
     assert final_result.exportable
     assert worker.export_source is source
@@ -708,7 +727,7 @@ def test_debug_mesh_list_does_not_retain_source_for_export(load_queue):
 
     load_queue.get(timeout=1.0)
     final_result = load_queue.get(timeout=1.0)
-    assert isinstance(final_result.mesh, list)
+    assert isinstance(final_result.payload, list)
     assert final_result.phase is LoadPhase.FINAL
     assert not final_result.exportable
     assert worker.export_source is None
@@ -1259,7 +1278,7 @@ def test_load_worker_put_in_queue(mesh, load_queue, started_load_worker):
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 1
-    _assert_payload_geometry(result.mesh, mesh)
+    _assert_payload_geometry(result.payload, mesh)
     assert not result.error
     assert not result.complete  # Even though no more meshes, not set complete
 
@@ -1269,7 +1288,7 @@ def test_load_worker_put_in_queue(mesh, load_queue, started_load_worker):
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 1
-    _assert_payload_geometry(result.mesh, mesh)
+    _assert_payload_geometry(result.payload, mesh)
     assert not result.error
     assert result.complete
 
@@ -1281,14 +1300,14 @@ def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_work
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 1
-    _assert_payload_geometry(result.mesh, mesh[0])
+    _assert_payload_geometry(result.payload, mesh[0])
     assert not result.error
     assert not result.complete
 
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 2
-    _assert_payload_geometry(result.mesh, mesh[1])
+    _assert_payload_geometry(result.payload, mesh[1])
     assert not result.error
     assert not result.complete  # Even though no more meshes, not set complete
 
@@ -1298,7 +1317,7 @@ def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_work
     result = load_queue.get(timeout=1.0)
     assert result.load_number == 1
     assert result.sequence_number == 2
-    _assert_payload_geometry(result.mesh, mesh[1])
+    _assert_payload_geometry(result.payload, mesh[1])
     assert not result.error
     assert result.complete
 
@@ -1316,9 +1335,9 @@ def test_load_worker_colors_mesh_list(load_queue):
         worker.cancel()
 
     result = load_queue.get(timeout=1.0)
-    assert isinstance(result.mesh, list)
+    assert isinstance(result.payload, list)
     load_queue.get(timeout=1.0)  # Otherwise hangs on windows.
-    for payload in result.mesh:
+    for payload in result.payload:
         assert isinstance(payload, MeshPayload)
         assert payload.color is not None
         assert payload.color[3] == 128
@@ -1347,16 +1366,16 @@ def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
     second_load = load_queue.get(timeout=1.0)
     final_load = load_queue.get(timeout=1.0)
 
-    assert isinstance(first_load.mesh, list)
-    assert isinstance(second_load.mesh, list)
-    assert isinstance(final_load.mesh, list)
-    _assert_payload_geometry(first_load.mesh[0], first_source)
-    _assert_payload_geometry(second_load.mesh[0], first_source)
-    _assert_payload_geometry(second_load.mesh[1], second_source)
-    _assert_payload_geometry(final_load.mesh[0], first_source)
-    _assert_payload_geometry(final_load.mesh[1], second_source)
-    assert first_load.mesh[0].color is not None
-    assert first_load.mesh[0].color[3] == 128
+    assert isinstance(first_load.payload, list)
+    assert isinstance(second_load.payload, list)
+    assert isinstance(final_load.payload, list)
+    _assert_payload_geometry(first_load.payload[0], first_source)
+    _assert_payload_geometry(second_load.payload[0], first_source)
+    _assert_payload_geometry(second_load.payload[1], second_source)
+    _assert_payload_geometry(final_load.payload[0], first_source)
+    _assert_payload_geometry(final_load.payload[1], second_source)
+    assert first_load.payload[0].color is not None
+    assert first_load.payload[0].color[3] == 128
     assert final_load.complete
 
 
@@ -1383,10 +1402,10 @@ def test_load_worker_debug_omits_disabled_feature_sources(load_queue):
 
     result = load_queue.get(timeout=1.0)
 
-    assert isinstance(result.mesh, list)
-    assert len(result.mesh) == 1
-    assert result.mesh[0].color is not None
-    assert result.mesh[0].color[3] == 128
+    assert isinstance(result.payload, list)
+    assert len(result.payload) == 1
+    assert result.payload[0].color is not None
+    assert result.payload[0].color[3] == 128
 
 
 def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
@@ -1405,11 +1424,11 @@ def test_load_worker_debug_converts_manifold_feature_sources(load_queue):
 
     result = load_queue.get(timeout=1.0)
 
-    assert isinstance(result.mesh, list)
-    assert len(result.mesh) == 1
-    assert isinstance(result.mesh[0], MeshPayload)
-    assert result.mesh[0].color is not None
-    assert result.mesh[0].color[3] == 128
+    assert isinstance(result.payload, list)
+    assert len(result.payload) == 1
+    assert isinstance(result.payload[0], MeshPayload)
+    assert result.payload[0].color is not None
+    assert result.payload[0].color[3] == 128
 
 
 def test_load_worker_debug_omits_unregistered_meshes_from_feature_entries(
@@ -1433,9 +1452,9 @@ def test_load_worker_debug_omits_unregistered_meshes_from_feature_entries(
 
     result = load_queue.get(timeout=1.0)
 
-    assert isinstance(result.mesh, list)
-    assert len(result.mesh) == 1
-    _assert_payload_geometry(result.mesh[0], source)
+    assert isinstance(result.payload, list)
+    assert len(result.payload) == 1
+    _assert_payload_geometry(result.payload[0], source)
 
 
 def test_load_worker_debug_falls_back_to_normal_mesh_without_feature_sources(
@@ -1451,7 +1470,7 @@ def test_load_worker_debug_falls_back_to_normal_mesh_without_feature_sources(
 
     result = load_queue.get(timeout=1.0)
 
-    _assert_payload_geometry(result.mesh, normal_mesh)
+    _assert_payload_geometry(result.payload, normal_mesh)
 
 
 def test_load_worker_preserves_normal_mesh_when_feature_debug_is_off(load_queue):
@@ -1471,7 +1490,7 @@ def test_load_worker_preserves_normal_mesh_when_feature_debug_is_off(load_queue)
 
     result = load_queue.get(timeout=1.0)
 
-    _assert_payload_geometry(result.mesh, normal_mesh)
+    _assert_payload_geometry(result.payload, normal_mesh)
 
 
 def test_load_worker_tracks_feature_states_and_filters_disabled_features(load_queue):
@@ -1491,7 +1510,7 @@ def test_load_worker_tracks_feature_states_and_filters_disabled_features(load_qu
         worker.load()
 
     result = load_queue.get(timeout=1.0)
-    assert result.mesh is None
+    assert result.payload is None
     assert result.features == [FeatureState("cutout", False)]
     result = load_queue.get(timeout=1.0)
     assert result.complete

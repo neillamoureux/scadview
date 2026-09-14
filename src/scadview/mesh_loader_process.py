@@ -140,7 +140,6 @@ class LoadPhase(Enum):
     FINAL = "final"
     ERROR = "error"
     CANCELLED = "cancelled"
-    CANCELLATION = "cancelled"
 
 
 @dataclass(frozen=True)
@@ -149,7 +148,7 @@ class FinalMeshSnapshot:
     payload: MeshPayload
 
 
-@dataclass
+@dataclass(frozen=True)
 class LoadResult:
     load_number: int
     sequence_number: int
@@ -208,10 +207,6 @@ class LoadResult:
             LoadPhase.ERROR,
             LoadPhase.CANCELLED,
         }
-
-    @property
-    def mesh(self) -> MeshType | None:
-        return self.payload
 
     @property
     def status(self) -> LoadStatus:

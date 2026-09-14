@@ -63,6 +63,9 @@ The system SHALL represent each load result with explicit phase, generation,
 revision, payload, exportability, and terminal error state. Consumers SHALL NOT
 infer finality, debug status, revision, or exportability solely from payload shape,
 sequence number, requested debug mode, or load status.
+The envelope SHALL be immutable after construction, SHALL expose payload as its
+only mesh-bearing field, and SHALL derive terminal completion from phase rather
+than storing duplicate compatibility state.
 
 #### Scenario: Progress result is published
 - **WHEN** a generator yields an intermediate normalized mesh
@@ -83,6 +86,10 @@ sequence number, requested debug mode, or load status.
 #### Scenario: Final revision is distinct from progress
 - **WHEN** finalization republishes the effective final state after the last generator yield
 - **THEN** the final envelope receives a revision distinct from the progress envelope even if its sequence number is unchanged
+
+#### Scenario: Explicit envelope state is consumed
+- **WHEN** loader, controller, or UI code inspects a load result
+- **THEN** it uses the canonical phase and payload fields without cancellation, mesh, or stored-completion aliases
 
 ### Requirement: Public mesh creation behavior remains compatible
 The system SHALL continue accepting the documented `create_mesh` return types

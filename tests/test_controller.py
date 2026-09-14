@@ -619,7 +619,7 @@ def test_controller_ignores_stale_result(monkeypatch):
 
         result = controller.check_load_queue()
 
-        assert result.mesh is None
+        assert result.payload is None
         assert controller.current_mesh is None
     finally:
         controller.close()
