@@ -25,6 +25,16 @@ class MeshPayload:
     bounds: NDArray[np.float32]
     scale: float
 
+    def __post_init__(self) -> None:
+        for name in ("vertices", "faces", "face_normals", "bounds"):
+            array = np.array(getattr(self, name), copy=True, order="C")
+            array.setflags(write=False)
+            object.__setattr__(self, name, array)
+        if self.color is not None:
+            color = np.array(self.color, copy=True, order="C")
+            color.setflags(write=False)
+            object.__setattr__(self, "color", color)
+
 
 def mesh_to_payload(mesh: Trimesh) -> MeshPayload:
     """Convert a normalized source mesh to compact internal data."""

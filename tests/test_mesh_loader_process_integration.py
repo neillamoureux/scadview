@@ -415,7 +415,7 @@ def test_controller_translates_forced_real_loader_death_once(tmp_path):
         )
 
         repeated = controller.check_load_queue()
-        assert repeated.phase is LoadPhase.CANCELLED
+        assert repeated is None
     finally:
         controller.close(timeout=TIMEOUT_SECONDS)
 
@@ -494,7 +494,7 @@ def _wait_for_controller_load(
     deadline = monotonic() + TIMEOUT_SECONDS
     while monotonic() < deadline:
         result = controller.check_load_queue()
-        if result.phase is phase:
+        if result is not None and result.phase is phase:
             return result
         sleep(0.01)
     raise AssertionError(f"Timed out waiting for controller {phase.value}")

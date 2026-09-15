@@ -10,7 +10,18 @@ from multiprocessing import Process, Queue
 from multiprocessing import queues as mp_queues
 from threading import Lock, Thread
 from time import monotonic, time
-from typing import Any, Generator, Generic, Type, TypeVar, cast
+from typing import (
+    Any,
+    Generator,
+    Generic,
+    Iterable,
+    NoReturn,
+    Self,
+    SupportsIndex,
+    Type,
+    TypeVar,
+    cast,
+)
 
 import numpy as np
 from manifold3d import Error as ManifoldError
@@ -174,10 +185,32 @@ CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
 
-@dataclass
+@dataclass(frozen=True)
 class LoadError:
     type_name: str
     message: str
+
+
+class FrozenList(list[Any]):
+    def _raise_immutable(self, *_args: Any, **_kwargs: Any) -> NoReturn:
+        raise TypeError("Load result collections are immutable")
+
+    __delitem__ = __setitem__ = _raise_immutable
+    append = clear = extend = insert = pop = remove = reverse = sort = _raise_immutable
+
+    def __iadd__(self, _value: Iterable[Any]) -> Self:
+        self._raise_immutable()
+
+    def __imul__(self, _value: Any) -> Self:
+        self._raise_immutable()
+
+    def __reduce__(self) -> tuple[type[FrozenList], tuple[list[Any]]]:
+        return type(self), (list(self),)
+
+    def __reduce_ex__(
+        self, _protocol: SupportsIndex
+    ) -> tuple[type[FrozenList], tuple[list[Any]]]:
+        return self.__reduce__()
 
 
 class LoadPhase(Enum):
@@ -208,6 +241,12 @@ class LoadResult:
     generation: int = 0
 
     def __post_init__(self) -> None:
+        if isinstance(self.payload, list):
+            object.__setattr__(self, "payload", FrozenList(self.payload))
+        if self.features is not None:
+            object.__setattr__(self, "features", FrozenList(self.features))
+        if self.parameters is not None:
+            object.__setattr__(self, "parameters", FrozenList(self.parameters))
         self._validate_explicit_state()
         self._validate_error_state()
         self._validate_debug_state()
@@ -775,7 +814,7 @@ class MeshLoaderProcess(Process):
         self._export_result_queue = export_result_queue
         self._worker: LoadWorker | None = None
         self._active_load_workers: set[LoadWorker] = set()
-        self._load_events = LoadEventChannel()
+        self._load_events: LoadEventChannel | None = None
         self._active_export_workers: set[ExportWorker] = set()
         self._export_completions: queue.SimpleQueue[ExportResult] | None = None
         self._accepting_exports = True
@@ -783,6 +822,7 @@ class MeshLoaderProcess(Process):
         self._log_level = log_level
 
     def run(self) -> None:
+        self._load_events = LoadEventChannel()
         if self._export_completions is None:
             self._export_completions = queue.SimpleQueue()
         # Set logging level for the loaded module; it can be changed in that module
@@ -866,11 +906,13 @@ class MeshLoaderProcess(Process):
     def _start_load(self, command: LoadMeshCommand) -> None:
         self.cancel()
         logger.info(f"Loading mesh from {command.module_path}")
-        if not hasattr(self, "_load_events"):
-            self._load_events = LoadEventChannel()
+        load_events = getattr(self, "_load_events", None)
+        if load_events is None:
+            load_events = LoadEventChannel()
+            self._load_events = load_events
         worker = LoadWorker(
             command.module_path,
-            self._load_events,
+            load_events,
             feature_states=command.feature_states,
             debug_features=command.debug_features,
             parameter_values=command.parameter_values,

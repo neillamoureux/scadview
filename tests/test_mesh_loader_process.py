@@ -140,6 +140,36 @@ def test_load_result_preserves_explicit_debug_state():
     assert not lr.debug
 
 
+def test_load_result_nested_state_is_immutable():
+    payload = mesh_to_payload(box())
+    features = [FeatureState("cutout", True)]
+    parameters = [CreateMeshParameter("width", "float", 2.5)]
+    error = LoadError("RuntimeError", "failed")
+    result = LoadResult(
+        1,
+        1,
+        [payload],
+        error,
+        features=features,
+        parameters=parameters,
+        phase=LoadPhase.ERROR,
+        revision=1,
+        exportable=False,
+        debug=True,
+    )
+
+    features.append(FeatureState("other", False))
+    parameters[0] = CreateMeshParameter("height", "float", 1.0)
+    assert len(result.features) == 1
+    assert result.parameters[0].name == "width"
+    with pytest.raises(TypeError):
+        result.payload.append(payload)
+    with pytest.raises(TypeError):
+        result.features[0] = FeatureState("other", False)
+    with pytest.raises(FrozenInstanceError):
+        result.error.message = "changed"
+
+
 def test_load_result_status():
     mesh = mesh_to_payload(box())
     lr = LoadResult(

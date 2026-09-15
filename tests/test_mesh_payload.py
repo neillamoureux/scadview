@@ -82,6 +82,20 @@ def test_mesh_to_payload_copies_source_arrays(mesh):
     assert payload.faces[0, 0] == 0
 
 
+def test_mesh_payload_arrays_are_read_only():
+    payload = mesh_to_payload(
+        _source(
+            vertices=np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]]),
+            faces=np.array([[0, 1, 2]]),
+        )
+    )
+
+    for array in _payload_arrays(payload):
+        assert not array.flags.writeable
+        with pytest.raises(ValueError):
+            array.flat[0] = 1
+
+
 def test_mesh_to_payload_preserves_flat_face_normals(mesh):
     payload = mesh_to_payload(mesh)
 
