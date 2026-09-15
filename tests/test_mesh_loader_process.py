@@ -1650,6 +1650,80 @@ def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
     assert final_load.complete
 
 
+def test_load_worker_captures_feature_sources_after_generator_exhaustion(load_queue):
+    yielded_mesh = box()
+    late_source = icosphere()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        ml_instance = mock_module_loader.return_value
+
+        def _run_function(_module_path):
+            yield yielded_mesh
+            feature("late", late_source)
+
+        ml_instance.run_function.side_effect = _run_function
+        worker = LoadWorker("test/path", load_queue, debug_features=True)
+        worker.load()
+
+    results = _drain_load_results(load_queue)
+    assert len(results) == 2
+    final_load = results[-1]
+    assert final_load.phase is LoadPhase.FINAL
+    assert final_load.debug
+    assert not final_load.exportable
+    assert isinstance(final_load.payload, list)
+    assert len(final_load.payload) == 1
+    _assert_payload_geometry(final_load.payload[0], late_source)
+    assert final_load.features == [FeatureState("late", True)]
+    assert worker.export_source is None
+
+
+@pytest.mark.parametrize("cancel_before_claim", [True, False])
+def test_load_worker_terminal_claim_publishes_exactly_one_terminal_result(
+    load_queue,
+    cancel_before_claim,
+):
+    source = box()
+    claim_entered = Event()
+    release_claim = Event()
+    with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
+        loader = mock_module_loader.return_value
+        loader.run_function.return_value = iter([source])
+        worker = LoadWorker("test/path", load_queue, generation=11)
+        claim = worker._claim_terminal
+
+        def controlled_claim():
+            claim_entered.set()
+            if cancel_before_claim:
+                release_claim.wait(timeout=1.0)
+                return claim()
+            result = claim()
+            release_claim.wait(timeout=1.0)
+            return result
+
+        worker._claim_terminal = controlled_claim
+        thread = Thread(target=worker.load)
+        thread.start()
+        assert claim_entered.wait(timeout=1.0)
+        worker.cancel()
+        release_claim.set()
+        thread.join(timeout=1.0)
+
+    assert not thread.is_alive()
+    terminal_results = [
+        result for result in _drain_load_results(load_queue) if result.complete
+    ]
+    assert len(terminal_results) == 1
+    if cancel_before_claim:
+        assert terminal_results[0].phase is LoadPhase.CANCELLED
+        assert not terminal_results[0].exportable
+        assert worker.final_snapshot is None
+        assert worker.export_source is None
+    else:
+        assert terminal_results[0].phase is LoadPhase.FINAL
+        assert terminal_results[0].exportable
+        assert worker.export_source is source
+
+
 def test_load_worker_debug_omits_disabled_feature_sources(load_queue):
     source = box()
     normal_mesh = icosphere()

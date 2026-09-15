@@ -374,6 +374,8 @@ class LoadWorker(Thread):
         self._feature_sources = []
         self.final_snapshot: FinalMeshSnapshot | None = None
         self._revision = 0
+        self._terminal_lock = Lock()
+        self._terminal_claimed = False
 
     @property
     def export_source(self) -> Trimesh | None:
@@ -431,6 +433,11 @@ class LoadWorker(Thread):
         phase: LoadPhase,
         error: LoadError | None,
     ) -> None:
+        if not self._claim_terminal():
+            return
+        if self.cancelled:
+            phase = LoadPhase.CANCELLED
+            error = None
         try:
             if phase is LoadPhase.CANCELLED:
                 self.final_snapshot = None
@@ -457,6 +464,13 @@ class LoadWorker(Thread):
                 type(finalization_error).__name__, str(finalization_error)
             )
             self._publish_terminal_error(sequence_number, payload, load_error)
+
+    def _claim_terminal(self) -> bool:
+        with self._terminal_lock:
+            if self._terminal_claimed:
+                return False
+            self._terminal_claimed = True
+            return True
 
     def _publish_terminal_error(
         self,
@@ -680,6 +694,8 @@ class LoadWorker(Thread):
                 self._feature_sources = get_feature_sources()
                 yield mesh
         finally:
+            self._feature_sources = get_feature_sources()
+            self._loaded_feature_states = get_feature_states()
             t1 = time()
             logger.info(f"Load {self.module_path} took {(t1 - t0) * 1000:.1f}ms")
             set_enabled_feature_states(None)
@@ -792,7 +808,10 @@ class LoadWorker(Thread):
         raise ValueError(f"{prefix} has invalid status: {status.name}")
 
     def cancel(self):
-        self.cancelled = True
+        with self._terminal_lock:
+            if self._terminal_claimed:
+                return
+            self.cancelled = True
 
 
 class MeshLoaderProcess(Process):
