@@ -2,11 +2,13 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
+import pytest
 from trimesh.creation import box
 
 from scadview.mesh_payload import MeshPayload, mesh_to_payload
 from scadview.observable import Observable
 from scadview.render import mesh_renderee
+from scadview.render.camera import CameraPerspective
 from scadview.render.mesh_renderee import (
     MeshListAlphaRenderee,
     OpaqueMeshRenderee,
@@ -335,6 +337,94 @@ def test_non_empty_payload_list_preserves_bounds_corner_order():
 
     expected = np.concatenate([payload_corners(first), payload_corners(second)])
     np.testing.assert_array_equal(renderee.points, expected)
+
+
+def _payload_with_bounds(bounds, *, color):
+    minimum, maximum = np.asarray(bounds, dtype=np.float32)
+    return _payload(
+        vertices=[minimum, maximum],
+        faces=[],
+        normals=[],
+        color=color,
+    )
+
+
+@pytest.mark.parametrize(
+    ("mesh_specs", "expected"),
+    [
+        (
+            [([[2, 3, 4], [5, 6, 7]], [1, 2, 3, 255])],
+            [
+                [2, 3, 4],
+                [2, 3, 7],
+                [2, 6, 4],
+                [2, 6, 7],
+                [5, 3, 4],
+                [5, 3, 7],
+                [5, 6, 4],
+                [5, 6, 7],
+            ],
+        ),
+        (
+            [([[-7, -6, -5], [-4, -3, -2]], [1, 2, 3, 128])],
+            [
+                [-7, -6, -5],
+                [-7, -6, -2],
+                [-7, -3, -5],
+                [-7, -3, -2],
+                [-4, -6, -5],
+                [-4, -6, -2],
+                [-4, -3, -5],
+                [-4, -3, -2],
+            ],
+        ),
+        (
+            [
+                ([[2, 3, 4], [5, 6, 7]], [1, 2, 3, 255]),
+                ([[-7, -6, -5], [-4, -3, -2]], [1, 2, 3, 128]),
+            ],
+            [
+                [2, 3, 4],
+                [2, 3, 7],
+                [2, 6, 4],
+                [2, 6, 7],
+                [5, 3, 4],
+                [5, 3, 7],
+                [5, 6, 4],
+                [5, 6, 7],
+                [-7, -6, -5],
+                [-7, -6, -2],
+                [-7, -3, -5],
+                [-7, -3, -2],
+                [-4, -6, -5],
+                [-4, -6, -2],
+                [-4, -3, -5],
+                [-4, -3, -2],
+            ],
+        ),
+    ],
+)
+def test_non_empty_payload_list_frames_only_real_partition_bounds(mesh_specs, expected):
+    payloads = [
+        _payload_with_bounds(bounds, color=color) for bounds, color in mesh_specs
+    ]
+    renderee = create_mesh_renderee(
+        mock.MagicMock(),
+        mock.MagicMock(),
+        payloads,
+        np.eye(4, dtype="f4"),
+        np.eye(4, dtype="f4"),
+    )
+
+    np.testing.assert_array_equal(renderee.points, np.asarray(expected, dtype="f4"))
+    assert renderee.points.dtype == np.float32
+    assert np.isfinite(renderee.points).all()
+    camera = CameraPerspective()
+    camera.frame(renderee.points)
+    assert np.isfinite(camera.position).all()
+    assert np.isfinite(camera.look_at).all()
+    assert np.isfinite(camera.near)
+    assert np.isfinite(camera.far)
 
 
 def test_render_package_has_no_trimesh_dependency_or_reconstruction():

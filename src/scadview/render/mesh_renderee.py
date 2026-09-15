@@ -446,9 +446,15 @@ class MeshListRenderee(MeshRenderee):
 
     @property
     def points(self) -> NDArray[np.float32]:
-        return np.concatenate(
-            [self._opaques_renderee.points, self._alphas_renderee.points], axis=0
-        )
+        renderees = [self._opaques_renderee, self._alphas_renderee]
+        points = [
+            renderee.points
+            for renderee in renderees
+            if not isinstance(renderee, MeshNullRenderee)
+        ]
+        if points:
+            return np.concatenate(points, axis=0)
+        return np.zeros((2, 3), dtype="f4")
 
     def subscribe_to_updates(self, updates: Observable) -> None:
         self._alphas_renderee.subscribe_to_updates(updates)
