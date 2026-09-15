@@ -59,6 +59,8 @@ class Controller:
         self._current_load_number = 0
         self._current_load_sequence_number = 0
         self._current_load_revision = 0
+        self._effective_debug = False
+        self._effective_debug = False
         self._active_load_generation: int | None = None
         self._local_load_result: LoadResult | None = None
         self._next_export_request_id = 1
@@ -153,7 +155,7 @@ class Controller:
             raise ValueError("No previous load to reload")
         self.load_mesh(self.module_path)
 
-    def check_load_queue(self) -> LoadResult:
+    def check_load_queue(self) -> LoadResult | None:
         local_load_result = self._take_local_load_result()
         if local_load_result is not None:
             return local_load_result
@@ -170,21 +172,21 @@ class Controller:
         self._local_load_result = None
         return load_result
 
-    def _load_result_for_empty_queue(self) -> LoadResult:
+    def _load_result_for_empty_queue(self) -> LoadResult | None:
         if self._load_is_active() and not self._loader_process.is_alive():
             return self._complete_load_error(
                 LoadError("LoaderProcessDied", "Mesh loader process exited")
             )
         logger.debug("check_load_queue empty")
-        return self._idle_load_result()
+        return None
 
-    def _load_result_for_queue_error(self, error: Exception) -> LoadResult:
+    def _load_result_for_queue_error(self, error: Exception) -> LoadResult | None:
         if not self._load_is_active():
-            return self._idle_load_result()
+            return None
         return self._complete_load_error(LoadError(type(error).__name__, str(error)))
 
     def _complete_load_error(self, error: LoadError) -> LoadResult:
-        return self._apply_load_result(
+        result = self._apply_load_result(
             LoadResult(
                 self._current_load_number,
                 self._current_load_sequence_number,
@@ -196,17 +198,25 @@ class Controller:
                 revision=self._current_load_revision + 1,
                 phase=LoadPhase.ERROR,
                 exportable=False,
-                debug=isinstance(self.current_mesh, list),
+                debug=self._effective_debug,
             )
         )
+        assert result is not None
+        return result
 
-    def _apply_load_result(self, load_result: LoadResult) -> LoadResult:
+    def _apply_load_result(self, load_result: LoadResult) -> LoadResult | None:
         if load_result.generation != self.current_generation:
-            return self._stale_load_result(load_result.generation)
+            logger.debug(
+                "Discarding stale load result generation=%s current=%s",
+                load_result.generation,
+                self.current_generation,
+            )
+            return None
         self._record_load_result(load_result)
         self._reconcile_parameters(load_result.parameters or [])
         self._apply_load_payload(load_result)
         self.feature_states = load_result.features or []
+        self._effective_debug = load_result.debug
         self.load_status = load_result.status
         self._notify_export_availability()
         return load_result
@@ -234,31 +244,6 @@ class Controller:
 
     def _load_is_active(self) -> bool:
         return self._active_load_generation == self.current_generation
-
-    def _stale_load_result(self, generation: int) -> LoadResult:
-        return LoadResult(
-            0,
-            0,
-            payload=None,
-            error=None,
-            generation=generation,
-            phase=LoadPhase.CANCELLED,
-            revision=0,
-            exportable=False,
-            debug=False,
-        )
-
-    def _idle_load_result(self) -> LoadResult:
-        return LoadResult(
-            0,
-            0,
-            payload=None,
-            error=None,
-            phase=LoadPhase.CANCELLED,
-            revision=0,
-            exportable=False,
-            debug=False,
-        )
 
     def set_feature_enabled(self, name: str, enabled: bool):
         if self.module_path == "":

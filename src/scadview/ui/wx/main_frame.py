@@ -512,7 +512,9 @@ class MainFrame(wx.Frame):
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
 
-    def _handle_load_result(self, load_result: LoadResult) -> None:
+    def _handle_load_result(self, load_result: LoadResult | None) -> None:
+        if load_result is None:
+            return
         if load_result.generation != self._controller.current_generation:
             return
         mesh = load_result.payload
@@ -561,6 +563,8 @@ class MainFrame(wx.Frame):
     def poll_load_status(self) -> LoadStatus:
         load_result = self._controller.check_load_queue()
         self._handle_load_result(load_result)
+        if load_result is None:
+            return self._controller.load_status
         if load_result.phase is LoadPhase.ERROR:
             return LoadStatus.ERROR
         if load_result.phase is LoadPhase.FINAL:

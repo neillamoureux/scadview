@@ -619,7 +619,7 @@ def test_controller_ignores_stale_result(monkeypatch):
 
         result = controller.check_load_queue()
 
-        assert result.payload is None
+        assert result is None
         assert controller.current_mesh is None
     finally:
         controller.close()
@@ -656,7 +656,7 @@ def test_controller_reports_loader_death_as_current_load_error_once(monkeypatch)
 
         repeated_result = controller.check_load_queue()
 
-        assert repeated_result.phase is LoadPhase.CANCELLED
+        assert repeated_result is None
         assert statuses == [LoadStatus.ERROR]
     finally:
         controller.close()
@@ -728,7 +728,7 @@ def test_payloadless_progress_remains_active_until_terminal_failure(
 
         repeated = controller.check_load_queue()
 
-        assert repeated.phase is LoadPhase.CANCELLED
+        assert repeated is None
         assert controller.load_status is LoadStatus.ERROR
     finally:
         controller.close()
@@ -762,7 +762,7 @@ def test_controller_reports_load_queue_transport_failure_once(
 
         repeated_result = controller.check_load_queue()
 
-        assert repeated_result.phase is LoadPhase.CANCELLED
+        assert repeated_result is None
         assert controller.load_status is LoadStatus.ERROR
     finally:
         controller.close()
@@ -862,7 +862,7 @@ def test_load_trigger_terminalizes_command_submission_failure_once(
 
         repeated = controller.check_load_queue()
 
-        assert repeated.phase is LoadPhase.CANCELLED
+        assert repeated is None
         assert availability == [False, False]
     finally:
         controller.close()
@@ -884,7 +884,7 @@ def test_new_generation_discards_unconsumed_submission_error(monkeypatch):
         assert controller.load_status is LoadStatus.START
         assert controller._load_is_active()
         result = controller.check_load_queue()
-        assert result.phase is LoadPhase.CANCELLED
+        assert result is None
         assert controller.load_status is LoadStatus.START
     finally:
         controller.close()
@@ -972,7 +972,11 @@ def test_loader_death_after_progress_stops_main_frame_timer_once(monkeypatch, ca
             MainFrame.on_load_timer(frame, Mock())
             MainFrame.on_load_timer(frame, Mock())
 
-        errors = [result for result in results if result.phase is LoadPhase.ERROR]
+        errors = [
+            result
+            for result in results
+            if result is not None and result.phase is LoadPhase.ERROR
+        ]
         assert len(errors) == 1
         assert errors[0].generation == controller.current_generation
         assert errors[0].revision == 5

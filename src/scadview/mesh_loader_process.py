@@ -86,6 +86,51 @@ class MpQueue(Generic[T]):
             self._queue.join_thread()
 
 
+@dataclass(frozen=True)
+class LoadResultEvent:
+    result: LoadResult
+
+
+@dataclass(frozen=True)
+class LoadCompletionEvent:
+    result: LoadResult
+
+
+LoadEvent = LoadResultEvent | LoadCompletionEvent
+
+
+class LoadEventChannel:
+    def __init__(self, maxsize: int = 1):
+        self._queue: queue.Queue[LoadEvent] = queue.Queue(maxsize=maxsize)
+
+    def put_latest(self, event: LoadEvent, timeout: float = 0.1) -> None:
+        generation = event.result.generation
+        while True:
+            try:
+                self._queue.put(event, timeout=timeout)
+                return
+            except queue.Full:
+                queued = self._queue.get_nowait()
+                if queued.result.generation > generation:
+                    self._queue.put(queued, timeout=timeout)
+                    return
+
+    def get_nowait(self) -> LoadEvent:
+        return self._queue.get_nowait()
+
+    def get(self, block: bool = True, timeout: float | None = None) -> LoadResult:
+        event = self._queue.get(block=block, timeout=timeout)
+        return event.result
+
+    def close(self, discard: bool = False) -> None:
+        if discard:
+            while True:
+                try:
+                    self._queue.get_nowait()
+                except queue.Empty:
+                    return
+
+
 class Command:
     pass
 
@@ -189,8 +234,10 @@ class LoadResult:
             raise ValueError("Only error-phase load results may contain an error")
 
     def _validate_debug_state(self) -> None:
-        if self.debug != isinstance(self.payload, list):
-            raise ValueError("Load result debug state must match a payload list")
+        if isinstance(self.payload, list) and not self.debug:
+            raise ValueError("List payloads must be explicitly marked as debug")
+        if isinstance(self.payload, MeshPayload) and self.debug:
+            raise ValueError("Single payloads must be explicitly marked non-debug")
 
     def _validate_exportable_state(self) -> None:
         final_single_payload = (
@@ -269,7 +316,7 @@ class LoadWorker(Thread):
     def __init__(
         self,
         module_path: str,
-        load_queue: MpLoadQueue,
+        load_queue: LoadEventChannel,
         feature_states: dict[str, bool] | None = None,
         debug_features: bool = False,
         parameter_values: dict[str, ScalarParameterValue] | None = None,
@@ -354,6 +401,7 @@ class LoadWorker(Thread):
                     phase=phase,
                     allow_cancelled=True,
                     debug=isinstance(mesh, list),
+                    completed=True,
                 )
                 return
             self._publish_final_result(
@@ -393,6 +441,7 @@ class LoadWorker(Thread):
                 debug=isinstance(payload, list),
             ),
             allow_cancelled=True,
+            completed=True,
         )
 
     def _prepare_mesh(
@@ -413,6 +462,7 @@ class LoadWorker(Thread):
         allow_cancelled: bool = False,
         exportable: bool = False,
         debug: bool = False,
+        completed: bool = False,
     ) -> None:
         self._revision += 1
         self.put_in_queue(
@@ -430,6 +480,7 @@ class LoadWorker(Thread):
                 debug=debug,
             ),
             allow_cancelled=allow_cancelled,
+            completed=completed,
         )
 
     def _publish_final_result(
@@ -454,6 +505,7 @@ class LoadWorker(Thread):
             allow_cancelled=True,
             exportable=snapshot is not None,
             debug=isinstance(mesh, list),
+            completed=True,
         )
 
     def _source_signature(self, mesh: SourceMeshType | None) -> SourceSignature:
@@ -558,28 +610,22 @@ class LoadWorker(Thread):
             return [mesh_to_payload(item) for item in source_meshes]
         return mesh_to_payload(mesh)
 
-    def put_in_queue(self, result: LoadResult, allow_cancelled: bool = False):
+    def put_in_queue(
+        self,
+        result: LoadResult,
+        allow_cancelled: bool = False,
+        completed: bool = False,
+    ) -> None:
         result_put = False
         while not result_put:  # tends to be race conditions between full and empty
             if self.cancelled and not allow_cancelled:
                 logger.info("LoadWorker cancelled, stopping load")
                 return
-            try:
-                self.load_queue.put(result, timeout=self.PUT_QUEUE_TIMEOUT)
-                result_put = True
-            except queue.Full:
-                if not self._discard_older_queued_result(result):
-                    return
-
-    def _discard_older_queued_result(self, result: LoadResult) -> bool:
-        try:
-            queued_result = self.load_queue.get_nowait()
-        except queue.Empty:
-            return True
-        if queued_result.generation <= result.generation:
-            return True
-        self.load_queue.put(queued_result, timeout=self.PUT_QUEUE_TIMEOUT)
-        return False
+            event_type = LoadCompletionEvent if completed else LoadResultEvent
+            self.load_queue.put_latest(
+                event_type(result), timeout=self.PUT_QUEUE_TIMEOUT
+            )
+            result_put = True
 
     def run_mesh_module(self) -> Generator[CreateMeshResultType, None, None]:
         module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
@@ -729,6 +775,7 @@ class MeshLoaderProcess(Process):
         self._export_result_queue = export_result_queue
         self._worker: LoadWorker | None = None
         self._active_load_workers: set[LoadWorker] = set()
+        self._load_events = LoadEventChannel()
         self._active_export_workers: set[ExportWorker] = set()
         self._export_completions: queue.SimpleQueue[ExportResult] | None = None
         self._accepting_exports = True
@@ -745,6 +792,7 @@ class MeshLoaderProcess(Process):
         logger.setLevel(self._log_level)
 
         while True:
+            self._drain_load_events()
             self._reap_load_workers()
             self._reap_export_workers()
             try:
@@ -767,6 +815,30 @@ class MeshLoaderProcess(Process):
                 return
             else:
                 logger.warning(f"Unknown command received: {command}")
+
+    def _drain_load_events(self) -> None:
+        load_events = getattr(self, "_load_events", None)
+        if load_events is None:
+            return
+        while True:
+            try:
+                event = load_events.get_nowait()
+            except queue.Empty:
+                return
+            self._publish_load_result(event.result)
+
+    def _publish_load_result(self, result: LoadResult) -> None:
+        while True:
+            try:
+                self._load_queue.put(result, timeout=LoadWorker.PUT_QUEUE_TIMEOUT)
+                return
+            except queue.Full:
+                queued_result = self._load_queue.get_nowait()
+                if queued_result.generation > result.generation:
+                    self._load_queue.put(
+                        queued_result, timeout=LoadWorker.PUT_QUEUE_TIMEOUT
+                    )
+                    return
 
     def _reap_load_workers(self) -> None:
         for worker in tuple(self._active_load_workers):
@@ -794,9 +866,11 @@ class MeshLoaderProcess(Process):
     def _start_load(self, command: LoadMeshCommand) -> None:
         self.cancel()
         logger.info(f"Loading mesh from {command.module_path}")
+        if not hasattr(self, "_load_events"):
+            self._load_events = LoadEventChannel()
         worker = LoadWorker(
             command.module_path,
-            self._load_queue,
+            self._load_events,
             feature_states=command.feature_states,
             debug_features=command.debug_features,
             parameter_values=command.parameter_values,
@@ -826,6 +900,7 @@ class MeshLoaderProcess(Process):
         export_workers_finished = self._join_export_workers(export_deadline)
         if not load_workers_finished or not export_workers_finished:
             return
+        self._drain_load_events()
         self._drain_export_completions()
         self._command_queue.close()
         self._load_queue.close()

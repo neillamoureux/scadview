@@ -22,13 +22,14 @@ from scadview.mesh_loader_process import (
     ExportResult,
     ExportWorker,
     LoadError,
+    LoadEventChannel,
+    LoadResultEvent,
     LoadMeshCommand,
     LoadPhase,
     LoadResult,
     LoadStatus,
     LoadWorker,
     MeshLoaderProcess,
-    MpLoadQueue,
     MpQueue,
     ShutDownCommand,
     _export_result_at_protocol_boundary,
@@ -478,7 +479,7 @@ def test_load_worker_retains_only_the_final_successful_single_source(load_queue)
 
 
 def test_load_worker_scalar_final_snapshot_is_atomic():
-    publication_queue = queue.Queue()
+    publication_queue = LoadEventChannel(maxsize=10)
     source = box()
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
         loader = mock_module_loader.return_value
@@ -533,7 +534,7 @@ def test_load_worker_invalidates_export_source_for_debug_and_errors(load_queue):
 
 
 def test_load_worker_refreshes_final_payload_after_generator_mutates_source():
-    publication_queue = queue.Queue()
+    publication_queue = LoadEventChannel(maxsize=10)
     source = box()
     initial_vertices = source.vertices.copy()
     with patch("scadview.mesh_loader_process.ModuleLoader") as mock_module_loader:
@@ -1015,6 +1016,7 @@ def test_loader_event_loop_publishes_completed_exports_before_reaping_and_pollin
     process._worker = None
     process._command_queue = Mock()
     process._load_queue = Mock()
+    process._load_events = LoadEventChannel()
     process._export_result_queue = result_queue
     process._export_completions = completion_queue
     process._active_load_workers = set()
@@ -1034,6 +1036,32 @@ def test_loader_event_loop_publishes_completed_exports_before_reaping_and_pollin
         process.run()
 
     result_queue.put.assert_called_once_with(ExportResult(7, 1))
+
+
+def test_loader_coordinator_publishes_load_events_and_propagates_transport_failure():
+    process = object.__new__(MeshLoaderProcess)
+    process._load_events = LoadEventChannel()
+    process._load_queue = Mock()
+    process._load_queue.put.side_effect = OSError("load result queue closed")
+    result = LoadResult(
+        1,
+        1,
+        payload=None,
+        error=None,
+        generation=3,
+        revision=1,
+        phase=LoadPhase.PROGRESS,
+        exportable=False,
+        debug=False,
+    )
+    process._load_events.put_latest(LoadResultEvent(result))
+
+    with pytest.raises(OSError, match="load result queue closed"):
+        process._drain_load_events()
+
+    process._load_queue.put.assert_called_once_with(
+        result, timeout=LoadWorker.PUT_QUEUE_TIMEOUT
+    )
 
 
 def test_loader_repeated_completion_drains_do_not_publish_duplicates():
@@ -1395,7 +1423,7 @@ def _drain_load_results(load_queue):
 
 
 def test_load_worker_does_not_evict_newer_queued_result():
-    load_queue = Mock()
+    load_queue = LoadEventChannel()
     newer_result = LoadResult(
         1,
         1,
@@ -1407,8 +1435,7 @@ def test_load_worker_does_not_evict_newer_queued_result():
         debug=False,
         generation=4,
     )
-    load_queue.put.side_effect = [queue.Full, None]
-    load_queue.get_nowait.return_value = newer_result
+    load_queue.put_latest(LoadResultEvent(newer_result))
     worker = LoadWorker("test/path", load_queue, generation=3)
 
     worker.put_in_queue(
@@ -1425,7 +1452,7 @@ def test_load_worker_does_not_evict_newer_queued_result():
         )
     )
 
-    assert load_queue.put.call_args_list[-1].args[0] == newer_result
+    assert load_queue.get(timeout=1.0) == newer_result
 
 
 def test_cancelled_worker_does_not_publish_payload(load_queue):
@@ -1457,7 +1484,7 @@ def mesh(request):
 
 @pytest.fixture
 def load_queue():
-    queue = MpLoadQueue(maxsize=10, type_=LoadResult)
+    queue = LoadEventChannel(maxsize=10)
     yield queue
     queue.close(discard=True)
 
