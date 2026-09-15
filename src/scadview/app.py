@@ -12,7 +12,7 @@ from scadview.ui.wx.gl_ui import GlUi
 logger = logging.getLogger(__name__)
 
 
-def main(splash_conn: SplashConnection, debug_info_service: DebugInfoService):
+def main(splash_conn: SplashConnection, debug_info_service: DebugInfoService) -> None:
     logger.info("SCADview app starting up")
     controller = Controller()
     try:

@@ -41,7 +41,7 @@ def export_formats() -> list[str]:
 
 
 class Controller:
-    def __init__(self):
+    def __init__(self) -> None:
         self.on_module_path_set = Observable()
         self.on_features_change = Observable()
         self.on_debug_features_change = Observable()
@@ -87,7 +87,7 @@ class Controller:
         return self._current_mesh
 
     @current_mesh.setter
-    def current_mesh(self, value: list[MeshPayload] | MeshPayload | None):
+    def current_mesh(self, value: list[MeshPayload] | MeshPayload | None) -> None:
         self._current_mesh = value
 
     @property
@@ -95,7 +95,7 @@ class Controller:
         return self._feature_states
 
     @feature_states.setter
-    def feature_states(self, value: list[FeatureState]):
+    def feature_states(self, value: list[FeatureState]) -> None:
         if self._feature_states == value:
             return
         self._feature_states = value
@@ -122,7 +122,7 @@ class Controller:
         return self._module_path
 
     @module_path.setter
-    def module_path(self, value: str):
+    def module_path(self, value: str) -> None:
         self._module_path = value
         self.on_module_path_set.notify(value)
 
@@ -131,13 +131,13 @@ class Controller:
         return self._load_status
 
     @load_status.setter
-    def load_status(self, value: LoadStatus):
+    def load_status(self, value: LoadStatus) -> None:
         if self._load_status == value:
             return
         self._load_status = value
         self.on_load_status_change.notify(value)
 
-    def load_mesh(self, module_path: str):
+    def load_mesh(self, module_path: str) -> None:
         if not self._same_module(module_path):
             self._last_export_path = (
                 ""  # Reset last export path if loading a new module
@@ -150,7 +150,7 @@ class Controller:
         logger.info(f"Starting load of {module_path}")
         self._queue_load(self._feature_state_map())
 
-    def reload_mesh(self):
+    def reload_mesh(self) -> None:
         if self.module_path == "":
             raise ValueError("No previous load to reload")
         self.load_mesh(self.module_path)
@@ -245,7 +245,7 @@ class Controller:
     def _load_is_active(self) -> bool:
         return self._active_load_generation == self.current_generation
 
-    def set_feature_enabled(self, name: str, enabled: bool):
+    def set_feature_enabled(self, name: str, enabled: bool) -> None:
         if self.module_path == "":
             raise ValueError("No module loaded")
         feature_states = self._feature_state_map()
@@ -255,7 +255,7 @@ class Controller:
         self.feature_states = self._feature_states_with_override(name, enabled)
         self._queue_feature_reload(feature_states)
 
-    def set_debug_features(self, enabled: bool):
+    def set_debug_features(self, enabled: bool) -> bool:
         if self._debug_features == enabled:
             return False
         self._debug_features = enabled
@@ -414,10 +414,10 @@ class Controller:
             updated_feature_states.append(FeatureState(name, enabled))
         return updated_feature_states
 
-    def _queue_feature_reload(self, feature_states: dict[str, bool]):
+    def _queue_feature_reload(self, feature_states: dict[str, bool]) -> None:
         self._queue_load(feature_states)
 
-    def _queue_load(self, feature_states: dict[str, bool]):
+    def _queue_load(self, feature_states: dict[str, bool]) -> None:
         self.current_mesh = None
         self._exportable_payload = None
         self.load_status = LoadStatus.START

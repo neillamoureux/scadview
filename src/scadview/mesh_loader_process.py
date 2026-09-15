@@ -66,17 +66,17 @@ class MpQueue(Generic[T]):
     Wrapper around queue to ensure only T is in the queue
     """
 
-    def __init__(self, maxsize: int, type_: Type[T]):
+    def __init__(self, maxsize: int, type_: Type[T]) -> None:
         self._queue = Queue(maxsize=maxsize)
         self._type = type_
 
     def get_nowait(self) -> T:
         return self.get(False)
 
-    def put_nowait(self, item: T):
+    def put_nowait(self, item: T) -> None:
         return self.put(item, False)
 
-    def put(self, item: T, block: bool = True, timeout: float | None = None):
+    def put(self, item: T, block: bool = True, timeout: float | None = None) -> None:
         item = self._check_type(item)
         return self._queue.put(item, block=block, timeout=timeout)
 
@@ -111,7 +111,7 @@ LoadEvent = LoadResultEvent | LoadCompletionEvent
 
 
 class LoadEventChannel:
-    def __init__(self, maxsize: int = 1):
+    def __init__(self, maxsize: int = 1) -> None:
         self._queue: queue.Queue[LoadEvent] = queue.Queue(maxsize=maxsize)
 
     def put_latest(self, event: LoadEvent, timeout: float = 0.1) -> None:
@@ -154,7 +154,7 @@ class LoadMeshCommand(Command):
         debug_features: bool = False,
         parameter_values: dict[str, ScalarParameterValue] | None = None,
         generation: int = 0,
-    ):
+    ) -> None:
         self.module_path = module_path
         self.feature_states = feature_states or {}
         self.debug_features = debug_features
@@ -360,7 +360,7 @@ class LoadWorker(Thread):
         debug_features: bool = False,
         parameter_values: dict[str, ScalarParameterValue] | None = None,
         generation: int = 0,
-    ):
+    ) -> None:
         super().__init__(daemon=True)
         self.module_path = module_path
         self.load_queue = load_queue
@@ -383,13 +383,13 @@ class LoadWorker(Thread):
             return None
         return self.final_snapshot.source
 
-    def run(self):
+    def run(self) -> None:
         with self._load_number_lock:
             LoadWorker.load_number += 1
             self.load_number = LoadWorker.load_number
         self.load()
 
-    def load(self):
+    def load(self) -> None:
         sequence_number = 0
         self.load_start_time = time()
         last_mesh: SourceMeshType | None = None
@@ -649,7 +649,7 @@ class LoadWorker(Thread):
             return mesh
         return self._ensure_trimesh(sources)
 
-    def _color_if_debug(self, tmesh: SourceMeshType | None):
+    def _color_if_debug(self, tmesh: SourceMeshType | None) -> None:
         if isinstance(tmesh, list):
             for tm, color in zip(tmesh, debug_color()):
                 if "scadview" not in tm.metadata:
@@ -721,7 +721,7 @@ class LoadWorker(Thread):
             self._loaded_feature_states = feature_states
         return self._loaded_feature_states
 
-    def _check_mesh_type(self, mesh: Any):
+    def _check_mesh_type(self, mesh: Any) -> None:
         if isinstance(mesh, FeatureMesh):
             self._check_feature_mesh(mesh)
             return
@@ -784,7 +784,7 @@ class LoadWorker(Thread):
             f"Manifold, got {type(resolved_mesh)}"
         )
 
-    def _check_trimesh_vertices(self, mesh: Trimesh):
+    def _check_trimesh_vertices(self, mesh: Trimesh) -> None:
         if mesh.vertices.size == 0:
             return
         invalid_indices = np.argwhere(~np.isfinite(mesh.vertices))
@@ -798,7 +798,7 @@ class LoadWorker(Thread):
             f"Mesh contains non-finite vertex coordinate {invalid_value} at vertices[{vertex_index}][{coord_index}]"
         )
 
-    def _check_manifold(self, mesh: Manifold, list_index: int | None = None):
+    def _check_manifold(self, mesh: Manifold, list_index: int | None = None) -> None:
         status = mesh.status()
         if status == ManifoldError.NoError:
             return
@@ -807,7 +807,7 @@ class LoadWorker(Thread):
             prefix = f"Manifold mesh[{list_index}]"
         raise ValueError(f"{prefix} has invalid status: {status.name}")
 
-    def cancel(self):
+    def cancel(self) -> None:
         with self._terminal_lock:
             if self._terminal_claimed:
                 return
@@ -826,7 +826,7 @@ class MeshLoaderProcess(Process):
         export_result_queue: MpExportResultQueue,
         log_queue: mp_queues.Queue[logging.LogRecord],
         log_level: int,
-    ):
+    ) -> None:
         super().__init__()
         self._command_queue = command_queue
         self._load_queue = load_queue
@@ -941,7 +941,7 @@ class MeshLoaderProcess(Process):
         self._active_load_workers.add(worker)
         worker.start()
 
-    def cancel(self, close_queues: bool = False):
+    def cancel(self, close_queues: bool = False) -> None:
         for worker in tuple(self._active_load_workers):
             if worker.is_alive():
                 logger.info("Cancelling in progress load")
