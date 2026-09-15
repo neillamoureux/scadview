@@ -468,9 +468,3 @@ class Controller:
 
     def _same_module(self, module_path: str) -> bool:
         return os.path.abspath(module_path) == os.path.abspath(self.module_path)
-
-    def __del__(self):
-        try:
-            self.close(timeout=0.2)
-        except Exception:
-            pass

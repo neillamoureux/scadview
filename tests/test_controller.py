@@ -500,6 +500,15 @@ def test_controller_rejects_export_after_close(monkeypatch):
     assert not controller.export("/tmp/model.stl")
 
 
+def test_controller_close_is_idempotent_for_already_dead_loader(monkeypatch):
+    controller = _controller(monkeypatch)
+
+    controller.close(timeout=0.01)
+    controller.close(timeout=0.01)
+
+    assert controller._closed
+
+
 def test_controller_discards_unrelated_export_results_without_notification(
     monkeypatch, caplog
 ):

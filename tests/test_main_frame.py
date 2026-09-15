@@ -579,6 +579,20 @@ def test_terminal_load_error_resets_progress_gauge():
     timer.Stop.assert_called_once_with()
 
 
+def test_main_frame_close_closes_controller_before_destroy():
+    frame = SimpleNamespace(
+        _loader_timer=Mock(),
+        _controller=Mock(),
+        Destroy=Mock(),
+    )
+
+    MainFrame.on_close(frame, Mock())
+
+    frame._loader_timer.Stop.assert_called_once_with()
+    frame._controller.close.assert_called_once_with()
+    frame.Destroy.assert_called_once_with()
+
+
 @pytest.mark.parametrize("status", [LoadStatus.DEBUG, LoadStatus.ERROR])
 def test_reload_debug_or_error_stops_polling(status):
     timer = Mock()

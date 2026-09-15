@@ -14,12 +14,15 @@ logger = logging.getLogger(__name__)
 
 def main(splash_conn: SplashConnection, debug_info_service: DebugInfoService):
     logger.info("SCADview app starting up")
-    renderer_factory = RendererFactory(
-        CameraPerspective(), create_scene_assets(), debug_info_service
-    )
-    gl_widget_adapter = GlWidgetAdapter(renderer_factory)
     controller = Controller()
-    logger.warning("*** SCADview has initialized ***")
-    stop_splash_process(splash_conn)
-    GlUi(controller, gl_widget_adapter, debug_info_service).run()
-    logger.info("SCADview app stopping")
+    try:
+        renderer_factory = RendererFactory(
+            CameraPerspective(), create_scene_assets(), debug_info_service
+        )
+        gl_widget_adapter = GlWidgetAdapter(renderer_factory)
+        logger.warning("*** SCADview has initialized ***")
+        stop_splash_process(splash_conn)
+        GlUi(controller, gl_widget_adapter, debug_info_service).run()
+    finally:
+        controller.close()
+        logger.info("SCADview app stopping")

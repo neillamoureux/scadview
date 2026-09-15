@@ -674,7 +674,7 @@ class MainFrame(wx.Frame):
         elif view == "z":
             self._gl_widget.view_from_z()
 
-    def on_close(self, _: wx.Event):
+    def on_close(self, _: wx.Event) -> None:
         self._loader_timer.Stop()
-        del self._controller
+        self._controller.close()
         self.Destroy()
