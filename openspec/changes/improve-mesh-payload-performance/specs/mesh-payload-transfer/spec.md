@@ -66,6 +66,10 @@ sequence number, requested debug mode, or load status.
 The envelope SHALL be immutable after construction, SHALL expose payload as its
 only mesh-bearing field, and SHALL derive terminal completion from phase rather
 than storing duplicate compatibility state.
+The loader SHALL assign effective debug status explicitly at source selection.
+To preserve the existing contract, every list result SHALL be explicitly marked
+debug and SHALL be non-exportable; a single payload result SHALL be explicitly
+marked non-debug and is exportable only when it is the successful final snapshot.
 
 #### Scenario: Progress result is published
 - **WHEN** a generator yields an intermediate normalized mesh
@@ -78,6 +82,10 @@ than storing duplicate compatibility state.
 #### Scenario: Final debug list is published
 - **WHEN** the current generation successfully completes with an effective debug list
 - **THEN** the loader publishes a final-phase envelope with `exportable` set to false and no retained single export source
+
+#### Scenario: A list result is classified explicitly
+- **WHEN** a user module or debug source selection produces a list of payloads
+- **THEN** the loader marks the envelope debug explicitly and consumers do not infer that state from the payload's list shape
 
 #### Scenario: Terminal load error is published
 - **WHEN** normalization, finalization, or module execution fails
@@ -207,6 +215,10 @@ the retained source before starting asynchronous export execution.
 #### Scenario: Debug list is displayed
 - **WHEN** the current result has debug-list status
 - **THEN** export remains unavailable as in the existing interface
+
+The change does not isolate arbitrary user-module state such as `sys.modules`,
+`sys.path`, or user-defined module globals across overlapping loads. That broader
+session-isolation question is deferred to a separately reviewed follow-up change.
 
 ### Requirement: Fully indexed rendering is gated by evidence
 The initial compact-payload stage SHALL retain the established triangle-corner

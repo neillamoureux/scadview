@@ -52,6 +52,11 @@ documented list and generator forms.
   source normalization, or loader-owned export execution.
 - A fully indexed shader pipeline unless a separately reviewed follow-up is
   justified by the measurements from this change.
+- Isolating arbitrary user-module process state such as `sys.modules`, `sys.path`,
+  or user-defined module globals across overlapping loads. Feature capture state
+  is isolated for this change; broader module-session isolation is deferred to a
+  separately reviewed follow-up that can choose between serialized execution and
+  per-generation child processes.
 
 ## Decisions
 
@@ -180,6 +185,13 @@ values independently.
 phase member, `payload` is the sole mesh-bearing envelope field, and terminal
 completion is a read-only property derived from `phase`; there are no legacy
 phase, mesh, or stored-completion aliases.
+
+Effective debug state is assigned by the loader when it selects the result source;
+consumers never infer it from the payload container. The existing contract is
+preserved: a single payload is a normal result that may be exportable, while any
+list payload is an explicitly debug result and is non-exportable. A debug list may
+contain one or many payloads, but its debug status is an explicit envelope field,
+not a consequence rediscovered by the controller, UI, or renderer.
 
 ### Retain payloads and export from the loader-owned source
 
@@ -312,7 +324,9 @@ reproduce corner markers for vertices shared by multiple triangles.
 ## Migration Plan
 
 1. Add the benchmark harness and capture the current path's baseline.
-2. Add the internal payload model and pure round-trip conversions behind tests.
+2. Add the internal payload model and one-way source-to-payload conversion behind
+   tests; loader-owned export remains source-based and does not reconstruct a
+   source mesh from a payload.
 3. Change loader results, controller ownership, and export protocol together so
    no mixed process protocol is shipped.
 4. Introduce the explicit load-result envelope and final-snapshot state model.
@@ -322,6 +336,10 @@ reproduce corner markers for vertices shared by multiple triangles.
 7. Run automated validation, repeat measurements, and complete human visual checks.
 8. Record the indexed-renderer gate outcome; pursue it only through a separately
    reviewed follow-up if justified.
+
+The broader question of isolating arbitrary user-module state across overlapping
+loads is recorded as a follow-up design decision rather than silently expanded into
+this change.
 
 The payload is internal and persisted only in memory, so no data migration or
 compatibility bridge is required. Rollback consists of reverting the process

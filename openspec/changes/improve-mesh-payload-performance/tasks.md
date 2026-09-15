@@ -57,3 +57,13 @@
 - [x] 9.3 Update loader, controller, UI, and renderer-adjacent consumers to apply explicit result envelopes as state transitions instead of inferring finality or exportability from payload shape, sequence numbers, flags, or status.
 - [x] 9.4 Add regression tests for progress, final, error, and cancellation phases; independent revisions; single-mesh and debug-list exportability; stale generations; and generator finalization/source-payload alignment.
 - [x] 9.5 Run the affected suite, full preflight, and OpenSpec validation; confirm no public API or payload-only renderer boundary changes and update the decision evidence.
+
+## 10. Supplemental Review Remediation
+
+- [ ] 10.1 Make load publication and envelope state singular: route load results through a loader-owned publication seam, represent idle and stale polls as non-events, carry effective debug state explicitly, and freeze nested envelope state; verify with deterministic queue/process-seam, controller, UI, and payload immutability tests.
+- [ ] 10.2 Make final values and cancellation atomic: capture final feature state and sources after generator exhaustion, claim one terminal transition shared with cancellation, and publish exactly one FINAL, ERROR, or CANCELLED result; verify with barrier-controlled late-feature and cancellation tests.
+- [ ] 10.3 Correct non-empty mesh-list framing: exclude absent opacity partitions from aggregate bounds while preserving deterministic truly-empty framing; verify all-opaque, all-transparent, mixed, and empty lists plus a manual visual framing check.
+- [ ] 10.4 Make lifecycle ownership and typing explicit: close the controller from normal and exceptional application/UI paths, remove destructor-dependent cleanup, and annotate changed production signatures; verify idempotent shutdown, active load/export shutdown, Ruff, Ty, and the full affected suite.
+
+Whole user-module session isolation across `sys.modules`, `sys.path`, and arbitrary
+module globals is explicitly deferred to a separately reviewed follow-up change.
