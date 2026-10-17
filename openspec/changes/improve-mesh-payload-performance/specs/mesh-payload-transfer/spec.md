@@ -27,11 +27,11 @@ error when an attempted measurement is unavailable.
 - **THEN** the benchmark preserves the actual source kind, marks RSS measurement unsupported, reports the reason, and does not represent missing values as a successful zero measurement
 
 ### Requirement: Loader results use compact mesh data
-The system SHALL represent each successfully normalized mesh crossing the loader
+The system SHALL represent each successfully validated mesh crossing the loader
 process boundary using contiguous indexed geometry, fixed-width numeric types,
 one optional mesh-level color, and only the additional summary data required for
 rendering. A successful display result SHALL NOT contain a complete `Trimesh`
-object. The loader process SHALL retain the final normalized source separately
+object. The loader process SHALL retain the final native source separately
 when lossless export is available.
 
 #### Scenario: Single mesh result is transferred
@@ -60,7 +60,7 @@ when lossless export is available.
 - **THEN** the system discards it without replacing the current generation's mesh or metadata
 
 #### Scenario: Source face normals are transferred
-- **WHEN** a normalized source `Trimesh` provides per-face `face_normals`
+- **WHEN** a source `Trimesh` provides per-face `face_normals`
 - **THEN** payload conversion preserves those normals in its required per-face normal array and the renderer uses them without recalculating geometric normals
 
 #### Scenario: Payload visibility remains internal
@@ -81,7 +81,7 @@ debug and SHALL be non-exportable; a single payload result SHALL be explicitly
 marked non-debug and is exportable only when it is the successful final snapshot.
 
 #### Scenario: Progress result is published
-- **WHEN** a generator yields an intermediate normalized mesh
+- **WHEN** a generator yields an intermediate mesh selected for publication
 - **THEN** the loader publishes a progress-phase envelope with a new display revision and a non-exportable payload view
 
 #### Scenario: Final single result is published
@@ -97,7 +97,7 @@ marked non-debug and is exportable only when it is the successful final snapshot
 - **THEN** the loader marks the envelope debug explicitly and consumers do not infer that state from the payload's list shape
 
 #### Scenario: Terminal load error is published
-- **WHEN** normalization, finalization, or module execution fails
+- **WHEN** source resolution, payload conversion, finalization, or module execution fails
 - **THEN** the loader publishes an error-phase envelope with a structured error and no exportable source
 
 #### Scenario: Final revision is distinct from progress
@@ -110,12 +110,20 @@ marked non-debug and is exportable only when it is the successful final snapshot
 
 ### Requirement: Public mesh creation behavior remains compatible
 The system SHALL continue accepting the documented `create_mesh` return types
-and SHALL perform payload conversion only after existing mesh normalization and
-validation.
+and SHALL perform payload conversion after source validation and feature
+resolution without requiring Manifold-to-Trimesh normalization.
+
+#### Scenario: Native Manifold is displayed
+- **WHEN** a valid Manifold is selected for display
+- **THEN** the loader converts its vertex and triangle arrays directly to a payload with equivalent triangle-cross-product shading and creates no Trimesh
+
+#### Scenario: Native conversion is evaluated
+- **WHEN** the direct conversion candidate is compared to the committed loader on `examples/messner_mani.py`
+- **THEN** it is retained only if same-machine timing shows a meaningful improvement and correctness checks preserve required semantics
 
 #### Scenario: Supported return type is loaded
 - **WHEN** `create_mesh` returns a `Trimesh`, `Manifold`, feature mesh, or documented list or generator form
-- **THEN** the system presents the same normalized geometry without requiring changes to the user module
+- **THEN** the system presents equivalent triangle geometry without requiring changes to the user module
 
 #### Scenario: Invalid return value is loaded
 - **WHEN** `create_mesh` returns an unsupported value or invalid geometry
@@ -155,18 +163,18 @@ transforms, visibility, drawable composition, and draw ordering.
 
 ### Requirement: Source mesh objects remain loader-owned
 Within the load-display-export path, the system SHALL confine complete `Trimesh`
-objects to source-geometry normalization and loader-owned export execution. The
-normalized source SHALL remain in the loader process and SHALL NOT cross the
+objects to native source handling and loader-owned export execution. The
+native source SHALL remain in the loader process and SHALL NOT cross the
 display result queue or become controller, UI, adapter, or renderer state. This
 boundary SHALL NOT alter documented geometry-authoring APIs.
 
-#### Scenario: Source mesh is normalized
+#### Scenario: Source mesh is accepted
 - **WHEN** user-module or built-in source geometry is accepted
 - **THEN** it is converted to a payload before crossing into queue, controller, UI, adapter, or renderer ownership
 
 #### Scenario: Final source is retained
 - **WHEN** a final successful non-debug single mesh is accepted for the current generation
-- **THEN** the loader retains the normalized `Trimesh` source for export and publishes only its payload view to the display queue
+- **THEN** the loader retains the native `Trimesh` or `Manifold` source for export and publishes only its payload view to the display queue
 
 #### Scenario: Debug or failed source is completed
 - **WHEN** a debug list, failed result, or non-final intermediate result is processed
@@ -191,15 +199,19 @@ feature-debug lists, incremental results, and triangle-edge display.
 
 ### Requirement: Export behavior is preserved from the source mesh
 The system SHALL keep export available for the final successfully loaded,
-non-debug mesh and SHALL export the retained normalized source `Trimesh` without
+non-debug mesh and SHALL export the retained native source without
 reconstructing it from `MeshPayload`. Export SHALL remain asynchronous to the UI
 and SHALL preserve the existing supported formats and error reporting. When the
 loader accepts an export request, it SHALL isolate a point-in-time value copy of
 the retained source before starting asynchronous export execution.
 
+#### Scenario: Native Manifold is exported
+- **WHEN** an export request for the final Manifold is accepted
+- **THEN** the loader adapts that native source to Trimesh through the existing export conversion, preserving its geometry and supported vertex colors, and reports adaptation errors through the export protocol
+
 #### Scenario: Loaded mesh is exported
 - **WHEN** the user exports a completed single-mesh load to a currently supported format
-- **THEN** the loader exports the retained normalized source through the existing format-specific path with its original geometry, metadata, visuals, and color state
+- **THEN** the loader exports the retained source through the existing format-specific path with its original geometry, metadata, visuals, and supported color state
 
 #### Scenario: Export is requested during a load
 - **WHEN** the user requests export while a new load is active or no final source exists for the requested generation

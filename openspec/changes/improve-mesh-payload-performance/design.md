@@ -1,10 +1,11 @@
 ## Context
 
-See `proposal.md` for motivation. User modules execute in a loader process, where
-supported return values are normalized to `Trimesh` instances. `LoadResult`
-currently sends those instances through a bounded multiprocessing queue. The main
-process retains the received object for export and passes it through wx and the GL
-adapter to the renderer.
+See `proposal.md` for motivation. At the start of this change, user modules ran in
+a loader process and their return values were normalized to `Trimesh` instances.
+`LoadResult` sent those instances through a bounded multiprocessing queue, and the
+main process retained them for export and passed them through wx to the renderer.
+The decisions below replace that architecture with native loader-owned sources
+and payload-only display boundaries.
 
 The renderer reads expanded triangle positions and per-face cross products from
 `Trimesh`, repeats normals and mesh-level colors for every triangle corner, and
@@ -86,12 +87,11 @@ including a valid zero delta.
 Alternative: redesign the renderer first. Rejected because no current measurement
 identifies the renderer rather than serialization as the dominant cost.
 
-### Confine Trimesh to source normalization and loader-owned export
+### Keep native sources inside loader ownership
 
-Within the runtime load-display-export path, `Trimesh` is allowed inside source
-normalization and loader-owned export execution. Source normalization includes
-user-module results, `Manifold` conversion, feature resolution, and built-in scene
-geometry supplied by resource builders. The loader retains the final normalized
+Within the runtime load-display-export path, native `Trimesh` and `Manifold`
+values remain inside source selection and loader-owned export execution. Feature
+resolution preserves native types. The loader retains the final native
 user source and derives a payload view before publication. The source mesh does
 not enter the display queue, controller, UI, adapter, renderer-factory, or
 renderer interfaces. Built-in assets are converted to payloads before renderer
@@ -123,10 +123,12 @@ One payload represents one mesh and contains:
 
 `MeshPayload` is an internal transport and rendering model, not a public
 SCADview API. Its per-face normal array is required and is populated from the
-normalized source mesh's `Trimesh.face_normals` during payload conversion. The
+source mesh's `Trimesh.face_normals` during payload conversion. For Manifold,
+float64 triangle cross products are normalized with the same degeneracy threshold
+as the existing Trimesh adapter; vertex properties are not treated as normals. The
 renderer respects those supplied normals and does not recalculate them. This
-preserves the current behavior for client-provided `face_normals`; geometric
-`triangles_cross` fallback semantics are intentionally not introduced here.
+preserves client-provided `face_normals` on Trimesh and geometric shading on
+Manifold without creating a temporary Trimesh.
 
 Payload construction validates shapes, finite values, and that face indices are
 non-negative, in range, and representable as `uint32` before casting. It copies
@@ -140,11 +142,11 @@ would then depend outward on rendering. Alternative: serialize a reduced
 `Trimesh`. Rejected because it preserves library-object coupling and gives less
 control over cached state and fixed-width representation.
 
-### Convert after normalization and before publication
+### Convert native sources before publication
 
-The loader continues validating user results, resolving feature meshes, converting
-`Manifold`, selecting debug sources, and assigning debug colors in the current
-order. It then converts each resulting `Trimesh` to a payload immediately before
+The loader continues validating user results, resolving feature meshes,
+selecting debug sources, and assigning debug colors in the current order.
+It converts each selected native source directly to a payload immediately before
 constructing `LoadResult`. Queue size, replacement behavior, generation checks,
 incremental sequence numbers, errors, feature states, and parameters stay intact.
 
@@ -153,15 +155,16 @@ leaving the user-facing module contract untouched.
 
 ### Coalesce incremental sources before payload conversion
 
-The generator producer normalizes, selects debug geometry, and captures feature
-metadata in its own thread. Before resuming the generator it copies normalized
-sources (including supplied face normals) into a one-slot replacement channel.
+The generator producer resolves sources, selects debug geometry, and captures
+feature metadata in its own thread. Before resuming the generator it copies
+mutable Trimesh sources (including supplied face normals) into a one-slot
+replacement channel; immutable Manifold values are handed off by reference.
 A conversion consumer takes the newest pending source and produces payloads;
 replaced pending sources never become payloads or display results. Original yield
 indices remain sequence numbers, while revisions count publications.
 
 Copying on the producer while the generator is suspended preserves generators
-that reuse mutable meshes and lists. This costs a source copy per yield but avoids
+that reuse mutable meshes and lists. This costs a copy per Trimesh yield but avoids
 an unsafe background copy racing generator mutation. Independently spawned user
 threads must not mutate sources during the yield handoff. Feature capture remains
 producer-owned because its context is thread-local.
@@ -217,7 +220,7 @@ not a consequence rediscovered by the controller, UI, or renderer.
 ### Retain payloads and export from the loader-owned source
 
 The controller retains the latest payload for rendering, while the loader retains
-only the final successful, non-debug normalized `Trimesh` for export. The
+only the final successful, non-debug native `Trimesh` or `Manifold` for export. The
 controller sends an `ExportCommand` containing a request id, generation, and path
 through a command channel. The loader performs export against the retained source
 on a worker thread and returns a correlated, structured `ExportResult` through a
@@ -243,8 +246,9 @@ accepted export completes and reports its own request id. Shutdown stops accepti
 new export work and applies the existing bounded process-termination policy if an
 export cannot finish.
 
-The loader accepts an export by copying the retained source before starting the
-export worker. The copy is an isolated point-in-time value of the source geometry,
+The loader accepts an export by copying a retained Trimesh or adapting a retained
+Manifold through the existing `manifold_to_trimesh` helper before starting the
+export worker. The result is an isolated point-in-time value of the source geometry,
 visuals, attributes, and metadata; replacing or mutating the user-retained source
 after acceptance cannot change the export. Copying occurs synchronously in the
 loader command loop so a subsequently queued reload cannot start before the
@@ -252,6 +256,18 @@ snapshot exists, while the main process and wx event loop remain asynchronous.
 Only accepted exports pay the temporary copy cost, and reaping the export worker
 releases its snapshot. A copy failure produces a correlated structured export
 error and starts no worker.
+
+This source-native revision supersedes the normalized-Trimesh retention decisions
+in tasks 8.2 and 9.2. Manifold vertex properties retain their existing export
+interpretation through the unchanged adapter; display still uses mesh-level color
+and applies debug palette colors to payloads. Trimesh metadata, visuals, precision,
+and post-yield mutation behavior remain unchanged. Native property vertices may
+remain duplicated for display, provided triangle geometry and shading match.
+Same-machine local diagnostics compare the committed and candidate loader paths
+on `examples/messner_mani.py`. Retain the candidate only if meaningfully faster and
+correct. Benchmark harness and evidence-file updates remain deferred.
+Human GUI validation must still check incremental final display, debug-list colors,
+framing, transparency, and export from the displayed final Manifold.
 
 Snapshot creation and exporter invocation are isolated in named asynchronous
 protocol-boundary adapters. The adapters catch `Exception`, but not

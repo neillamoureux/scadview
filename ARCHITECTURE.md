@@ -18,7 +18,7 @@ SCADview follows a layered, event-driven desktop architecture with explicit proc
 
 - Mesh generation runs in a separate process (`MeshLoaderProcess`) and worker thread.
 - Main process and loader process communicate through typed queues: `MpCommandQueue` for commands, `MpLoadQueue` for latest-wins display results, and the reliable `MpExportResultQueue` for export results.
-- The loader process owns the normalized source `Trimesh` for the current exportable generation and performs export execution; controller, UI, and renderer boundaries carry payload-only mesh data.
+- The loader process owns the native `Trimesh` or `Manifold` source for the current exportable generation and performs export execution. Manifold becomes Trimesh only when export is accepted; controller, UI, and renderer boundaries carry payload-only mesh data.
 
 ## 4. State changes flow through observables
 
@@ -28,7 +28,7 @@ SCADview follows a layered, event-driven desktop architecture with explicit proc
 ## 5. User module contract is strict
 
 - Dynamically loaded modules must expose `create_mesh`.
-- Allowed return types are `Trimesh`, `Manifold`, or lists of those; values are normalized before render (`src/scadview/mesh_loader_process.py`, `src/scadview/module_loader.py`).
+- Allowed return types are `Trimesh`, `Manifold`, or lists of those; validated native sources become payloads before render (`src/scadview/mesh_loader_process.py`, `src/scadview/module_loader.py`).
 
 ## 6. Rendering is a pure service boundary
 

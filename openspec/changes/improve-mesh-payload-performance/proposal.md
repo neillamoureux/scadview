@@ -22,10 +22,13 @@ redesign.
   visibility, drawable construction, and draw ordering.
 - Preserve current rendering semantics, including mesh-level color, transparency,
   framing, incremental results, feature-debug lists, and triangle-edge display.
-- Retain the final normalized `Trimesh` in the loader process as the lossless
+- Retain the final native `Trimesh` or `Manifold` in the loader process as the lossless
   source of truth and expose it only through an asynchronous export protocol;
   treat `MeshPayload` as a rendering/transport view rather than an export
   representation.
+- Convert Manifold directly to payload arrays, deferring its Trimesh adapter until
+  export acceptance. Retain this revision only if same-machine diagnostics on
+  `examples/messner_mani.py` show a meaningful improvement with equivalent output.
 - Add an explicit load-result envelope describing phase, revision, generation,
   payload, and exportability so finality and ownership are not inferred from
   payload shape, sequence numbers, or debug flags.
@@ -57,6 +60,6 @@ None.
   with export-fidelity and export-lifecycle coverage.
 - Does not change public SCADview imports, accepted `create_mesh` return types,
   export availability, or add dependencies.
-- Keeps `Trimesh` in the geometry-authoring and normalization domain and in the
+- Keeps `Trimesh` in the geometry-authoring domain and in the
   loader-owned export boundary, but removes it from queue payloads, controller,
   UI, and production renderer modules.

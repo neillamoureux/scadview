@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from manifold3d import Manifold
 from numpy.typing import NDArray
 from trimesh import Trimesh
+from trimesh.triangles import normals
 
 DEFAULT_COLOR = np.array([128, 128, 128, 255], dtype=np.uint8)
 FLOAT32_MAX = np.finfo(np.float32).max
@@ -135,3 +137,28 @@ def _metadata_color(metadata: Any) -> tuple[float, ...] | None:
     if not all(0.0 <= component <= 1.0 for component in components):
         raise ValueError("SCADview color components must be in the range [0.0, 1.0]")
     return components
+
+
+def manifold_to_payload(
+    manifold: Manifold, color: tuple[float, float, float, float] | None = None
+) -> MeshPayload:
+    """Convert native Manifold geometry without constructing a Trimesh."""
+    mesh = manifold.to_mesh()
+    vertices = _compact_float_array(mesh.vert_properties[:, :3], "vertices")
+    faces = _compact_faces(mesh.tri_verts, len(vertices))
+    face_normals = _triangle_normals(vertices, faces)
+    bounds, scale = _bounds_and_scale(vertices)
+    metadata = {"scadview": {"color": color}} if color is not None else {}
+    return MeshPayload(
+        vertices, faces, face_normals, _mesh_color(metadata), bounds, scale
+    )
+
+
+def _triangle_normals(
+    vertices: NDArray[np.float32], faces: NDArray[np.uint32]
+) -> NDArray[np.float32]:
+    triangles = vertices.astype(np.float64)[faces]
+    unit, valid = normals(triangles=triangles)
+    result = np.zeros((len(faces), 3), dtype=np.float32)
+    result[valid] = unit
+    return result

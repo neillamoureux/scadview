@@ -7,7 +7,7 @@ from pathlib import Path
 from time import monotonic, sleep
 from typing import Any
 
-from trimesh import Trimesh
+from trimesh import Trimesh, load_mesh
 
 from scadview.controller import Controller
 from scadview.features import FeatureState
@@ -91,6 +91,42 @@ def test_real_loader_process_preserves_payload_export_reload_and_shutdown(tmp_pa
         load_release.touch()
         second_final = _get_load_result(harness.load_queue, 2, LoadPhase.FINAL)
         _assert_payload_only(second_progress, second_final)
+        _shutdown_cleanly(harness)
+    finally:
+        _close_harness(harness)
+
+
+def test_real_loader_process_exports_native_manifold_and_rejects_stale_source(tmp_path):
+    module_path = tmp_path / "native_mesh.py"
+    module_path.write_text(
+        "from manifold3d import Manifold\n"
+        "def create_mesh():\n"
+        "    yield Manifold.cube()\n"
+        "    yield Manifold.cube((2, 3, 4))\n",
+        encoding="utf-8",
+    )
+    harness = _start_loader_process()
+    try:
+        harness.command_queue.put(LoadMeshCommand(str(module_path), generation=1))
+        final = _get_load_result(harness.load_queue, 1, LoadPhase.FINAL)
+        assert final.exportable
+        assert isinstance(final.payload, MeshPayload)
+        assert final.sequence_number == 2
+        for request_id, extension in enumerate(("ply", "stl", "obj")):
+            path = tmp_path / f"native.{extension}"
+            harness.command_queue.put(ExportCommand(request_id, 1, str(path)))
+            assert harness.export_result_queue.get(
+                timeout=TIMEOUT_SECONDS
+            ) == ExportResult(request_id, 1)
+            exported = load_mesh(path)
+            assert isinstance(exported, Trimesh)
+            assert exported.volume == 24
+        harness.command_queue.put(LoadMeshCommand(str(module_path), generation=2))
+        _get_load_result(harness.load_queue, 2, LoadPhase.FINAL)
+        harness.command_queue.put(ExportCommand(10, 1, str(tmp_path / "stale.ply")))
+        stale = harness.export_result_queue.get(timeout=TIMEOUT_SECONDS)
+        assert stale.error is not None
+        assert stale.error.type_name == "StaleSource"
         _shutdown_cleanly(harness)
     finally:
         _close_harness(harness)

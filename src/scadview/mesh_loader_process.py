@@ -42,7 +42,7 @@ from scadview.features import (
 )
 from scadview.load_status import LoadStatus
 from scadview.logging_worker import configure_worker_logging
-from scadview.mesh_payload import MeshPayload, mesh_to_payload
+from scadview.mesh_payload import MeshPayload, manifold_to_payload, mesh_to_payload
 from scadview.module_loader import (
     CreateMeshParameter,
     ModuleLoader,
@@ -177,9 +177,10 @@ class ShutDownCommand(Command):
     pass
 
 
-SourceMeshType = Trimesh | list[Trimesh]
+NativeMeshType = Trimesh | Manifold
+SourceMeshType = NativeMeshType | list[NativeMeshType]
 MeshType = MeshPayload | list[MeshPayload]
-SingleSourceSignature = tuple[bytes, bytes, bytes, bytes, str]
+SingleSourceSignature = tuple[bytes, bytes, bytes, bytes, str] | Manifold
 SourceSignature = SingleSourceSignature | tuple[SingleSourceSignature, ...] | None
 CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
@@ -222,7 +223,7 @@ class LoadPhase(Enum):
 
 @dataclass(frozen=True)
 class FinalMeshSnapshot:
-    source: Trimesh
+    source: NativeMeshType
     payload: MeshPayload
 
 
@@ -416,7 +417,7 @@ class LoadWorker(Thread):
         self._progress_signature: SourceSignature = None
 
     @property
-    def export_source(self) -> Trimesh | None:
+    def export_source(self) -> NativeMeshType | None:
         if self.final_snapshot is None:
             return None
         return self.final_snapshot.source
@@ -492,11 +493,13 @@ class LoadWorker(Thread):
         self, mesh: SourceMeshType | None
     ) -> SourceMeshType | None:
         if isinstance(mesh, list):
-            source_meshes = cast(list[Trimesh], mesh)
+            source_meshes = cast(list[NativeMeshType], mesh)
             return [self._copy_progress_mesh(item) for item in source_meshes]
         return self._copy_progress_mesh(mesh) if mesh is not None else None
 
-    def _copy_progress_mesh(self, mesh: Trimesh) -> Trimesh:
+    def _copy_progress_mesh(self, mesh: NativeMeshType) -> NativeMeshType:
+        if isinstance(mesh, Manifold):
+            return mesh
         snapshot = mesh.copy()
         # The public setter may discard supplied normals that differ from geometry.
         snapshot._cache["face_normals"] = mesh.face_normals.copy()
@@ -585,7 +588,7 @@ class LoadWorker(Thread):
     def _prepare_source(
         self, mesh: CreateMeshResultType | SourceMeshType | None
     ) -> SourceMeshType | None:
-        tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
+        tmesh = self._resolve_source(mesh) if mesh is not None else None
         tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
         return tmesh
@@ -650,13 +653,15 @@ class LoadWorker(Thread):
 
     def _source_signature(self, mesh: SourceMeshType | None) -> SourceSignature:
         if isinstance(mesh, list):
-            source_meshes = cast(list[Trimesh], mesh)
+            source_meshes = cast(list[NativeMeshType], mesh)
             return tuple(self._single_source_signature(item) for item in source_meshes)
-        if isinstance(mesh, Trimesh):
+        if isinstance(mesh, (Trimesh, Manifold)):
             return self._single_source_signature(mesh)
         return None
 
-    def _single_source_signature(self, mesh: Trimesh) -> SingleSourceSignature:
+    def _single_source_signature(self, mesh: NativeMeshType) -> SingleSourceSignature:
+        if isinstance(mesh, Manifold):
+            return mesh
         face_colors = getattr(mesh.visual, "face_colors", np.empty((0, 4)))
         return (
             _array_signature(mesh.vertices),
@@ -679,13 +684,13 @@ class LoadWorker(Thread):
         payload: MeshType | None,
         error: LoadError | None,
     ) -> FinalMeshSnapshot | None:
-        if error is not None or not isinstance(mesh, Trimesh):
+        if error is not None or not isinstance(mesh, (Trimesh, Manifold)):
             return None
         if not isinstance(payload, MeshPayload):
             return None
         return FinalMeshSnapshot(mesh, payload)
 
-    def _ensure_trimesh(
+    def _resolve_source(
         self, mesh: CreateMeshResultType | SourceMeshType | None
     ) -> SourceMeshType | None:
         if mesh is None:
@@ -698,13 +703,11 @@ class LoadWorker(Thread):
                 return None
             if not isinstance(operand, BooleanMesh):
                 raise TypeError(f"Expected non-empty feature mesh, got {type(operand)}")
-            return self._ensure_trimesh(operand.native())
-        if isinstance(mesh, Trimesh):
+            return self._resolve_source(operand.native())
+        if isinstance(mesh, (Trimesh, Manifold)):
             return mesh
-        if isinstance(mesh, Manifold):
-            return manifold_to_trimesh(mesh)
         if isinstance(mesh, list):
-            result: list[Trimesh] = []
+            result: list[NativeMeshType] = []
             for m in mesh:
                 if isinstance(m, FeatureMesh):
                     operand = m.as_operand()
@@ -712,10 +715,8 @@ class LoadWorker(Thread):
                         continue
                     if isinstance(operand, BooleanMesh):
                         m = operand.native()
-                if isinstance(m, Trimesh):
+                if isinstance(m, (Trimesh, Manifold)):
                     result.append(m)
-                elif isinstance(m, Manifold):
-                    result.append(manifold_to_trimesh(m))
                 else:
                     raise TypeError(
                         f"Expected mesh item to be of type Trimesh or Manifold, got {type(m)}"
@@ -734,20 +735,32 @@ class LoadWorker(Thread):
         sources = [source.mesh for source in self._feature_sources if source.enabled]
         if not sources:
             return mesh
-        return self._ensure_trimesh(sources)
+        return self._resolve_source(sources)
 
     def _color_if_debug(self, tmesh: SourceMeshType | None) -> None:
         if isinstance(tmesh, list):
             for tm, color in zip(tmesh, debug_color()):
-                if "scadview" not in tm.metadata:
+                if isinstance(tm, Trimesh) and "scadview" not in tm.metadata:
                     set_mesh_color(tm, color, alpha=DEBUG_COLOR_ALPHA)
 
     def _payload_mesh(self, mesh: SourceMeshType | None) -> MeshType | None:
         if mesh is None:
             return None
         if isinstance(mesh, list):
-            source_meshes = cast(list[Trimesh], mesh)
-            return [mesh_to_payload(item) for item in source_meshes]
+            source_meshes = cast(list[NativeMeshType], mesh)
+            return [
+                self._payload_item(item, (*color, DEBUG_COLOR_ALPHA))
+                for item, color in zip(source_meshes, debug_color())
+            ]
+        return self._payload_item(mesh)
+
+    def _payload_item(
+        self,
+        mesh: NativeMeshType,
+        color: tuple[float, float, float, float] | None = None,
+    ) -> MeshPayload:
+        if isinstance(mesh, Manifold):
+            return manifold_to_payload(mesh, color)
         return mesh_to_payload(mesh)
 
     def put_in_queue(
@@ -1109,7 +1122,7 @@ class MeshLoaderProcess(Process):
         self._active_export_workers.add(worker)
         worker.start()
 
-    def _export_source(self, generation: int) -> Trimesh | None:
+    def _export_source(self, generation: int) -> NativeMeshType | None:
         if self._worker is None or self._worker.generation != generation:
             return None
         return self._worker.export_source
@@ -1126,9 +1139,11 @@ class MeshLoaderProcess(Process):
 
 
 def _snapshot_export_source_at_protocol_boundary(
-    source: Trimesh,
+    source: NativeMeshType,
 ) -> Trimesh | ExportError:
     try:
+        if isinstance(source, Manifold):
+            return manifold_to_trimesh(source)
         return source.copy()
     except Exception as error:
         return ExportError(type(error).__name__, str(error))

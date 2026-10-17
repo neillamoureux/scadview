@@ -44,7 +44,7 @@
 ## 8. Restore Lossless Loader-Owned Export
 
 - [x] 8.1 Add typed export command/result models and a dedicated reliable export-result queue; preserve request ids, generations, structured errors, and existing process lifecycle semantics.
-- [x] 8.2 Retain only the final successful non-debug normalized `Trimesh` in the loader process, invalidate it on newer generations, and publish only its `MeshPayload` view through the latest-wins display queue; remove `payload_to_trimesh` from production export flow.
+- [x] 8.2 Retain only the final successful non-debug source in the loader process, invalidate it on newer generations, and publish only its `MeshPayload` view through the latest-wins display queue; remove `payload_to_trimesh` from production export flow. Normalized-Trimesh retention is superseded by native-source retention in Group 12.
 - [x] 8.3 Implement asynchronous controller/UI export request, polling, duplicate-request suppression, stale-source handling, and error display without blocking the wx event loop.
 - [x] 8.4 Add fidelity tests proving exports use the retained source, including float precision, SCADview color precision, metadata, visuals, supported-format dispatch, and exporter errors.
 - [x] 8.5 Add concurrency and lifecycle tests for incremental results, reload during export, stale generations, queue behavior, loader failure, process death, and shutdown.
@@ -53,7 +53,7 @@
 ## 9. Make Load State Explicit
 
 - [x] 9.1 Add typed phase, revision, exportability, and structured terminal-error fields to the internal load-result envelope while preserving generation, sequence, feature, and parameter metadata.
-- [x] 9.2 Introduce a loader-owned final snapshot that atomically pairs the retained normalized source `Trimesh` with its final `MeshPayload`; make finalization the only path that publishes exportable state.
+- [x] 9.2 Introduce a loader-owned final snapshot that atomically pairs the retained source with its final `MeshPayload`; make finalization the only path that publishes exportable state. The normalized-Trimesh restriction is superseded by Group 12.
 - [x] 9.3 Update loader, controller, UI, and renderer-adjacent consumers to apply explicit result envelopes as state transitions instead of inferring finality or exportability from payload shape, sequence numbers, flags, or status.
 - [x] 9.4 Add regression tests for progress, final, error, and cancellation phases; independent revisions; single-mesh and debug-list exportability; stale generations; and generator finalization/source-payload alignment.
 - [x] 9.5 Run the affected suite, full preflight, and OpenSpec validation; confirm no public API or payload-only renderer boundary changes and update the decision evidence.
@@ -73,3 +73,10 @@ module globals is explicitly deferred to a separately reviewed follow-up change.
 - [x] 11.1 Add typed source-slot stubs and deterministic failing tests for replacement before conversion, final delivery, cancellation, errors, and source reuse.
 - [x] 11.2 Implement a producer-owned source handoff and one-slot conversion consumer; preserve final source/payload export alignment, generation ordering, feature state, and debug selection.
 - [x] 11.3 Update incremental-build documentation and run targeted loader/controller tests, formatting, lint, type checks, and OpenSpec validation. Benchmark and performance-evidence updates are explicitly deferred.
+
+## 12. Measure and Adopt Source-Native Payload Conversion
+
+- [x] 12.1 Measure the committed loader on `examples/messner_mani.py`, inspect installed Manifold semantics, and add typed direct-payload stubs.
+- [x] 12.2 Add failing tests for direct geometry/normals, native source retention, mixed/debug lists, export adaptation and fidelity, and source lifetime.
+- [x] 12.3 Implement direct Manifold payload conversion and export-time adaptation; compare the candidate to the committed path and retain it only if meaningfully faster with preserved semantics.
+- [x] 12.4 Run targeted payload/loader/export tests, format/lint/type/OpenSpec checks, and document ownership and manual GUI checks. Leave benchmark harness/evidence files unchanged.

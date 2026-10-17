@@ -208,15 +208,17 @@ def create_mesh():
     yield mesh2
 ```
 
-Incremental builds add source-copying and rendering work. If you yield faster
+Incremental builds add source-handling and rendering work. If you yield faster
 than the display payload can be prepared, only the newest pending source is
 converted and published; intermediate yields may never be rendered. Successful
 completion always publishes the final source, including changes made after the
 last yield, and export uses that final source.
 
-You may mutate and reuse a mesh after `yield` resumes. SCADview captures an owned
-progress snapshot before resuming your generator. Do not mutate yielded meshes
-from another thread during this handoff.
+You may mutate and reuse a Trimesh after `yield` resumes. SCADview copies its
+progress state before resuming your generator. Manifold operations return new
+values, so their sources can be retained without copying and converted directly
+to display payloads; they become Trimesh only when export is requested. Do not
+mutate yielded meshes from another thread during the handoff.
 
 As with `create_mesh` as a "regular" function,
 you can yield a singular mesh or a list of them.
