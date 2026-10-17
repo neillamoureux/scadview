@@ -23,10 +23,10 @@ from scadview.mesh_loader_process import (
     ExportWorker,
     LoadError,
     LoadEventChannel,
-    LoadResultEvent,
     LoadMeshCommand,
     LoadPhase,
     LoadResult,
+    LoadResultEvent,
     LoadStatus,
     LoadWorker,
     MeshLoaderProcess,
@@ -1568,29 +1568,18 @@ def test_load_worker_put_in_queue(mesh, load_queue, started_load_worker):
     "mesh", [[box(), icosphere()]], indirect=True, ids=["box and sphere"]
 )
 def test_load_worker_put_in_queue_multi_mesh(mesh, load_queue, started_load_worker):
-    result = load_queue.get(timeout=1.0)
-    assert result.load_number == 1
-    assert result.sequence_number == 1
-    _assert_payload_geometry(result.payload, mesh[0])
-    assert not result.error
-    assert not result.complete
-
-    result = load_queue.get(timeout=1.0)
-    assert result.load_number == 1
-    assert result.sequence_number == 2
-    _assert_payload_geometry(result.payload, mesh[1])
-    assert not result.error
-    assert not result.complete  # Even though no more meshes, not set complete
-
-    # On get after last mesh, returns the last mesh with same load result and seq
-    # with complete is True
-
-    result = load_queue.get(timeout=1.0)
-    assert result.load_number == 1
-    assert result.sequence_number == 2
-    _assert_payload_geometry(result.payload, mesh[1])
-    assert not result.error
-    assert result.complete
+    results = []
+    while not results or not results[-1].complete:
+        results.append(load_queue.get(timeout=1.0))
+    for result in results:
+        assert result.load_number == 1
+        _assert_payload_geometry(result.payload, mesh[result.sequence_number - 1])
+        assert not result.error
+    assert results[-1].sequence_number == 2
+    assert results[-1].phase is LoadPhase.FINAL
+    assert [r.sequence_number for r in results] == sorted(
+        r.sequence_number for r in results
+    )
 
 
 def test_load_worker_colors_mesh_list(load_queue):
@@ -1614,7 +1603,7 @@ def test_load_worker_colors_mesh_list(load_queue):
         assert payload.color[3] == 128
 
 
-def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
+def test_load_worker_debugs_feature_sources_for_published_yields(load_queue):
     first_source = box()
     second_source = icosphere()
     first_result = box()
@@ -1633,21 +1622,16 @@ def test_load_worker_debugs_feature_sources_for_every_yield(load_queue):
         LoadWorker.load_number = 0
         worker.load()
 
-    first_load = load_queue.get(timeout=1.0)
-    second_load = load_queue.get(timeout=1.0)
-    final_load = load_queue.get(timeout=1.0)
-
-    assert isinstance(first_load.payload, list)
-    assert isinstance(second_load.payload, list)
-    assert isinstance(final_load.payload, list)
-    _assert_payload_geometry(first_load.payload[0], first_source)
-    _assert_payload_geometry(second_load.payload[0], first_source)
-    _assert_payload_geometry(second_load.payload[1], second_source)
-    _assert_payload_geometry(final_load.payload[0], first_source)
-    _assert_payload_geometry(final_load.payload[1], second_source)
-    assert first_load.payload[0].color is not None
-    assert first_load.payload[0].color[3] == 128
-    assert final_load.complete
+    results = _drain_load_results(load_queue)
+    for result in results:
+        assert isinstance(result.payload, list)
+        _assert_payload_geometry(result.payload[0], first_source)
+        if result.sequence_number == 2:
+            _assert_payload_geometry(result.payload[1], second_source)
+        assert result.payload[0].color is not None
+        assert result.payload[0].color[3] == 128
+    assert results[-1].phase is LoadPhase.FINAL
+    assert results[-1].sequence_number == 2
 
 
 def test_load_worker_captures_feature_sources_after_generator_exhaustion(load_queue):

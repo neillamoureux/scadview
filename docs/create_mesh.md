@@ -208,10 +208,15 @@ def create_mesh():
     yield mesh2
 ```
 
-As this adds additional renders, 
-building incrementatlly is generally slower than a single build.
-If you yield very quickly (many times per second),
-some renders may be skipped to keep the speed up.
+Incremental builds add source-copying and rendering work. If you yield faster
+than the display payload can be prepared, only the newest pending source is
+converted and published; intermediate yields may never be rendered. Successful
+completion always publishes the final source, including changes made after the
+last yield, and export uses that final source.
+
+You may mutate and reuse a mesh after `yield` resumes. SCADview captures an owned
+progress snapshot before resuming your generator. Do not mutate yielded meshes
+from another thread during this handoff.
 
 As with `create_mesh` as a "regular" function,
 you can yield a singular mesh or a list of them.

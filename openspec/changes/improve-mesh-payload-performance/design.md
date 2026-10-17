@@ -151,6 +151,27 @@ incremental sequence numbers, errors, feature states, and parameters stay intact
 This location removes complete `Trimesh` instances from process transfer while
 leaving the user-facing module contract untouched.
 
+### Coalesce incremental sources before payload conversion
+
+The generator producer normalizes, selects debug geometry, and captures feature
+metadata in its own thread. Before resuming the generator it copies normalized
+sources (including supplied face normals) into a one-slot replacement channel.
+A conversion consumer takes the newest pending source and produces payloads;
+replaced pending sources never become payloads or display results. Original yield
+indices remain sequence numbers, while revisions count publications.
+
+Copying on the producer while the generator is suspended preserves generators
+that reuse mutable meshes and lists. This costs a source copy per yield but avoids
+an unsafe background copy racing generator mutation. Independently spawned user
+threads must not mutate sources during the yield handoff. Feature capture remains
+producer-owned because its context is thread-local.
+
+Completion closes and drains the source channel, then finalization derives the
+terminal payload from the final source after generator exhaustion, including
+post-yield mutations and late feature declarations. Only that terminal snapshot
+is exportable. Cancellation and conversion failure stop pending work and retain
+the existing single terminal transition. Benchmark updates remain deferred.
+
 ### Make load state explicit with a result envelope
 
 The loader session should expose result state explicitly rather than requiring

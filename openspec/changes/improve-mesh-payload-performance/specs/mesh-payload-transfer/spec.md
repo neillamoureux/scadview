@@ -46,6 +46,15 @@ when lossless export is available.
 - **WHEN** a generator yields successive valid meshes
 - **THEN** each published payload retains the existing load number, sequence number, completion, and generation semantics
 
+#### Scenario: Pending incremental sources are superseded
+- **WHEN** the generator yields multiple sources while payload conversion is busy
+- **THEN** only the newest pending source is converted and earlier pending sources are neither published nor rendered
+- **AND** successful completion always publishes a terminal payload representing the final source after generator exhaustion
+
+#### Scenario: A generator reuses a mutable source
+- **WHEN** a generator mutates a previously yielded mesh or list after resuming
+- **THEN** progress conversion reads an owned snapshot captured before resumption and final export remains aligned with the terminal payload
+
 #### Scenario: Stale result is encountered
 - **WHEN** a payload belongs to an older load generation
 - **THEN** the system discards it without replacing the current generation's mesh or metadata

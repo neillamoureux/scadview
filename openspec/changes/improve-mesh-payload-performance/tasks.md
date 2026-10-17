@@ -67,3 +67,9 @@
 
 Whole user-module session isolation across `sys.modules`, `sys.path`, and arbitrary
 module globals is explicitly deferred to a separately reviewed follow-up change.
+
+## 11. Coalesce Incremental Sources Before Payload Conversion
+
+- [x] 11.1 Add typed source-slot stubs and deterministic failing tests for replacement before conversion, final delivery, cancellation, errors, and source reuse.
+- [x] 11.2 Implement a producer-owned source handoff and one-slot conversion consumer; preserve final source/payload export alignment, generation ordering, feature state, and debug selection.
+- [x] 11.3 Update incremental-build documentation and run targeted loader/controller tests, formatting, lint, type checks, and OpenSpec validation. Benchmark and performance-evidence updates are explicitly deferred.

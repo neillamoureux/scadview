@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from multiprocessing import Process, Queue
 from multiprocessing import queues as mp_queues
-from threading import Lock, Thread
+from threading import Condition, Event, Lock, Thread
 from time import monotonic, time
 from typing import (
     Any,
@@ -347,6 +347,39 @@ def debug_color() -> Generator[tuple[float, float, float], None, None]:
         yield colorsys.hsv_to_rgb(hue, 1.0, 1.0)
 
 
+@dataclass(frozen=True)
+class SourceProgress:
+    sequence_number: int
+    mesh: SourceMeshType | None
+    features: list[FeatureState]
+
+
+class SourceProgressChannel:
+    def __init__(self) -> None:
+        self._condition = Condition()
+        self._pending: SourceProgress | None = None
+        self._closed = False
+
+    def put_latest(self, source: SourceProgress) -> None:
+        with self._condition:
+            if not self._closed:
+                self._pending = source
+                self._condition.notify()
+
+    def take(self) -> SourceProgress | None:
+        with self._condition:
+            self._condition.wait_for(lambda: self._pending is not None or self._closed)
+            source, self._pending = self._pending, None
+            return source
+
+    def close(self, discard: bool = False) -> None:
+        with self._condition:
+            self._closed = True
+            if discard:
+                self._pending = None
+            self._condition.notify_all()
+
+
 class LoadWorker(Thread):
     PUT_QUEUE_TIMEOUT = 0.1
     load_number = 0
@@ -376,6 +409,11 @@ class LoadWorker(Thread):
         self._revision = 0
         self._terminal_lock = Lock()
         self._terminal_claimed = False
+        self._sources = SourceProgressChannel()
+        self._conversion_failed = Event()
+        self._conversion_error: LoadError | None = None
+        self._progress_payload: MeshType | None = None
+        self._progress_signature: SourceSignature = None
 
     @property
     def export_source(self) -> Trimesh | None:
@@ -393,10 +431,10 @@ class LoadWorker(Thread):
         sequence_number = 0
         self.load_start_time = time()
         last_mesh: SourceMeshType | None = None
-        last_payload: MeshType | None = None
-        last_source_signature: SourceSignature = None
         terminal_phase = LoadPhase.FINAL
         terminal_error = None
+        converter = Thread(target=self._convert_progress, daemon=True)
+        converter.start()
         try:
             for mesh in self.run_mesh_module():
                 sequence_number += 1
@@ -404,25 +442,65 @@ class LoadWorker(Thread):
                     logger.info("LoadWorker cancelled, stopping load")
                     terminal_phase = LoadPhase.CANCELLED
                     break
-                last_mesh, last_payload = self._prepare_mesh(mesh)
-                last_source_signature = self._source_signature(last_mesh)
-                self._publish_result(
-                    sequence_number,
-                    last_payload,
-                    debug=isinstance(last_mesh, list),
+                if self._conversion_failed.is_set():
+                    break
+                last_mesh = self._prepare_source(mesh)
+                self._sources.put_latest(
+                    SourceProgress(
+                        sequence_number,
+                        self._copy_progress_source(last_mesh),
+                        self._current_feature_states(),
+                    )
                 )
         except Exception as error:
             logger.exception("Failed to load mesh from %s", self.module_path)
             terminal_phase = LoadPhase.ERROR
             terminal_error = LoadError(type(error).__name__, str(error))
+        finally:
+            self._sources.close(discard=self.cancelled)
+            converter.join()
         self._publish_terminal_result(
             sequence_number,
             last_mesh,
-            last_payload,
-            last_source_signature,
+            self._progress_payload,
+            self._progress_signature,
             terminal_phase,
-            terminal_error,
+            terminal_error or self._conversion_error,
         )
+
+    def _convert_progress(self) -> None:
+        try:
+            while (source := self._sources.take()) is not None:
+                if self.cancelled:
+                    return
+                payload = self._payload_mesh(source.mesh)
+                self._progress_payload = payload
+                self._progress_signature = self._source_signature(source.mesh)
+                self._publish_result(
+                    source.sequence_number,
+                    payload,
+                    debug=isinstance(source.mesh, list),
+                    features=source.features,
+                )
+        except Exception as error:
+            logger.exception("Failed to convert mesh from %s", self.module_path)
+            self._conversion_error = LoadError(type(error).__name__, str(error))
+            self._conversion_failed.set()
+            self._sources.close(discard=True)
+
+    def _copy_progress_source(
+        self, mesh: SourceMeshType | None
+    ) -> SourceMeshType | None:
+        if isinstance(mesh, list):
+            source_meshes = cast(list[Trimesh], mesh)
+            return [self._copy_progress_mesh(item) for item in source_meshes]
+        return self._copy_progress_mesh(mesh) if mesh is not None else None
+
+    def _copy_progress_mesh(self, mesh: Trimesh) -> Trimesh:
+        snapshot = mesh.copy()
+        # The public setter may discard supplied normals that differ from geometry.
+        snapshot._cache["face_normals"] = mesh.face_normals.copy()
+        return snapshot
 
     def _publish_terminal_result(
         self,
@@ -446,7 +524,7 @@ class LoadWorker(Thread):
                     payload,
                     phase=phase,
                     allow_cancelled=True,
-                    debug=isinstance(mesh, list),
+                    debug=isinstance(payload, list),
                     completed=True,
                 )
                 return
@@ -501,10 +579,16 @@ class LoadWorker(Thread):
         self,
         mesh: CreateMeshResultType | SourceMeshType | None,
     ) -> tuple[SourceMeshType | None, MeshType | None]:
+        tmesh = self._prepare_source(mesh)
+        return tmesh, self._payload_mesh(tmesh)
+
+    def _prepare_source(
+        self, mesh: CreateMeshResultType | SourceMeshType | None
+    ) -> SourceMeshType | None:
         tmesh = self._ensure_trimesh(mesh) if mesh is not None else None
         tmesh = self._select_debug_mesh(tmesh)
         self._color_if_debug(tmesh)
-        return tmesh, self._payload_mesh(tmesh)
+        return tmesh
 
     def _publish_result(
         self,
@@ -516,6 +600,7 @@ class LoadWorker(Thread):
         exportable: bool = False,
         debug: bool = False,
         completed: bool = False,
+        features: list[FeatureState] | None = None,
     ) -> None:
         self._revision += 1
         self.put_in_queue(
@@ -524,7 +609,9 @@ class LoadWorker(Thread):
                 sequence_number,
                 payload=payload,
                 error=error,
-                features=self._current_feature_states(),
+                features=self._current_feature_states()
+                if features is None
+                else features,
                 parameters=self._parameters,
                 generation=self.generation,
                 revision=self._revision,
@@ -557,7 +644,7 @@ class LoadWorker(Thread):
             phase=LoadPhase.ERROR if error is not None else LoadPhase.FINAL,
             allow_cancelled=True,
             exportable=snapshot is not None,
-            debug=isinstance(mesh, list),
+            debug=isinstance(payload, list),
             completed=True,
         )
 
@@ -812,6 +899,7 @@ class LoadWorker(Thread):
             if self._terminal_claimed:
                 return
             self.cancelled = True
+            self._sources.close(discard=True)
 
 
 class MeshLoaderProcess(Process):
