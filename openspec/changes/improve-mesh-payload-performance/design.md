@@ -87,6 +87,17 @@ including a valid zero delta.
 Alternative: redesign the renderer first. Rejected because no current measurement
 identifies the renderer rather than serialization as the dominant cost.
 
+After Group 13 removed source signatures, the user authorized updating the existing
+benchmark harness and tests. Report version 5 removes signature measurements and
+counts both progress and fresh final payload preparation in conversion time. The
+counterfactual Trimesh path performs no payload conversions. The existing synthetic
+workloads prepare progress and final results but transfer only the final result;
+the aggregate display time sums separately measured stages, not a live GUI load.
+Generator coalescing, native Manifold workloads, and GUI polling are not measured.
+Export timing uses the worker's current in-process completion queue and excludes
+controller/GUI polling; it is not the latency of the entire export protocol.
+Historical evidence and new benchmark workloads remain deferred.
+
 ### Keep native sources inside loader ownership
 
 Within the runtime load-display-export path, native `Trimesh` and `Manifold`
@@ -171,9 +182,23 @@ producer-owned because its context is thread-local.
 
 Completion closes and drains the source channel, then finalization derives the
 terminal payload from the final source after generator exhaustion, including
-post-yield mutations and late feature declarations. Only that terminal snapshot
-is exportable. Cancellation and conversion failure stop pending work and retain
-the existing single terminal transition. Benchmark updates remain deferred.
+post-yield mutations and late feature declarations. Retain the original last
+yielded object, not a resolved copy of its list. Always prepare it again once at
+successful finalization; do not hash sources, compare Manifold identities, or reuse
+a progress payload to avoid conversion. Clients should avoid duplicate yields when
+performance matters. Only that terminal snapshot is exportable.
+
+Conversion failure closes pending work and publishes its terminal error without
+waiting for the producer to yield or return. Use the existing terminal claim shared
+with cancellation, and the captured progress metadata rather than reading feature
+state from the converter thread. The producer's eventual completion cannot publish
+another terminal result. Benchmark updates remain deferred.
+
+At both result queue handoffs, a receiver may remove the queued result after a
+sender observes a full queue. If removal then finds an empty queue, retry putting
+the result; repeat replacement if the slot fills again. Serialize worker senders
+while comparing and replacing queued generations so an older result cannot evict
+a newer one. The loader command loop remains the sole process-queue sender.
 
 ### Make load state explicit with a result envelope
 
@@ -268,6 +293,11 @@ on `examples/messner_mani.py`. Retain the candidate only if meaningfully faster 
 correct. Benchmark harness and evidence-file updates remain deferred.
 Human GUI validation must still check incremental final display, debug-list colors,
 framing, transparency, and export from the displayed final Manifold.
+
+Round-four review identified that the existing export adapter can merge nearby
+vertices and collapse very thin Manifold geometry, unlike native display. The
+user explicitly limited item 4 to documenting this caveat in `docs/create_mesh.md`;
+changing the adapter and adding thin-solid export tests are deferred.
 
 Snapshot creation and exporter invocation are isolated in named asynchronous
 protocol-boundary adapters. The adapters catch `Exception`, but not

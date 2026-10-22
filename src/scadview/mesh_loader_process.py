@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import colorsys
-import hashlib
 import logging
 import queue
 from dataclasses import dataclass
@@ -113,18 +112,21 @@ LoadEvent = LoadResultEvent | LoadCompletionEvent
 class LoadEventChannel:
     def __init__(self, maxsize: int = 1) -> None:
         self._queue: queue.Queue[LoadEvent] = queue.Queue(maxsize=maxsize)
+        self._put_lock = Lock()
 
     def put_latest(self, event: LoadEvent, timeout: float = 0.1) -> None:
-        generation = event.result.generation
-        while True:
-            try:
-                self._queue.put(event, timeout=timeout)
-                return
-            except queue.Full:
-                queued = self._queue.get_nowait()
-                if queued.result.generation > generation:
-                    self._queue.put(queued, timeout=timeout)
+        with self._put_lock:
+            while True:
+                try:
+                    self._queue.put(event, timeout=timeout)
                     return
+                except queue.Full:
+                    try:
+                        queued = self._queue.get_nowait()
+                    except queue.Empty:
+                        continue
+                    if queued.result.generation > event.result.generation:
+                        event = queued
 
     def get_nowait(self) -> LoadEvent:
         return self._queue.get_nowait()
@@ -180,8 +182,6 @@ class ShutDownCommand(Command):
 NativeMeshType = Trimesh | Manifold
 SourceMeshType = NativeMeshType | list[NativeMeshType]
 MeshType = MeshPayload | list[MeshPayload]
-SingleSourceSignature = tuple[bytes, bytes, bytes, bytes, str] | Manifold
-SourceSignature = SingleSourceSignature | tuple[SingleSourceSignature, ...] | None
 CreateMeshItemType = Trimesh | Manifold | FeatureMesh | NullFeatureMesh
 CreateMeshResultType = CreateMeshItemType | list[CreateMeshItemType]
 
@@ -333,11 +333,6 @@ MpCommandQueue = MpQueue[Command]
 MpExportResultQueue = MpQueue[ExportResult]
 
 
-def _array_signature(values: Any) -> bytes:
-    array = np.ascontiguousarray(values)
-    return hashlib.blake2b(array.tobytes(), digest_size=16).digest()
-
-
 def debug_color() -> Generator[tuple[float, float, float], None, None]:
     """
     Generate a random color for debugging purposes
@@ -412,9 +407,7 @@ class LoadWorker(Thread):
         self._terminal_claimed = False
         self._sources = SourceProgressChannel()
         self._conversion_failed = Event()
-        self._conversion_error: LoadError | None = None
         self._progress_payload: MeshType | None = None
-        self._progress_signature: SourceSignature = None
 
     @property
     def export_source(self) -> NativeMeshType | None:
@@ -431,7 +424,7 @@ class LoadWorker(Thread):
     def load(self) -> None:
         sequence_number = 0
         self.load_start_time = time()
-        last_mesh: SourceMeshType | None = None
+        last_mesh: CreateMeshResultType | None = None
         terminal_phase = LoadPhase.FINAL
         terminal_error = None
         converter = Thread(target=self._convert_progress, daemon=True)
@@ -445,11 +438,12 @@ class LoadWorker(Thread):
                     break
                 if self._conversion_failed.is_set():
                     break
-                last_mesh = self._prepare_source(mesh)
+                last_mesh = mesh
+                prepared = self._prepare_source(mesh)
                 self._sources.put_latest(
                     SourceProgress(
                         sequence_number,
-                        self._copy_progress_source(last_mesh),
+                        self._copy_progress_source(prepared),
                         self._current_feature_states(),
                     )
                 )
@@ -464,19 +458,18 @@ class LoadWorker(Thread):
             sequence_number,
             last_mesh,
             self._progress_payload,
-            self._progress_signature,
             terminal_phase,
-            terminal_error or self._conversion_error,
+            terminal_error,
         )
 
     def _convert_progress(self) -> None:
+        source: SourceProgress | None = None
         try:
             while (source := self._sources.take()) is not None:
                 if self.cancelled:
                     return
                 payload = self._payload_mesh(source.mesh)
                 self._progress_payload = payload
-                self._progress_signature = self._source_signature(source.mesh)
                 self._publish_result(
                     source.sequence_number,
                     payload,
@@ -485,9 +478,16 @@ class LoadWorker(Thread):
                 )
         except Exception as error:
             logger.exception("Failed to convert mesh from %s", self.module_path)
-            self._conversion_error = LoadError(type(error).__name__, str(error))
             self._conversion_failed.set()
             self._sources.close(discard=True)
+            self._publish_terminal_result(
+                source.sequence_number if source is not None else 0,
+                None,
+                self._progress_payload,
+                LoadPhase.ERROR,
+                LoadError(type(error).__name__, str(error)),
+                features=source.features if source is not None else [],
+            )
 
     def _copy_progress_source(
         self, mesh: SourceMeshType | None
@@ -508,11 +508,11 @@ class LoadWorker(Thread):
     def _publish_terminal_result(
         self,
         sequence_number: int,
-        mesh: SourceMeshType | None,
+        mesh: CreateMeshResultType | None,
         payload: MeshType | None,
-        source_signature: SourceSignature,
         phase: LoadPhase,
         error: LoadError | None,
+        features: list[FeatureState] | None = None,
     ) -> None:
         if not self._claim_terminal():
             return
@@ -529,14 +529,15 @@ class LoadWorker(Thread):
                     allow_cancelled=True,
                     debug=isinstance(payload, list),
                     completed=True,
+                    features=features,
                 )
                 return
             self._publish_final_result(
                 sequence_number,
                 mesh,
                 payload,
-                source_signature,
                 error,
+                features,
             )
         except Exception as finalization_error:
             logger.exception("Failed to finalize mesh from %s", self.module_path)
@@ -544,7 +545,7 @@ class LoadWorker(Thread):
             load_error = error or LoadError(
                 type(finalization_error).__name__, str(finalization_error)
             )
-            self._publish_terminal_error(sequence_number, payload, load_error)
+            self._publish_terminal_error(sequence_number, payload, load_error, features)
 
     def _claim_terminal(self) -> bool:
         with self._terminal_lock:
@@ -558,6 +559,7 @@ class LoadWorker(Thread):
         sequence_number: int,
         payload: MeshType | None,
         error: LoadError,
+        features: list[FeatureState] | None = None,
     ) -> None:
         self._revision += 1
         self.put_in_queue(
@@ -566,7 +568,9 @@ class LoadWorker(Thread):
                 sequence_number,
                 payload=payload,
                 error=error,
-                features=list(self._loaded_feature_states),
+                features=list(self._loaded_feature_states)
+                if features is None
+                else features,
                 parameters=self._parameters,
                 generation=self.generation,
                 revision=self._revision,
@@ -629,16 +633,15 @@ class LoadWorker(Thread):
     def _publish_final_result(
         self,
         sequence_number: int,
-        mesh: SourceMeshType | None,
+        mesh: CreateMeshResultType | None,
         payload: MeshType | None,
-        source_signature: SourceSignature,
         error: LoadError | None = None,
+        features: list[FeatureState] | None = None,
     ) -> None:
-        if error is None and (
-            self.debug_features or self._source_changed(mesh, source_signature)
-        ):
-            mesh, payload = self._prepare_mesh(mesh)
-        snapshot = self._final_snapshot(mesh, payload, error)
+        source = None
+        if error is None:
+            source, payload = self._prepare_mesh(mesh)
+        snapshot = self._final_snapshot(source, payload, error)
         self.final_snapshot = snapshot
         self._publish_result(
             sequence_number,
@@ -649,34 +652,8 @@ class LoadWorker(Thread):
             exportable=snapshot is not None,
             debug=isinstance(payload, list),
             completed=True,
+            features=features,
         )
-
-    def _source_signature(self, mesh: SourceMeshType | None) -> SourceSignature:
-        if isinstance(mesh, list):
-            source_meshes = cast(list[NativeMeshType], mesh)
-            return tuple(self._single_source_signature(item) for item in source_meshes)
-        if isinstance(mesh, (Trimesh, Manifold)):
-            return self._single_source_signature(mesh)
-        return None
-
-    def _single_source_signature(self, mesh: NativeMeshType) -> SingleSourceSignature:
-        if isinstance(mesh, Manifold):
-            return mesh
-        face_colors = getattr(mesh.visual, "face_colors", np.empty((0, 4)))
-        return (
-            _array_signature(mesh.vertices),
-            _array_signature(mesh.faces),
-            _array_signature(mesh.face_normals),
-            _array_signature(face_colors),
-            repr(mesh.metadata),
-        )
-
-    def _source_changed(
-        self,
-        mesh: SourceMeshType | None,
-        source_signature: SourceSignature,
-    ) -> bool:
-        return source_signature != self._source_signature(mesh)
 
     def _final_snapshot(
         self,
@@ -993,12 +970,12 @@ class MeshLoaderProcess(Process):
                 self._load_queue.put(result, timeout=LoadWorker.PUT_QUEUE_TIMEOUT)
                 return
             except queue.Full:
-                queued_result = self._load_queue.get_nowait()
+                try:
+                    queued_result = self._load_queue.get_nowait()
+                except queue.Empty:
+                    continue
                 if queued_result.generation > result.generation:
-                    self._load_queue.put(
-                        queued_result, timeout=LoadWorker.PUT_QUEUE_TIMEOUT
-                    )
-                    return
+                    result = queued_result
 
     def _reap_load_workers(self) -> None:
         for worker in tuple(self._active_load_workers):

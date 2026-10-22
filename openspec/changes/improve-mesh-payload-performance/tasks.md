@@ -80,3 +80,19 @@ module globals is explicitly deferred to a separately reviewed follow-up change.
 - [x] 12.2 Add failing tests for direct geometry/normals, native source retention, mixed/debug lists, export adaptation and fidelity, and source lifetime.
 - [x] 12.3 Implement direct Manifold payload conversion and export-time adaptation; compare the candidate to the committed path and retain it only if meaningfully faster with preserved semantics.
 - [x] 12.4 Run targeted payload/loader/export tests, format/lint/type/OpenSpec checks, and document ownership and manual GUI checks. Leave benchmark harness/evidence files unchanged.
+
+## 13. Fix Round Four Review Findings
+
+- [x] 13.1 Inspect existing typed queue, terminal-result, final-source, and export adapters; reuse these interfaces without adding new public APIs or unnecessary stubs.
+- [x] 13.2 Add controlled failing tests for receiver removal during queue replacement at both handoffs, generation preservation, converter failure while the generator is blocked, final list changes, and unconditional final conversion.
+- [x] 13.3 Fix queue replacement and immediate converter-error delivery while preserving cancellation, generation ordering, and exactly one terminal result.
+- [x] 13.4 Remove source signatures and duplicate-conversion avoidance; prepare the original latest yielded source once at successful finalization, including changes to list contents.
+- [x] 13.5 Document the existing thin-Manifold export caveat and client responsibility for avoiding duplicate yields. Per the user's correction, item 4 is documentation only; do not change export conversion or add thin-solid export tests.
+- [x] 13.6 Run focused tests, formatting, lint, type checks, and OpenSpec validation; leave benchmark files/evidence and unrelated tasks 10.1–10.4 untouched.
+
+## 14. Update the Benchmark for Signature-Free Final Conversion
+
+- [x] 14.1 Inspect and reuse the existing typed benchmark preparation and reporting helpers; no new interfaces or stubs are needed.
+- [x] 14.2 Update tests to require fresh progress/final conversions, remove signature metrics, and verify phase totals and the revised report schema; confirm the expected failures before implementation.
+- [x] 14.3 Update the benchmark's final preparation and report version/scope while retaining the existing synthetic workloads and measurement boundaries. Historical evidence and new incremental/GUI benchmarks remain out of scope.
+- [x] 14.4 Run benchmark tests, no-GPU smoke checks for both paths, formatting, lint, type checks, and OpenSpec validation; preserve unrelated work and leave tasks 10.1–10.4 unchanged.

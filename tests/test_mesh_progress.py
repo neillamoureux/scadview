@@ -8,6 +8,7 @@ import numpy.testing as npt
 import pytest
 from trimesh.creation import box
 
+from scadview.features import FeatureState, feature
 from scadview.mesh_loader_process import LoadEventChannel, LoadPhase, LoadWorker
 from scadview.mesh_payload import mesh_to_payload
 
@@ -113,6 +114,127 @@ def test_terminal_replaces_progress_in_full_result_queue():
     assert final.phase is LoadPhase.FINAL
     assert final.sequence_number == 20
     npt.assert_allclose(final.payload.vertices, source.vertices)
+
+
+@pytest.mark.parametrize("ending", ["return", "yield", "raise"])
+def test_converter_error_arrives_before_blocked_generator_finishes(ending):
+    resumed, release = Event(), Event()
+    source = box()
+    source.metadata["scadview"] = {"color": [2.0, 0.0, 0.0, 1.0]}
+    publications = LoadEventChannel(maxsize=10)
+
+    def generate(_path):
+        feature("visible", box())
+        yield source
+        resumed.set()
+        assert release.wait(5)
+        if ending == "yield":
+            yield box()
+        elif ending == "raise":
+            raise RuntimeError("later generator failure")
+
+    with patch("scadview.mesh_loader_process.ModuleLoader") as loader:
+        loader.return_value.run_function.side_effect = generate
+        worker = LoadWorker("test/path", publications, generation=17)
+        worker.start()
+        try:
+            assert resumed.wait(2)
+            terminal = publications.get(timeout=2)
+            assert terminal.phase is LoadPhase.ERROR
+            assert terminal.error.type_name == "ValueError"
+            assert "color components" in terminal.error.message
+            assert terminal.features == [FeatureState("visible", True)]
+            assert terminal.generation == 17
+            assert not terminal.exportable
+            assert worker.is_alive()
+            assert worker.export_source is None
+            worker.cancel()
+        finally:
+            release.set()
+            worker.join(3)
+    assert not worker.is_alive()
+    assert drain_results(publications) == []
+
+
+@pytest.mark.parametrize("mutation", ["append", "replace", "remove", "clear", "fill"])
+def test_final_result_reads_original_list_after_last_yield(mutation):
+    sources = [] if mutation == "fill" else [box(), box(extents=[2, 2, 2])]
+    publications = LoadEventChannel(maxsize=10)
+
+    def generate(_path):
+        yield sources
+        if mutation in ("append", "fill"):
+            sources.append(box(extents=[3, 3, 3]))
+        elif mutation == "replace":
+            sources[0] = box(extents=[4, 4, 4])
+        elif mutation == "remove":
+            sources.pop()
+        else:
+            sources.clear()
+
+    with patch("scadview.mesh_loader_process.ModuleLoader") as loader:
+        loader.return_value.run_function.side_effect = generate
+        worker = LoadWorker("test/path", publications)
+        worker.load()
+    final = drain_results(publications)[-1]
+    assert final.phase is LoadPhase.FINAL
+    assert not final.exportable
+    assert worker.export_source is None
+    if not sources:
+        assert final.payload is None
+    else:
+        assert final.debug
+        assert len(final.payload) == len(sources)
+        for payload, source in zip(final.payload, sources):
+            npt.assert_array_equal(payload.vertices, source.vertices)
+
+
+@pytest.mark.parametrize("cancel_before_claim", [True, False])
+def test_converter_error_and_cancellation_share_one_terminal_claim(cancel_before_claim):
+    resumed, release_generator = Event(), Event()
+    claim_entered, release_claim = Event(), Event()
+    publications = LoadEventChannel(maxsize=10)
+    source = box()
+    source.metadata["scadview"] = {"color": [2.0, 0.0, 0.0, 1.0]}
+
+    def generate(_path):
+        yield source
+        resumed.set()
+        assert release_generator.wait(5)
+
+    with patch("scadview.mesh_loader_process.ModuleLoader") as loader:
+        loader.return_value.run_function.side_effect = generate
+        worker = LoadWorker("test/path", publications)
+        claim = worker._claim_terminal
+
+        def controlled_claim():
+            if cancel_before_claim:
+                claim_entered.set()
+                assert release_claim.wait(3)
+                return claim()
+            claimed = claim()
+            claim_entered.set()
+            assert release_claim.wait(3)
+            return claimed
+
+        worker._claim_terminal = controlled_claim
+        worker.start()
+        try:
+            assert resumed.wait(2)
+            assert claim_entered.wait(2)
+            worker.cancel()
+            release_claim.set()
+            terminal = publications.get(timeout=2)
+            expected = LoadPhase.CANCELLED if cancel_before_claim else LoadPhase.ERROR
+            assert terminal.phase is expected
+            assert not terminal.exportable
+            assert worker.export_source is None
+        finally:
+            release_claim.set()
+            release_generator.set()
+            worker.join(3)
+    assert not worker.is_alive()
+    assert drain_results(publications) == []
 
 
 def drain_results(publications):

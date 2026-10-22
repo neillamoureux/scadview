@@ -1,4 +1,8 @@
-"""Measure loader publication, process transfer, and mesh replacement."""
+"""Measure staged preparation and one final transfer for synthetic Trimesh meshes.
+
+This is not a generator-coalescing or live GUI benchmark. Display latency is the
+sum of separately measured preparation, transfer, upload, and drawing stages.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +12,7 @@ import multiprocessing as mp
 import os
 import pickle
 import platform
+import queue
 import subprocess
 import tempfile
 import tracemalloc
@@ -30,7 +35,6 @@ from scadview.mesh_loader_process import (
     LoadPhase,
     LoadResult,
     LoadWorker,
-    MpExportResultQueue,
     MpLoadQueue,
     MpQueue,
 )
@@ -40,7 +44,6 @@ from scadview.render.mesh_renderee import create_vao_from_arrays, expand_payload
 PublicationPath = Literal["trimesh", "payload"]
 PUBLICATION_PHASES = (
     "payload_conversion_ms",
-    "source_signature_ms",
     "envelope_finalization_ms",
 )
 DISPLAY_LATENCY_PHASES = (
@@ -57,8 +60,7 @@ METRIC_NAMES = (
     "pickle_size_bytes",
     "mesh_creation_ms",
     "payload_conversion_ms",
-    "source_signature_ms",
-    "source_signature_passes",
+    "payload_conversion_passes",
     "envelope_finalization_ms",
     "loader_publication_ms",
     "child_to_main_transfer_ms",
@@ -152,10 +154,19 @@ def run_benchmark(
 ) -> dict[str, Any]:
     """Measure every workload using the selected transfer representation."""
     return {
-        "benchmark_version": 4,
+        "benchmark_version": 5,
         "command": "uv run --no-sync python -m tools.mesh_transfer_benchmark",
         "comparison_kind": "same-version-counterfactual",
         "transfer_boundary": "child-to-main-process",
+        "publication_scope": (
+            "one progress preparation and one fresh final preparation; "
+            "only the final result is transferred; excludes generator "
+            "coalescing, native Manifold workloads, and GUI polling"
+        ),
+        "export_completion_scope": (
+            "export worker and in-process completion queue; excludes controller "
+            "and GUI polling"
+        ),
         "multiprocessing_start_method": mp.get_start_method(),
         "display_latency_phases": list(DISPLAY_LATENCY_PHASES),
         "gpu_setup_scope": (
@@ -359,26 +370,20 @@ def _finalize_envelope(
 
     worker = object.__new__(LoadWorker)
     start = perf_counter()
-    source_signature = worker._source_signature(source)
-    source_signature_ms = _elapsed_ms(start)
-
-    start = perf_counter()
     _progress_envelope(source, payload, path)
     envelope_finalization_ms = _elapsed_ms(start)
 
     start = perf_counter()
-    source_changed = worker._source_changed(source, source_signature)
-    source_signature_ms = round(source_signature_ms + _elapsed_ms(start), 3)
-    if source_changed:
-        raise RuntimeError("Deterministic benchmark source changed during finalization")
+    payload = _publication_payload(source, path)
+    if path == "payload":
+        payload_conversion_ms = round(payload_conversion_ms + _elapsed_ms(start), 3)
 
     start = perf_counter()
     envelope = _final_envelope(worker, source, payload, path)
     envelope_finalization_ms = round(envelope_finalization_ms + _elapsed_ms(start), 3)
     metrics: dict[str, Any] = {
         "payload_conversion_ms": payload_conversion_ms,
-        "source_signature_ms": source_signature_ms,
-        "source_signature_passes": 2,
+        "payload_conversion_passes": 2 if path == "payload" else 0,
         "envelope_finalization_ms": envelope_finalization_ms,
     }
     metrics["loader_publication_ms"] = _compose_display_latency(
@@ -454,8 +459,10 @@ def _final_envelope(
             [],
         )
     load_payload = cast(MeshPayload | list[MeshPayload], payload)
-    snapshot: FinalMeshSnapshot | None = worker._final_snapshot(
-        source, load_payload, None
+    snapshot: FinalMeshSnapshot | None = (
+        worker._final_snapshot(source, load_payload, None)
+        if isinstance(source, Trimesh)
+        else None
     )
     return LoadResult(
         1,
@@ -473,7 +480,7 @@ def _final_envelope(
 
 
 def _export_request_completion(mesh: Trimesh) -> float:
-    result_queue = MpExportResultQueue(maxsize=0, type_=ExportResult)
+    result_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
     with tempfile.TemporaryDirectory() as directory:
         command = ExportCommand(1, 0, str(Path(directory) / "mesh.stl"))
         worker = ExportWorker(command, mesh, result_queue)
@@ -481,7 +488,6 @@ def _export_request_completion(mesh: Trimesh) -> float:
         worker.start()
         result = result_queue.get(timeout=10)
         worker.join(timeout=10)
-    result_queue.close()
     if result.error is not None:
         raise RuntimeError(result.error.message)
     return _elapsed_ms(start)

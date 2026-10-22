@@ -199,7 +199,7 @@ def test_native_source_slot_coalesces_and_preserves_terminal_ownership(cancel):
         assert final.phase is LoadPhase.CANCELLED
         assert worker.export_source is None
     else:
-        assert converted == [sources[0], sources[-1]]
+        assert converted == [sources[0], sources[-1], sources[-1]]
         assert final.phase is LoadPhase.FINAL
         assert worker.export_source is sources[-1]
         npt.assert_array_equal(final.payload.bounds, [[9, 0, 0], [10, 1, 1]])

@@ -519,7 +519,7 @@ def test_load_worker_scalar_final_snapshot_is_atomic():
             worker = LoadWorker("test/path", publication_queue)
             worker.load()
 
-    assert to_payload.call_count == 1
+    assert to_payload.call_count == 2
     first_result = publication_queue.get(timeout=1.0)
     final_result = publication_queue.get(timeout=1.0)
     _assert_payload_geometry(first_result.payload, source)
@@ -670,7 +670,7 @@ def test_load_worker_refreshes_final_list_payload_after_generator_mutation(
         ),
         pytest.param(
             lambda mesh: mesh.faces.__setitem__((0, 0), len(mesh.vertices)),
-            "IndexError",
+            "ValueError",
             id="face",
         ),
         pytest.param(

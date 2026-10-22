@@ -55,6 +55,16 @@ when lossless export is available.
 - **WHEN** a generator mutates a previously yielded mesh or list after resuming
 - **THEN** progress conversion reads an owned snapshot captured before resumption and final export remains aligned with the terminal payload
 
+#### Scenario: Final source is prepared without duplicate detection
+- **WHEN** a generator finishes successfully
+- **THEN** the loader prepares the original latest yielded object again once for the terminal payload, including added, replaced, or removed list items
+- **AND** it does not use source signatures or source equality to skip final conversion; clients avoid duplicate yields when needed
+
+#### Scenario: Receiver removes a result during queue replacement
+- **WHEN** either result queue becomes empty after the sender observes that it is full
+- **THEN** the sender retries putting the new result and repeats replacement if the queue fills again, without raising an empty-queue error
+- **AND** progress and terminal results from older generations cannot replace newer queued results, including with competing worker senders
+
 #### Scenario: Stale result is encountered
 - **WHEN** a payload belongs to an older load generation
 - **THEN** the system discards it without replacing the current generation's mesh or metadata
@@ -99,6 +109,11 @@ marked non-debug and is exportable only when it is the successful final snapshot
 #### Scenario: Terminal load error is published
 - **WHEN** source resolution, payload conversion, finalization, or module execution fails
 - **THEN** the loader publishes an error-phase envelope with a structured error and no exportable source
+
+#### Scenario: Conversion fails while the generator is blocked
+- **WHEN** payload conversion fails while the producer is waiting inside user generator code
+- **THEN** the terminal error is published without waiting for that generator to return, respecting the shared cancellation decision and captured feature metadata
+- **AND** resuming or completing the generator does not publish further progress or a second terminal result
 
 #### Scenario: Final revision is distinct from progress
 - **WHEN** finalization republishes the effective final state after the last generator yield
@@ -208,6 +223,10 @@ the retained source before starting asynchronous export execution.
 #### Scenario: Native Manifold is exported
 - **WHEN** an export request for the final Manifold is accepted
 - **THEN** the loader adapts that native source to Trimesh through the existing export conversion, preserving its geometry and supported vertex colors, and reports adaptation errors through the export protocol
+
+The existing adapter can merge nearby vertices in very thin Manifold geometry.
+For round-four review item 4, the user explicitly requested documentation only;
+this known export-fidelity limitation is documented rather than fixed in this task.
 
 #### Scenario: Loaded mesh is exported
 - **WHEN** the user exports a completed single-mesh load to a currently supported format
