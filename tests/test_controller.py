@@ -303,20 +303,19 @@ def test_controller_does_not_export_debug_payload_lists(monkeypatch):
         controller.close()
 
 
-def test_controller_queues_export_for_the_current_generation(monkeypatch):
+def test_controller_queues_export_for_the_current_generation(monkeypatch, tmp_path):
+    export_path = str(tmp_path / "model.stl")
     controller = _controller(monkeypatch)
     try:
         controller.current_mesh = mesh_to_payload(box())
         controller._exportable_payload = controller.current_mesh
         controller.load_status = LoadStatus.COMPLETE
 
-        assert controller.export("/tmp/model.stl")
+        assert controller.export(export_path)
 
-        assert controller._command_queue.items[-1] == ExportCommand(
-            1, 0, "/tmp/model.stl"
-        )
+        assert controller._command_queue.items[-1] == ExportCommand(1, 0, export_path)
         assert controller.export_pending
-        assert not controller.export("/tmp/model.stl")
+        assert not controller.export(export_path)
     finally:
         controller.close()
 

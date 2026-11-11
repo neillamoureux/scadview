@@ -183,11 +183,11 @@ def test_mesh_to_payload_handles_empty_geometry():
     ("mesh", "message"),
     [
         (_source(vertices=np.empty((3, 2)), faces=np.empty((0, 3))), "vertices"),
-        (_source(vertices=np.empty((3, 3)), faces=np.empty((1, 2))), "faces"),
-        (_source(vertices=np.empty((3, 3)), faces=np.array([[-1, 0, 1]])), "negative"),
-        (_source(vertices=np.empty((3, 3)), faces=np.array([[0, 1, 3]])), "range"),
+        (_source(vertices=np.zeros((3, 3)), faces=np.empty((1, 2))), "faces"),
+        (_source(vertices=np.zeros((3, 3)), faces=np.array([[-1, 0, 1]])), "negative"),
+        (_source(vertices=np.zeros((3, 3)), faces=np.array([[0, 1, 3]])), "range"),
         (
-            _source(vertices=np.empty((3, 3)), faces=np.array([[0, 1, 2**32]])),
+            _source(vertices=np.zeros((3, 3)), faces=np.array([[0, 1, 2**32]])),
             "uint32",
         ),
     ],

@@ -1113,12 +1113,12 @@ def test_loader_repeated_completion_drains_do_not_publish_duplicates():
     ],
 )
 def test_loader_export_publication_failure_is_fatal_and_prevents_silent_reap(
-    publication_error,
+    publication_error, tmp_path
 ):
     source = box()
     completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
     worker = ExportWorker(
-        ExportCommand(7, 1, "/tmp/model.stl"), source, completion_queue
+        ExportCommand(7, 1, str(tmp_path / "model.stl")), source, completion_queue
     )
     worker.start()
     worker.join(timeout=1.0)
@@ -1338,12 +1338,12 @@ def test_loader_shutdown_waits_for_blocking_export_before_closing_queue():
     assert events == ["put", "close"]
 
 
-def test_loader_shutdown_publishes_completed_export_when_load_join_times_out():
+def test_loader_shutdown_publishes_completed_export_when_load_join_times_out(tmp_path):
     load_worker = Mock()
     load_worker.is_alive.return_value = True
     completion_queue: queue.SimpleQueue[ExportResult] = queue.SimpleQueue()
     export_worker = ExportWorker(
-        ExportCommand(3, 4, "/tmp/model.stl"), box(), completion_queue
+        ExportCommand(3, 4, str(tmp_path / "model.stl")), box(), completion_queue
     )
     export_worker.start()
     export_worker.join(timeout=1.0)

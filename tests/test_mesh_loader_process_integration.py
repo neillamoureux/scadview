@@ -165,9 +165,9 @@ class BlockingExportMesh(Trimesh):
         )
 
     def export(self, file_obj=None, file_type=None, **kwargs):
-        EXPORT_STARTED.write_text(
-            self.metadata["integration-source"], encoding="utf-8"
-        )
+        marker = EXPORT_STARTED.with_suffix(".tmp")
+        marker.write_text(self.metadata["integration-source"], encoding="utf-8")
+        marker.replace(EXPORT_STARTED)
         deadline = monotonic() + {TIMEOUT_SECONDS!r}
         while not EXPORT_RELEASE.exists():
             if monotonic() >= deadline:
