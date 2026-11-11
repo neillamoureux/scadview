@@ -2,6 +2,8 @@ from unittest.mock import Mock
 
 import pytest
 
+pytest.importorskip("wx")
+
 from scadview import app
 
 
