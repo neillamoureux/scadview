@@ -30,7 +30,7 @@ def test_discover_cases_includes_deterministic_transfer_shapes():
         "mixed-transparency",
         "representative-large-model",
     ]
-    assert all(case.meshes() for case in cases)
+    assert all(case.create_meshes() for case in cases)
 
 
 def test_cases_have_expected_vertex_and_face_counts():

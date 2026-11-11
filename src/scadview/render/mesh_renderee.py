@@ -138,12 +138,6 @@ def expand_payloads_without_edges(
     return triangles, normals, colors
 
 
-def create_colors_array(
-    color: NDArray[np.uint8], triangle_count: int
-) -> NDArray[np.uint8]:
-    return np.broadcast_to(color, (triangle_count, 3, 4)).copy()
-
-
 def create_edge_detect_array(triangle_count: int) -> NDArray[np.uint8]:
     return np.tile(
         np.array([255, 0, 0, 0, 255, 0, 0, 0, 255], dtype=np.uint8),

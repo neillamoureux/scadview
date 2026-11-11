@@ -241,6 +241,6 @@ def drain_results(publications):
     results = []
     while True:
         try:
-            results.append(publications.get_nowait().result)
+            results.append(publications.get_nowait())
         except queue.Empty:
             return results

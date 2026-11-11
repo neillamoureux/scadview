@@ -7,11 +7,9 @@ from unittest.mock import Mock
 import pytest
 
 from scadview.mesh_loader_process import (
-    LoadCompletionEvent,
     LoadEventChannel,
     LoadPhase,
     LoadResult,
-    LoadResultEvent,
     MeshLoaderProcess,
 )
 
@@ -21,10 +19,10 @@ from scadview.mesh_loader_process import (
 @pytest.mark.parametrize("refill", [None, 1, 3])
 def test_result_delivery_retries_after_consumer_removes_item(handoff, phase, refill):
     transport = ConsumerRaceQueue()
-    publish, wrap = publication_handoff(handoff, transport)
-    previous = wrap(result(1, LoadPhase.PROGRESS))
-    incoming = wrap(result(2, phase))
-    competing = wrap(result(refill, phase)) if refill else None
+    publish = publication_handoff(handoff, transport)
+    previous = result(1, LoadPhase.PROGRESS)
+    incoming = result(2, phase)
+    competing = result(refill, phase) if refill else None
     transport.put_nowait(previous)
     transport.refill = competing
     transport.drain_on_full = True
@@ -41,28 +39,32 @@ def test_result_delivery_retries_after_consumer_removes_item(handoff, phase, ref
 @pytest.mark.parametrize("phase", [LoadPhase.PROGRESS, LoadPhase.FINAL])
 def test_older_generation_does_not_replace_newer_result(handoff, phase):
     transport = queue.Queue(maxsize=1)
-    publish, wrap = publication_handoff(handoff, transport)
-    newer = wrap(result(3, phase))
+    publish = publication_handoff(handoff, transport)
+    newer = result(3, phase)
     transport.put_nowait(newer)
 
-    publish(wrap(result(2, phase)))
+    publish(result(2, phase))
 
     assert transport.get_nowait() is newer
     assert transport.empty()
+
+
+@pytest.mark.parametrize("reader", ["get", "get_nowait"])
+def test_load_event_channel_returns_load_result_directly(reader):
+    channel = LoadEventChannel()
+    value = result(1, LoadPhase.FINAL)
+    channel.put_latest(value)
+
+    assert getattr(channel, reader)() is value
 
 
 def publication_handoff(handoff, transport):
     if handoff == "worker-loader":
         channel = LoadEventChannel()
         channel._queue = transport
-        return channel.put_latest, wrap_event
+        return channel.put_latest
     process = MeshLoaderProcess(Mock(), transport, Mock(), Mock(), logging.INFO)
-    return process._publish_load_result, lambda value: value
-
-
-def wrap_event(value):
-    event_type = LoadCompletionEvent if value.complete else LoadResultEvent
-    return event_type(value)
+    return process._publish_load_result
 
 
 def result(generation, phase):

@@ -7,19 +7,11 @@ from scadview.mesh_payload import mesh_to_payload
 from scadview.render.mesh_renderee import (
     MeshNullRenderee,
     OpaqueMeshRenderee,
-    create_colors_array,
     create_edge_detect_array,
     create_mesh_renderee,
     is_alpha,
     sort_triangles,
 )
-
-
-def test_create_colors_array_repeats_mesh_color_per_corner():
-    color = np.array([26, 51, 76, 255], dtype=np.uint8)
-    result = create_colors_array(color, 5)
-    assert result.shape == (5, 3, 4)
-    np.testing.assert_array_equal(result, np.broadcast_to(color, result.shape))
 
 
 def test_edge_markers_preserve_one_hot_corner_semantics():

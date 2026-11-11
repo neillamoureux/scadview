@@ -75,11 +75,14 @@ class FakeAction:
         return FakeEnableControl()
 
 
-def test_export_controls_disable_immediately_on_availability_notification(monkeypatch):
+@pytest.mark.parametrize("initial_available", [False, True])
+def test_export_controls_follow_initial_availability_and_notifications(
+    monkeypatch, initial_available
+):
     export_availability = Observable()
     controller = SimpleNamespace(
         debug_features=False,
-        export_available=True,
+        export_available=initial_available,
         on_debug_features_change=Observable(),
         on_export_availability_change=export_availability,
         on_module_path_set=Observable(),
@@ -97,13 +100,14 @@ def test_export_controls_disable_immediately_on_availability_notification(monkey
     MainFrame._create_file_actions(frame)
     button = frame._export_action.button(object())
     menu_item = frame._export_action.menu_item(object())
-    assert button.enabled
-    assert menu_item.enabled
+    assert button.enabled is initial_available
+    assert menu_item.enabled is initial_available
 
-    export_availability.notify(False)
+    for available in [not initial_available, initial_available]:
+        export_availability.notify(available)
 
-    assert not button.enabled
-    assert not menu_item.enabled
+        assert button.enabled is available
+        assert menu_item.enabled is available
 
 
 def test_parameter_control_uses_parameter_name_and_current_value(monkeypatch):
@@ -416,24 +420,6 @@ def test_stale_load_result_does_not_stop_current_timer_or_update_view():
     timer.Stop.assert_not_called()
     gauge.SetValue.assert_not_called()
     gl_widget.load_mesh.assert_not_called()
-
-
-def test_export_is_enabled_only_for_completed_exportable_payload():
-    payload = mesh_to_payload(box())
-    frame = SimpleNamespace(
-        _controller=SimpleNamespace(exportable_payload=payload),
-    )
-
-    assert MainFrame._can_be_exported(frame, LoadStatus.COMPLETE)
-    assert not MainFrame._can_be_exported(frame, LoadStatus.DEBUG)
-
-
-def test_export_is_disabled_for_completed_debug_payload_list():
-    frame = SimpleNamespace(
-        _controller=SimpleNamespace(exportable_payload=None),
-    )
-
-    assert not MainFrame._can_be_exported(frame, LoadStatus.COMPLETE)
 
 
 def test_export_error_is_reported_and_completed_load_polling_stops(caplog):

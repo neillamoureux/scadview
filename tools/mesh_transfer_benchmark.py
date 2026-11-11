@@ -34,7 +34,6 @@ from scadview.mesh_loader_process import (
     FinalMeshSnapshot,
     LoadPhase,
     LoadResult,
-    LoadWorker,
     MpLoadQueue,
     MpQueue,
 )
@@ -91,9 +90,6 @@ class BenchmarkCase:
 
     name: str
     create_meshes: Callable[[], list[Trimesh]]
-
-    def meshes(self) -> list[Trimesh]:
-        return self.create_meshes()
 
 
 @dataclass(frozen=True)
@@ -250,7 +246,7 @@ def _measure_case(
     measure_retained_source_memory: bool,
 ) -> dict[str, Any]:
     start = perf_counter()
-    meshes = case.meshes()
+    meshes = case.create_meshes()
     mesh_creation_ms = _elapsed_ms(start)
     transfer = _measure_publication_transfer(
         meshes,
@@ -368,7 +364,6 @@ def _finalize_envelope(
     payload = _publication_payload(source, path)
     payload_conversion_ms = _elapsed_ms(start) if path == "payload" else 0.0
 
-    worker = object.__new__(LoadWorker)
     start = perf_counter()
     _progress_envelope(source, payload, path)
     envelope_finalization_ms = _elapsed_ms(start)
@@ -379,7 +374,7 @@ def _finalize_envelope(
         payload_conversion_ms = round(payload_conversion_ms + _elapsed_ms(start), 3)
 
     start = perf_counter()
-    envelope = _final_envelope(worker, source, payload, path)
+    envelope = _final_envelope(source, payload, path)
     envelope_finalization_ms = round(envelope_finalization_ms + _elapsed_ms(start), 3)
     metrics: dict[str, Any] = {
         "payload_conversion_ms": payload_conversion_ms,
@@ -439,7 +434,6 @@ def _progress_envelope(
 
 
 def _final_envelope(
-    worker: LoadWorker,
     source: Trimesh | list[Trimesh],
     payload: MeshPayload | list[MeshPayload] | Trimesh | list[Trimesh],
     path: PublicationPath,
@@ -460,7 +454,7 @@ def _final_envelope(
         )
     load_payload = cast(MeshPayload | list[MeshPayload], payload)
     snapshot: FinalMeshSnapshot | None = (
-        worker._final_snapshot(source, load_payload, None)
+        FinalMeshSnapshot(source, cast(MeshPayload, load_payload))
         if isinstance(source, Trimesh)
         else None
     )

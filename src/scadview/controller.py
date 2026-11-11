@@ -60,7 +60,6 @@ class Controller:
         self._current_load_sequence_number = 0
         self._current_load_revision = 0
         self._effective_debug = False
-        self._effective_debug = False
         self._active_load_generation: int | None = None
         self._local_load_result: LoadResult | None = None
         self._next_export_request_id = 1
@@ -225,11 +224,7 @@ class Controller:
         self._current_load_number = load_result.load_number
         self._current_load_sequence_number = load_result.sequence_number
         self._current_load_revision = load_result.revision
-        if load_result.phase in {
-            LoadPhase.FINAL,
-            LoadPhase.ERROR,
-            LoadPhase.CANCELLED,
-        }:
+        if load_result.complete:
             self._active_load_generation = None
 
     def _apply_load_payload(self, load_result: LoadResult) -> None:

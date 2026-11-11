@@ -20,17 +20,28 @@ from scadview.render.mesh_renderee import (
 from scadview.render.shader_program import ShaderVar
 
 
-def test_expand_payload_uses_indexed_vertices_and_flat_normals():
-    payload = mesh_to_payload(box())
+@pytest.mark.parametrize(
+    ("color", "expected_color"),
+    [(None, [128, 128, 128, 255]), ([0.1, 0.2, 0.3, 1.0], [26, 51, 76, 255])],
+)
+def test_expand_payload_uses_indexed_vertices_flat_normals_and_corner_colors(
+    color, expected_color
+):
+    mesh = box()
+    if color is not None:
+        mesh.metadata["scadview"] = {"color": color}
+    payload = mesh_to_payload(mesh)
 
     triangles, normals, colors, edges = expand_payload(payload)
 
     assert triangles.shape == (len(payload.faces), 3, 3)
     assert normals.shape == triangles.shape
     assert colors.shape == (len(payload.faces), 3, 4)
+    assert colors.dtype == np.uint8
     assert edges.shape == (len(payload.faces), 9)
     np.testing.assert_array_equal(normals[:, 0], payload.face_normals)
     np.testing.assert_array_equal(triangles[0], payload.vertices[payload.faces[0]])
+    np.testing.assert_array_equal(colors, np.broadcast_to(expected_color, colors.shape))
 
 
 def test_edge_free_payload_aggregation_preserves_order_normals_and_colors():

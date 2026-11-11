@@ -96,44 +96,30 @@ class MpQueue(Generic[T]):
             self._queue.join_thread()
 
 
-@dataclass(frozen=True)
-class LoadResultEvent:
-    result: LoadResult
-
-
-@dataclass(frozen=True)
-class LoadCompletionEvent:
-    result: LoadResult
-
-
-LoadEvent = LoadResultEvent | LoadCompletionEvent
-
-
 class LoadEventChannel:
     def __init__(self, maxsize: int = 1) -> None:
-        self._queue: queue.Queue[LoadEvent] = queue.Queue(maxsize=maxsize)
+        self._queue: queue.Queue[LoadResult] = queue.Queue(maxsize=maxsize)
         self._put_lock = Lock()
 
-    def put_latest(self, event: LoadEvent, timeout: float = 0.1) -> None:
+    def put_latest(self, result: LoadResult, timeout: float = 0.1) -> None:
         with self._put_lock:
             while True:
                 try:
-                    self._queue.put(event, timeout=timeout)
+                    self._queue.put(result, timeout=timeout)
                     return
                 except queue.Full:
                     try:
                         queued = self._queue.get_nowait()
                     except queue.Empty:
                         continue
-                    if queued.result.generation > event.result.generation:
-                        event = queued
+                    if queued.generation > result.generation:
+                        result = queued
 
-    def get_nowait(self) -> LoadEvent:
+    def get_nowait(self) -> LoadResult:
         return self._queue.get_nowait()
 
     def get(self, block: bool = True, timeout: float | None = None) -> LoadResult:
-        event = self._queue.get(block=block, timeout=timeout)
-        return event.result
+        return self._queue.get(block=block, timeout=timeout)
 
     def close(self, discard: bool = False) -> None:
         if discard:
@@ -528,7 +514,6 @@ class LoadWorker(Thread):
                     phase=phase,
                     allow_cancelled=True,
                     debug=isinstance(payload, list),
-                    completed=True,
                     features=features,
                 )
                 return
@@ -579,7 +564,6 @@ class LoadWorker(Thread):
                 debug=isinstance(payload, list),
             ),
             allow_cancelled=True,
-            completed=True,
         )
 
     def _prepare_mesh(
@@ -606,7 +590,6 @@ class LoadWorker(Thread):
         allow_cancelled: bool = False,
         exportable: bool = False,
         debug: bool = False,
-        completed: bool = False,
         features: list[FeatureState] | None = None,
     ) -> None:
         self._revision += 1
@@ -627,7 +610,6 @@ class LoadWorker(Thread):
                 debug=debug,
             ),
             allow_cancelled=allow_cancelled,
-            completed=completed,
         )
 
     def _publish_final_result(
@@ -651,7 +633,6 @@ class LoadWorker(Thread):
             allow_cancelled=True,
             exportable=snapshot is not None,
             debug=isinstance(payload, list),
-            completed=True,
             features=features,
         )
 
@@ -744,18 +725,11 @@ class LoadWorker(Thread):
         self,
         result: LoadResult,
         allow_cancelled: bool = False,
-        completed: bool = False,
     ) -> None:
-        result_put = False
-        while not result_put:  # tends to be race conditions between full and empty
-            if self.cancelled and not allow_cancelled:
-                logger.info("LoadWorker cancelled, stopping load")
-                return
-            event_type = LoadCompletionEvent if completed else LoadResultEvent
-            self.load_queue.put_latest(
-                event_type(result), timeout=self.PUT_QUEUE_TIMEOUT
-            )
-            result_put = True
+        if self.cancelled and not allow_cancelled:
+            logger.info("LoadWorker cancelled, stopping load")
+            return
+        self.load_queue.put_latest(result, timeout=self.PUT_QUEUE_TIMEOUT)
 
     def run_mesh_module(self) -> Generator[CreateMeshResultType, None, None]:
         module_loader = ModuleLoader(CREATE_MESH_FUNCTION_NAME)
@@ -959,10 +933,10 @@ class MeshLoaderProcess(Process):
             return
         while True:
             try:
-                event = load_events.get_nowait()
+                result = load_events.get_nowait()
             except queue.Empty:
                 return
-            self._publish_load_result(event.result)
+            self._publish_load_result(result)
 
     def _publish_load_result(self, result: LoadResult) -> None:
         while True:

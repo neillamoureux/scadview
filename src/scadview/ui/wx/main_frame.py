@@ -370,12 +370,6 @@ class MainFrame(wx.Frame):
     def _on_module_path_set(self, path: str) -> bool:
         return path != ""
 
-    def _can_be_exported(self, status: LoadStatus) -> bool:
-        return (
-            status == LoadStatus.COMPLETE
-            and self._controller.exportable_payload is not None
-        )
-
     def _add_view_buttons(self) -> None:
         for action in [
             self._frame_action,

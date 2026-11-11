@@ -209,6 +209,6 @@ def drain(results):
     values = []
     while True:
         try:
-            values.append(results.get_nowait().result)
+            values.append(results.get_nowait())
         except queue.Empty:
             return values

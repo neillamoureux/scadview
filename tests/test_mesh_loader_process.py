@@ -26,7 +26,6 @@ from scadview.mesh_loader_process import (
     LoadMeshCommand,
     LoadPhase,
     LoadResult,
-    LoadResultEvent,
     LoadStatus,
     LoadWorker,
     MeshLoaderProcess,
@@ -1084,7 +1083,7 @@ def test_loader_coordinator_publishes_load_events_and_propagates_transport_failu
         exportable=False,
         debug=False,
     )
-    process._load_events.put_latest(LoadResultEvent(result))
+    process._load_events.put_latest(result)
 
     with pytest.raises(OSError, match="load result queue closed"):
         process._drain_load_events()
@@ -1465,7 +1464,7 @@ def test_load_worker_does_not_evict_newer_queued_result():
         debug=False,
         generation=4,
     )
-    load_queue.put_latest(LoadResultEvent(newer_result))
+    load_queue.put_latest(newer_result)
     worker = LoadWorker("test/path", load_queue, generation=3)
 
     worker.put_in_queue(
