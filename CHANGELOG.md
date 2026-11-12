@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.11](https://github.com/neillamoureux/scadview/compare/v0.2.10...v0.2.11) (2026-11-12)
+
+
+### Refactoring
+
+* move mesh pipeline to compact payloads ([fdced79](https://github.com/neillamoureux/scadview/commit/fdced799c7028590405499dda2f28b36cd73c0a6))
+
 ## [0.2.10](https://github.com/neillamoureux/scadview/compare/v0.2.9...v0.2.10) (2026-09-08)
 
 
