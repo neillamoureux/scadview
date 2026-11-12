@@ -1320,7 +1320,7 @@ wheels = [
 
 [[package]]
 name = "scadview"
-version = "0.2.8"
+version = "0.2.10"
 source = { editable = "." }
 dependencies = [
     { name = "manifold3d" },

@@ -109,7 +109,12 @@ def _fn_h():
 * **TODOs:** Format: `# TODO(username): description of task`.
 
 ## Exceptions
-* **Handling:** **NEVER** use catch-all `except:` or `except Exception:`. Catch specific errors.
+* **Handling:** **NEVER** use catch-all `except:`. Catch specific errors in domain logic.
+* **Asynchronous Protocol Boundaries:** A named process or thread boundary adapter
+  MAY catch `Exception` when it must translate unpredictable third-party failures
+  into a structured terminal protocol result. Keep the catch around only the
+  external operation, do not catch `BaseException`, and publish the terminal result
+  exactly once outside the catch. Cover this policy exception with a focused test.
 * **Raising:** Do not raise generic `Exception`. Use `ValueError`, `TypeError`, or custom classes.
 * **Asserts:** Do not use `assert` for control flow or validation; use it only for tests or internal invariants.
 

@@ -1,0 +1,277 @@
+## Purpose
+
+Define measurable, compatibility-preserving behavior for transferring generated
+mesh geometry from the loader process to rendering and export consumers.
+
+## Requirements
+
+### Requirement: Performance changes are measured against a baseline
+The change SHALL provide a repeatable comparison of the existing mesh path and
+the compact-payload path using the same representative meshes and environment.
+The comparison SHALL report serialized size, conversion and transfer time, peak
+memory where supported, and time until the first rendered frame.
+Retained-source RSS output SHALL identify the source kind independently from
+whether measurement was attempted or supported and SHALL report an explicit
+error when an attempted measurement is unavailable.
+
+#### Scenario: Baseline is captured before transport changes
+- **WHEN** implementation begins on the mesh transfer path
+- **THEN** the existing path is measured and its environment and mesh sizes are recorded before production behavior is changed
+
+#### Scenario: Compact path is compared fairly
+- **WHEN** the compact-payload stage is complete
+- **THEN** the same measurements are repeated with the same inputs and environment and the before-and-after results are recorded
+
+#### Scenario: Retained-source RSS is unavailable
+- **WHEN** the platform cannot report retained-source RSS or the measurement process fails or times out
+- **THEN** the benchmark preserves the actual source kind, marks RSS measurement unsupported, reports the reason, and does not represent missing values as a successful zero measurement
+
+### Requirement: Loader results use compact mesh data
+The system SHALL represent each successfully validated mesh crossing the loader
+process boundary using contiguous indexed geometry, fixed-width numeric types,
+one optional mesh-level color, and only the additional summary data required for
+rendering. A successful display result SHALL NOT contain a complete `Trimesh`
+object. The loader process SHALL retain the final native source separately
+when lossless export is available.
+
+#### Scenario: Single mesh result is transferred
+- **WHEN** a user module produces one valid mesh
+- **THEN** the loader result contains one compact payload with equivalent vertices, triangle faces, shading data, color, bounds, and scale
+
+#### Scenario: Mesh list result is transferred
+- **WHEN** a user module produces a valid list or feature-debug output
+- **THEN** the loader result preserves mesh order and one independently colored compact payload per non-empty mesh
+
+#### Scenario: Incremental result is transferred
+- **WHEN** a generator yields successive valid meshes
+- **THEN** each published payload retains the existing load number, sequence number, completion, and generation semantics
+
+#### Scenario: Pending incremental sources are superseded
+- **WHEN** the generator yields multiple sources while payload conversion is busy
+- **THEN** only the newest pending source is converted and earlier pending sources are neither published nor rendered
+- **AND** successful completion always publishes a terminal payload representing the final source after generator exhaustion
+
+#### Scenario: A generator reuses a mutable source
+- **WHEN** a generator mutates a previously yielded mesh or list after resuming
+- **THEN** progress conversion reads an owned snapshot captured before resumption and final export remains aligned with the terminal payload
+
+#### Scenario: Final source is prepared without duplicate detection
+- **WHEN** a generator finishes successfully
+- **THEN** the loader prepares the original latest yielded object again once for the terminal payload, including added, replaced, or removed list items
+- **AND** it does not use source signatures or source equality to skip final conversion; clients avoid duplicate yields when needed
+
+#### Scenario: Receiver removes a result during queue replacement
+- **WHEN** either result queue becomes empty after the sender observes that it is full
+- **THEN** the sender retries putting the new result and repeats replacement if the queue fills again, without raising an empty-queue error
+- **AND** progress and terminal results from older generations cannot replace newer queued results, including with competing worker senders
+
+#### Scenario: Stale result is encountered
+- **WHEN** a payload belongs to an older load generation
+- **THEN** the system discards it without replacing the current generation's mesh or metadata
+
+#### Scenario: Source face normals are transferred
+- **WHEN** a source `Trimesh` provides per-face `face_normals`
+- **THEN** payload conversion preserves those normals in its required per-face normal array and the renderer uses them without recalculating geometric normals
+
+#### Scenario: Payload visibility remains internal
+- **WHEN** application code crosses a loader, controller, UI, adapter, or renderer boundary
+- **THEN** it uses the internal payload representation without requiring or exposing `MeshPayload` as a public SCADview API
+
+### Requirement: Load results expose explicit state
+The system SHALL represent each load result with explicit phase, generation,
+revision, payload, exportability, and terminal error state. Consumers SHALL NOT
+infer finality, debug status, revision, or exportability solely from payload shape,
+sequence number, requested debug mode, or load status.
+The envelope SHALL be immutable after construction, SHALL expose payload as its
+only mesh-bearing field, and SHALL derive terminal completion from phase rather
+than storing duplicate compatibility state.
+The loader SHALL assign effective debug status explicitly at source selection.
+To preserve the existing contract, every list result SHALL be explicitly marked
+debug and SHALL be non-exportable; a single payload result SHALL be explicitly
+marked non-debug and is exportable only when it is the successful final snapshot.
+
+#### Scenario: Progress result is published
+- **WHEN** a generator yields an intermediate mesh selected for publication
+- **THEN** the loader publishes a progress-phase envelope with a new display revision and a non-exportable payload view
+
+#### Scenario: Final single result is published
+- **WHEN** the current generation successfully exhausts with one effective mesh
+- **THEN** the loader publishes a final-phase envelope with a new revision, a payload matching the final source snapshot, and `exportable` set to true
+
+#### Scenario: Final debug list is published
+- **WHEN** the current generation successfully completes with an effective debug list
+- **THEN** the loader publishes a final-phase envelope with `exportable` set to false and no retained single export source
+
+#### Scenario: A list result is classified explicitly
+- **WHEN** a user module or debug source selection produces a list of payloads
+- **THEN** the loader marks the envelope debug explicitly and consumers do not infer that state from the payload's list shape
+
+#### Scenario: Terminal load error is published
+- **WHEN** source resolution, payload conversion, finalization, or module execution fails
+- **THEN** the loader publishes an error-phase envelope with a structured error and no exportable source
+
+#### Scenario: Conversion fails while the generator is blocked
+- **WHEN** payload conversion fails while the producer is waiting inside user generator code
+- **THEN** the terminal error is published without waiting for that generator to return, respecting the shared cancellation decision and captured feature metadata
+- **AND** resuming or completing the generator does not publish further progress or a second terminal result
+
+#### Scenario: Final revision is distinct from progress
+- **WHEN** finalization republishes the effective final state after the last generator yield
+- **THEN** the final envelope receives a revision distinct from the progress envelope even if its sequence number is unchanged
+
+#### Scenario: Explicit envelope state is consumed
+- **WHEN** loader, controller, or UI code inspects a load result
+- **THEN** it uses the canonical phase and payload fields without cancellation, mesh, or stored-completion aliases
+
+### Requirement: Public mesh creation behavior remains compatible
+The system SHALL continue accepting the documented `create_mesh` return types
+and SHALL perform payload conversion after source validation and feature
+resolution without requiring Manifold-to-Trimesh normalization.
+
+#### Scenario: Native Manifold is displayed
+- **WHEN** a valid Manifold is selected for display
+- **THEN** the loader converts its vertex and triangle arrays directly to a payload with equivalent triangle-cross-product shading and creates no Trimesh
+
+#### Scenario: Native conversion is evaluated
+- **WHEN** the direct conversion candidate is compared to the committed loader on `examples/messner_mani.py`
+- **THEN** it is retained only if same-machine timing shows a meaningful improvement and correctness checks preserve required semantics
+
+#### Scenario: Supported return type is loaded
+- **WHEN** `create_mesh` returns a `Trimesh`, `Manifold`, feature mesh, or documented list or generator form
+- **THEN** the system presents equivalent triangle geometry without requiring changes to the user module
+
+#### Scenario: Invalid return value is loaded
+- **WHEN** `create_mesh` returns an unsupported value or invalid geometry
+- **THEN** the load fails through the existing error-result behavior rather than publishing a partial payload as successful
+
+### Requirement: Rendering accepts payload geometry only
+The system SHALL ensure that all loaded and built-in mesh geometry enters the
+production rendering subsystem only as compact payloads or payload-derived arrays.
+The rendering subsystem SHALL NOT accept, construct, reconstruct, import, or
+type-check complete `Trimesh` objects.
+
+#### Scenario: Loaded geometry reaches rendering
+- **WHEN** the current-generation loader result is presented to the renderer
+- **THEN** controller, UI, adapter, renderer, and drawable boundaries pass payload geometry without reconstructing a `Trimesh`
+
+#### Scenario: Built-in geometry reaches rendering
+- **WHEN** startup, loading, or base-axis geometry is presented to the renderer
+- **THEN** it uses the same payload-only renderer boundary as loaded geometry
+
+### Requirement: Built-in scene assets are supplied at composition
+The system SHALL construct and normalize the complete set of startup, loading,
+and base-axis geometry outside the rendering subsystem and SHALL inject that set
+before renderer creation. The renderer SHALL remain responsible for GL lifecycle,
+transforms, visibility, drawable composition, and draw ordering.
+
+#### Scenario: Renderer is created
+- **WHEN** application composition creates a renderer
+- **THEN** the renderer receives a complete payload-based scene-assets set without constructing source geometry itself
+
+#### Scenario: Loading state is displayed
+- **WHEN** load status changes to loading
+- **THEN** the renderer selects and draws the injected loading payload using its existing GL and visibility lifecycle
+
+#### Scenario: Axis scale or visibility changes
+- **WHEN** loaded-mesh scale or axis visibility changes
+- **THEN** the renderer transforms or shows the injected base-axis payload without creating or mutating a `Trimesh`
+
+### Requirement: Source mesh objects remain loader-owned
+Within the load-display-export path, the system SHALL confine complete `Trimesh`
+objects to native source handling and loader-owned export execution. The
+native source SHALL remain in the loader process and SHALL NOT cross the
+display result queue or become controller, UI, adapter, or renderer state. This
+boundary SHALL NOT alter documented geometry-authoring APIs.
+
+#### Scenario: Source mesh is accepted
+- **WHEN** user-module or built-in source geometry is accepted
+- **THEN** it is converted to a payload before crossing into queue, controller, UI, adapter, or renderer ownership
+
+#### Scenario: Final source is retained
+- **WHEN** a final successful non-debug single mesh is accepted for the current generation
+- **THEN** the loader retains the native `Trimesh` or `Manifold` source for export and publishes only its payload view to the display queue
+
+#### Scenario: Debug or failed source is completed
+- **WHEN** a debug list, failed result, or non-final intermediate result is processed
+- **THEN** the loader does not publish that result as the export source
+
+### Requirement: Rendering behavior is preserved
+The compact-payload stage SHALL preserve the current observable rendering of
+geometry, default and explicit mesh-level colors, transparency ordering, framing,
+feature-debug lists, incremental results, and triangle-edge display.
+
+#### Scenario: Opaque mesh is displayed
+- **WHEN** an opaque payload is loaded
+- **THEN** its geometry, flat shading, color, framing bounds, and optional triangle edges match the existing rendering path
+
+#### Scenario: Transparent mesh list is displayed
+- **WHEN** payloads with different colors and alpha values are loaded together
+- **THEN** the renderer preserves global triangle sorting and each payload's mesh-level color
+
+#### Scenario: Edge display is toggled
+- **WHEN** the user enables edge display for a compact payload
+- **THEN** all triangle boundaries are displayed with the same corner-marker semantics as the existing renderer
+
+### Requirement: Export behavior is preserved from the source mesh
+The system SHALL keep export available for the final successfully loaded,
+non-debug mesh and SHALL export the retained native source without
+reconstructing it from `MeshPayload`. Export SHALL remain asynchronous to the UI
+and SHALL preserve the existing supported formats and error reporting. When the
+loader accepts an export request, it SHALL isolate a point-in-time value copy of
+the retained source before starting asynchronous export execution.
+
+#### Scenario: Native Manifold is exported
+- **WHEN** an export request for the final Manifold is accepted
+- **THEN** the loader adapts that native source to Trimesh through the existing export conversion, preserving its geometry and supported vertex colors, and reports adaptation errors through the export protocol
+
+The existing adapter can merge nearby vertices in very thin Manifold geometry.
+For round-four review item 4, the user explicitly requested documentation only;
+this known export-fidelity limitation is documented rather than fixed in this task.
+
+#### Scenario: Loaded mesh is exported
+- **WHEN** the user exports a completed single-mesh load to a currently supported format
+- **THEN** the loader exports the retained source through the existing format-specific path with its original geometry, metadata, visuals, and supported color state
+
+#### Scenario: Export is requested during a load
+- **WHEN** the user requests export while a new load is active or no final source exists for the requested generation
+- **THEN** the controller rejects or disables the request without blocking the UI or exporting stale source data
+
+#### Scenario: Export completes after a reload begins
+- **WHEN** an accepted export request is followed by a new load
+- **THEN** the export result remains correlated to its request id and reports completion or a structured error without replacing the new generation's display state
+
+#### Scenario: Accepted export source is mutated or replaced
+- **WHEN** user-retained source state is mutated or the loader's current source is replaced after an export request is accepted
+- **THEN** the export uses the isolated source value captured at acceptance, including its geometry, metadata, visuals, and color state
+
+#### Scenario: Export source snapshot fails
+- **WHEN** the loader cannot copy the retained source while accepting an export request
+- **THEN** it starts no export worker and returns one correlated structured error
+
+#### Scenario: Export fails
+- **WHEN** the exporter raises an expected file or format error
+- **THEN** the loader returns a structured correlated error and the UI preserves existing error-reporting behavior
+
+#### Scenario: Debug list is displayed
+- **WHEN** the current result has debug-list status
+- **THEN** export remains unavailable as in the existing interface
+
+The change does not isolate arbitrary user-module state such as `sys.modules`,
+`sys.path`, or user-defined module globals across overlapping loads. That broader
+session-isolation question is deferred to a separately reviewed follow-up change.
+
+### Requirement: Fully indexed rendering is gated by evidence
+The initial compact-payload stage SHALL retain the established triangle-corner
+rendering behavior, and fully indexed GPU rendering SHALL remain deferred from
+this change. If post-change measurements identify render expansion or upload as a
+material remaining bottleneck, a separately reviewed follow-up SHALL define the
+indexed design and require visual parity for edges, flat shading, transparency,
+colors, and framing.
+
+#### Scenario: Compact transfer meets the measured objective
+- **WHEN** post-change measurements show that renderer indexing is not needed to address the measured bottleneck
+- **THEN** fully indexed shader rendering remains deferred
+
+#### Scenario: Indexed rendering is still justified
+- **WHEN** post-change measurements show render expansion or upload remains a material bottleneck
+- **THEN** indexed rendering is proposed as a separately reviewable stage with automated checks and human visual validation before adoption

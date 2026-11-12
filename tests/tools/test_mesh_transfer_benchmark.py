@@ -1,0 +1,331 @@
+import os
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
+from trimesh import Trimesh
+
+from scadview.mesh_loader_process import LoadPhase, LoadResult
+from scadview.mesh_payload import mesh_to_payload
+from tools.mesh_transfer_benchmark import (
+    DISPLAY_LATENCY_PHASES,
+    METRIC_NAMES,
+    _compose_display_latency,
+    _finalize_envelope,
+    _grid_mesh,
+    _measure_publication_transfer,
+    _retained_source_memory,
+    discover_cases,
+    measure_case,
+    run_benchmark,
+)
+
+
+def test_discover_cases_includes_deterministic_transfer_shapes():
+    cases = discover_cases()
+
+    assert [case.name for case in cases] == [
+        "high-sharing-small",
+        "high-sharing-large",
+        "mixed-transparency",
+        "representative-large-model",
+    ]
+    assert all(case.create_meshes() for case in cases)
+
+
+def test_cases_have_expected_vertex_and_face_counts():
+    measurements = [measure_case(case, measure_gpu=False) for case in discover_cases()]
+
+    assert measurements[0]["vertex_count"] == 1089
+    assert measurements[0]["face_count"] == 2048
+    assert measurements[1]["vertex_count"] == 16641
+    assert measurements[1]["face_count"] == 32768
+    assert measurements[2]["mesh_count"] == 3
+    assert measurements[3]["face_count"] > measurements[1]["face_count"]
+
+
+def test_grid_mesh_faces_are_non_degenerate():
+    mesh = _grid_mesh(8)
+    triangles = mesh.vertices[mesh.faces]
+    double_areas = np.linalg.norm(
+        np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]),
+        axis=1,
+    )
+
+    assert np.all(double_areas > 0)
+
+
+def test_run_benchmark_reports_environment_and_planned_metrics():
+    report = run_benchmark(measure_gpu=False)
+
+    assert report["benchmark_version"] == 5
+    assert report["path"] == "trimesh"
+    assert report["comparison_kind"] == "same-version-counterfactual"
+    assert report["transfer_boundary"] == "child-to-main-process"
+    assert "only the final result is transferred" in report["publication_scope"]
+    assert "GUI polling" in report["publication_scope"]
+    assert report["environment"]["python_version"]
+    assert report["environment"]["platform"]
+    assert report["environment"]["numpy_version"]
+    assert report["environment"]["trimesh_version"]
+    assert report["command"]
+    assert set(METRIC_NAMES) <= report["cases"][0].keys()
+
+
+def test_run_benchmark_supports_compact_payload_path():
+    report = run_benchmark(path="payload", measure_gpu=False, measure_peak_memory=False)
+
+    assert report["path"] == "payload"
+    assert report["cases"][0]["payload_conversion_ms"] >= 0
+    assert report["cases"][0]["pickle_size_bytes"] < 100_000
+
+
+def test_measurement_reports_one_queue_transfer_and_optional_memory():
+    measurement = measure_case(discover_cases()[0], measure_gpu=False)
+
+    assert measurement["pickle_size_bytes"] > 0
+    assert measurement["mesh_creation_ms"] >= 0
+    assert measurement["child_to_main_transfer_ms"] >= 0
+    assert measurement["transfer_producer_pid"] != os.getpid()
+    assert measurement["transfer_consumer_pid"] == os.getpid()
+    assert measurement["renderer_preparation_ms"] >= 0
+    assert measurement["renderer_upload_ms"] is None
+    assert measurement["first_frame_ms"] is None
+    assert measurement["post_mesh_creation_to_first_frame_ms"] is None
+    assert measurement["main_process_peak_memory_bytes"] is not None
+    assert measurement["loader_publication_peak_memory_bytes"] is not None
+    assert measurement["export_request_completion_ms"] >= 0
+    assert measurement["retained_source_kind"] == "single-final-source"
+    if measurement["retained_memory_supported"]:
+        assert measurement["retained_memory_error"] is None
+        assert measurement["retained_loader_process_rss_delta_bytes"] is not None
+        assert measurement["retained_loader_process_baseline_rss_bytes"] > 0
+        assert measurement["retained_loader_process_final_rss_bytes"] > 0
+    else:
+        assert measurement["retained_memory_error"]
+        assert measurement["retained_loader_process_rss_delta_bytes"] is None
+        assert measurement["retained_loader_process_baseline_rss_bytes"] is None
+        assert measurement["retained_loader_process_final_rss_bytes"] is None
+
+
+def test_aggregate_metric_is_emitted_for_both_transfer_paths():
+    for path in ("trimesh", "payload"):
+        measurement = measure_case(
+            discover_cases()[0],
+            measure_gpu=False,
+            measure_peak_memory=False,
+            path=path,
+        )
+
+        assert "post_mesh_creation_to_first_frame_ms" in measurement
+        assert measurement["post_mesh_creation_to_first_frame_ms"] is None
+
+
+def test_payload_publication_measures_final_preparation_in_child_process():
+    transfer = _measure_publication_transfer([_grid_mesh(4)], "payload")
+
+    assert transfer.producer_pid != os.getpid()
+    assert transfer.consumer_pid == os.getpid()
+    assert isinstance(transfer.envelope, LoadResult)
+    assert transfer.envelope.phase is LoadPhase.FINAL
+    assert transfer.envelope.exportable
+    assert not _contains_trimesh(transfer.envelope.payload)
+    assert transfer.metrics["payload_conversion_ms"] >= 0
+    assert transfer.metrics["payload_conversion_passes"] == 2
+    assert "source_signature_ms" not in transfer.metrics
+    assert "source_signature_passes" not in transfer.metrics
+    assert "source_signature_ms" not in METRIC_NAMES
+    assert "source_signature_passes" not in METRIC_NAMES
+    assert transfer.metrics["envelope_finalization_ms"] >= 0
+    assert transfer.metrics["loader_publication_ms"] == _compose_display_latency(
+        transfer.metrics,
+        (
+            "payload_conversion_ms",
+            "envelope_finalization_ms",
+        ),
+    )
+
+
+@pytest.mark.parametrize("path", ["trimesh", "payload"])
+@pytest.mark.parametrize("mesh_count", [1, 2])
+def test_finalization_prepares_fresh_final_payload(monkeypatch, path, mesh_count):
+    meshes = [_grid_mesh(4) for _ in range(mesh_count)]
+    conversions = []
+
+    def convert(source):
+        payload = mesh_to_payload(source)
+        conversions.append((source, payload))
+        return payload
+
+    monkeypatch.setattr("tools.mesh_transfer_benchmark.mesh_to_payload", convert)
+
+    envelope, metrics = _finalize_envelope(meshes, path)
+
+    assert envelope.phase is LoadPhase.FINAL
+    assert envelope.exportable is (mesh_count == 1)
+    assert envelope.debug is (mesh_count > 1)
+    if path == "trimesh":
+        assert conversions == []
+        assert metrics["payload_conversion_ms"] == 0
+        assert metrics["payload_conversion_passes"] == 0
+        return
+    assert metrics["payload_conversion_passes"] == 2
+    assert len(conversions) == 2 * mesh_count
+    for (source, _), expected in zip(conversions, meshes * 2):
+        assert source is expected
+    final_payloads = envelope.payload if mesh_count > 1 else [envelope.payload]
+    for index, payload in enumerate(final_payloads):
+        assert payload is conversions[mesh_count + index][1]
+        assert payload is not conversions[index][1]
+        np.testing.assert_array_equal(payload.vertices, meshes[index].vertices)
+
+
+def test_publication_timing_counts_both_conversions_once(monkeypatch):
+    ticks = iter([0.0, 0.001, 0.001, 0.003, 0.003, 0.007, 0.007, 0.015])
+    monkeypatch.setattr(
+        "tools.mesh_transfer_benchmark.perf_counter", lambda: next(ticks)
+    )
+
+    _, metrics = _finalize_envelope([_grid_mesh(4)], "payload")
+
+    assert metrics["payload_conversion_ms"] == 5.0
+    assert metrics["envelope_finalization_ms"] == 10.0
+    assert metrics["loader_publication_ms"] == 15.0
+
+
+def test_display_latency_is_exactly_composed_from_documented_phases():
+    measurement = {
+        "loader_publication_ms": 1.25,
+        "child_to_main_transfer_ms": 2.5,
+        "renderer_preparation_ms": 3.75,
+        "gpu_context_shader_setup_ms": 100.0,
+        "renderer_upload_ms": 4.0,
+        "first_frame_ms": 5.5,
+    }
+
+    assert "gpu_context_shader_setup_ms" not in DISPLAY_LATENCY_PHASES
+    assert _compose_display_latency(measurement) == 17.0
+
+
+def _contains_trimesh(value):
+    if isinstance(value, Trimesh):
+        return True
+    if isinstance(value, list):
+        return any(_contains_trimesh(item) for item in value)
+    return False
+
+
+def test_memory_measurement_can_be_disabled():
+    measurement = measure_case(
+        discover_cases()[0], measure_gpu=False, measure_peak_memory=False
+    )
+
+    assert measurement["peak_memory_supported"] is False
+    assert measurement["main_process_peak_memory_bytes"] is None
+    assert measurement["loader_publication_peak_memory_bytes"] is None
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] in (True, False)
+
+
+def test_retained_memory_measurement_can_be_disabled_without_relabeling_source():
+    measurement = measure_case(
+        discover_cases()[0],
+        measure_gpu=False,
+        measure_peak_memory=False,
+        measure_retained_source_memory=False,
+    )
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is None
+    assert measurement["retained_memory_error"] is None
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+
+
+def test_retained_memory_timeout_preserves_single_source_kind():
+    parent_connection = Mock()
+    parent_connection.poll.return_value = False
+    child_connection = Mock()
+    process = Mock()
+    process.is_alive.return_value = False
+
+    with (
+        patch(
+            "tools.mesh_transfer_benchmark.mp.Pipe",
+            return_value=(parent_connection, child_connection),
+        ),
+        patch("tools.mesh_transfer_benchmark.mp.Process", return_value=process),
+    ):
+        measurement = _retained_source_memory(_grid_mesh(1))
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is False
+    assert "Timed out" in measurement["retained_memory_error"]
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+
+
+def test_retained_memory_zero_delta_is_a_successful_measurement():
+    parent_connection = Mock()
+    parent_connection.poll.return_value = True
+    parent_connection.recv.return_value = (4096, 4096, 0, None)
+    child_connection = Mock()
+    process = Mock()
+    process.is_alive.return_value = False
+
+    with (
+        patch(
+            "tools.mesh_transfer_benchmark.mp.Pipe",
+            return_value=(parent_connection, child_connection),
+        ),
+        patch("tools.mesh_transfer_benchmark.mp.Process", return_value=process),
+    ):
+        measurement = _retained_source_memory(_grid_mesh(1))
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is True
+    assert measurement["retained_memory_error"] is None
+    assert measurement["retained_loader_process_rss_delta_bytes"] == 0
+
+
+def test_retained_memory_unavailable_reports_child_error():
+    parent_connection = Mock()
+    parent_connection.poll.return_value = True
+    parent_connection.recv.return_value = (
+        None,
+        None,
+        None,
+        "FileNotFoundError: ps is unavailable",
+    )
+    child_connection = Mock()
+    process = Mock()
+    process.is_alive.return_value = False
+
+    with (
+        patch(
+            "tools.mesh_transfer_benchmark.mp.Pipe",
+            return_value=(parent_connection, child_connection),
+        ),
+        patch("tools.mesh_transfer_benchmark.mp.Process", return_value=process),
+    ):
+        measurement = _retained_source_memory(_grid_mesh(1))
+
+    assert measurement["retained_source_kind"] == "single-final-source"
+    assert measurement["retained_memory_supported"] is False
+    assert (
+        measurement["retained_memory_error"] == "FileNotFoundError: ps is unavailable"
+    )
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+
+
+def test_list_cases_report_separate_non_retained_memory_and_export_metrics():
+    measurement = measure_case(
+        discover_cases()[2],
+        measure_gpu=False,
+        measure_peak_memory=False,
+        measure_retained_source_memory=True,
+    )
+
+    assert measurement["retained_source_kind"] == "list-or-debug-not-retained"
+    assert measurement["retained_memory_supported"] is None
+    assert measurement["retained_memory_error"] is None
+    assert measurement["retained_loader_process_rss_delta_bytes"] is None
+    assert measurement["export_request_completion_ms"] is None

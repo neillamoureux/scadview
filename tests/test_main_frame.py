@@ -2,10 +2,21 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from trimesh.creation import box
 
 pytest.importorskip("wx")
 
+from scadview.load_status import LoadStatus
+from scadview.mesh_loader_process import (
+    ExportError,
+    ExportResult,
+    LoadError,
+    LoadPhase,
+    LoadResult,
+)
+from scadview.mesh_payload import mesh_to_payload
 from scadview.module_loader import CreateMeshParameter
+from scadview.observable import Observable
 from scadview.ui.wx import main_frame
 from scadview.ui.wx.main_frame import MainFrame, convert_parameter_value
 
@@ -40,6 +51,63 @@ class FakeParameterBox:
 
     def ShowItems(self, value: bool):
         self.visible.append(value)
+
+
+class FakeEnableControl:
+    def __init__(self):
+        self.enabled = True
+
+    def Enable(self, enabled: bool = True):
+        self.enabled = enabled
+
+    def Disable(self):
+        self.enabled = False
+
+
+class FakeAction:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+    def button(self, _parent):
+        return FakeEnableControl()
+
+    def menu_item(self, _menu):
+        return FakeEnableControl()
+
+
+@pytest.mark.parametrize("initial_available", [False, True])
+def test_export_controls_follow_initial_availability_and_notifications(
+    monkeypatch, initial_available
+):
+    export_availability = Observable()
+    controller = SimpleNamespace(
+        debug_features=False,
+        export_available=initial_available,
+        on_debug_features_change=Observable(),
+        on_export_availability_change=export_availability,
+        on_module_path_set=Observable(),
+    )
+    frame = SimpleNamespace(
+        _controller=controller,
+        _on_debug_features_toggle=Mock(),
+        _on_module_path_set=Mock(),
+        export=Mock(),
+        on_load=Mock(),
+        on_reload=Mock(),
+    )
+    monkeypatch.setattr(main_frame, "Action", FakeAction)
+
+    MainFrame._create_file_actions(frame)
+    button = frame._export_action.button(object())
+    menu_item = frame._export_action.menu_item(object())
+    assert button.enabled is initial_available
+    assert menu_item.enabled is initial_available
+
+    for available in [not initial_available, initial_available]:
+        export_availability.notify(available)
+
+        assert button.enabled is available
+        assert menu_item.enabled is available
 
 
 def test_parameter_control_uses_parameter_name_and_current_value(monkeypatch):
@@ -335,12 +403,265 @@ def test_stale_load_result_does_not_stop_current_timer_or_update_view():
         _loader_last_load_number=0,
         _loader_last_sequence_number=0,
     )
-    from scadview.mesh_loader_process import LoadResult
-
-    result = LoadResult(1, 1, None, None, complete=True, generation=1)
+    result = LoadResult(
+        1,
+        1,
+        None,
+        None,
+        phase=LoadPhase.FINAL,
+        revision=1,
+        exportable=False,
+        debug=False,
+        generation=1,
+    )
 
     MainFrame._handle_load_result(frame, result)
 
     timer.Stop.assert_not_called()
     gauge.SetValue.assert_not_called()
     gl_widget.load_mesh.assert_not_called()
+
+
+def test_export_error_is_reported_and_completed_load_polling_stops(caplog):
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            load_status=LoadStatus.COMPLETE,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+    )
+
+    with caplog.at_level("ERROR"):
+        MainFrame._handle_export_result(
+            frame,
+            ExportResult(
+                1,
+                0,
+                ExportError("LoaderProcessDied", "Mesh loader process exited"),
+            ),
+        )
+
+    timer.Stop.assert_called_once_with()
+    assert "Mesh loader process exited" in caplog.text
+    assert any(record.levelname == "ERROR" for record in caplog.records)
+
+
+def test_export_success_is_logged_at_info(caplog):
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            load_status=LoadStatus.COMPLETE,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+    )
+
+    with caplog.at_level("INFO"):
+        MainFrame._handle_export_result(frame, ExportResult(7, 3))
+
+    assert "Export completed" in caplog.text
+    assert "request=7 generation=3" in caplog.text
+    assert any(record.levelname == "INFO" for record in caplog.records)
+
+
+def test_export_completion_before_reload_completion_keeps_polling():
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            load_status=LoadStatus.START,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+    )
+
+    MainFrame._handle_export_result(frame, ExportResult(1, 0))
+
+    timer.Stop.assert_not_called()
+
+
+def test_export_completion_after_reload_completion_stops_polling():
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            load_status=LoadStatus.COMPLETE,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+    )
+
+    MainFrame._handle_export_result(frame, ExportResult(1, 0))
+
+    timer.Stop.assert_called_once_with()
+
+
+def test_reload_completion_stops_polling_after_export_completed():
+    payload = mesh_to_payload(box())
+    timer = Mock()
+    gauge = Mock()
+    gl_widget = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            current_generation=1,
+            load_status=LoadStatus.COMPLETE,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _gl_widget=gl_widget,
+        _loader_last_load_number=0,
+        _loader_last_sequence_number=0,
+        _has_mesh_changed=lambda result: False,
+    )
+    MainFrame._handle_load_result(
+        frame,
+        LoadResult(
+            1,
+            1,
+            payload,
+            None,
+            phase=LoadPhase.FINAL,
+            revision=1,
+            exportable=True,
+            debug=False,
+            generation=1,
+        ),
+    )
+
+    timer.Stop.assert_called_once_with()
+
+
+def test_terminal_load_error_resets_progress_gauge():
+    timer = Mock()
+    gauge = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            current_generation=2,
+            load_status=LoadStatus.ERROR,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _gl_widget=Mock(),
+        _loader_last_load_number=0,
+        _loader_last_revision=-1,
+        _has_mesh_changed=lambda _: False,
+    )
+    result = LoadResult(
+        2,
+        1,
+        payload=None,
+        error=LoadError("SyntaxError", "invalid syntax"),
+        generation=2,
+        phase=LoadPhase.ERROR,
+        revision=1,
+        exportable=False,
+        debug=False,
+    )
+
+    MainFrame._handle_load_result(frame, result)
+
+    gauge.SetValue.assert_called_once_with(0)
+    timer.Stop.assert_called_once_with()
+
+
+def test_main_frame_close_closes_controller_before_destroy():
+    frame = SimpleNamespace(
+        _loader_timer=Mock(),
+        _controller=Mock(),
+        Destroy=Mock(),
+    )
+
+    MainFrame.on_close(frame, Mock())
+
+    frame._loader_timer.Stop.assert_called_once_with()
+    frame._controller.close.assert_called_once_with()
+    frame.Destroy.assert_called_once_with()
+
+
+@pytest.mark.parametrize("status", [LoadStatus.DEBUG, LoadStatus.ERROR])
+def test_reload_debug_or_error_stops_polling(status):
+    timer = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(load_status=status, export_pending=False),
+        _loader_timer=timer,
+    )
+
+    main_frame._stop_loader_polling_if_terminal(frame._controller, frame._loader_timer)
+
+    timer.Stop.assert_called_once_with()
+
+
+def test_ignored_export_result_does_not_stop_ui_polling():
+    timer = Mock()
+    controller = SimpleNamespace(
+        current_generation=1,
+        load_status=LoadStatus.START,
+        export_pending=True,
+        check_export_queue=Mock(return_value=None),
+        check_load_queue=Mock(
+            return_value=LoadResult(
+                1,
+                1,
+                None,
+                None,
+                phase=LoadPhase.PROGRESS,
+                revision=1,
+                exportable=False,
+                debug=False,
+                generation=1,
+            )
+        ),
+    )
+    frame = SimpleNamespace(
+        _controller=controller,
+        _loader_timer=timer,
+        _load_progress_gauge=Mock(),
+        _gl_widget=Mock(),
+        _loader_last_load_number=0,
+        _loader_last_sequence_number=0,
+        _has_mesh_changed=lambda result: False,
+        _handle_load_result=lambda result: MainFrame._handle_load_result(frame, result),
+    )
+
+    MainFrame.on_load_timer(frame, Mock())
+
+    controller.check_export_queue.assert_called_once_with()
+    timer.Stop.assert_not_called()
+
+
+def test_current_payload_result_reaches_the_view_without_reconstruction():
+    payload = mesh_to_payload(box())
+    timer = Mock()
+    gauge = Mock()
+    gl_widget = Mock()
+    frame = SimpleNamespace(
+        _controller=SimpleNamespace(
+            current_generation=1,
+            load_status=LoadStatus.START,
+            export_pending=False,
+        ),
+        _loader_timer=timer,
+        _load_progress_gauge=gauge,
+        _gl_widget=gl_widget,
+        _loader_last_load_number=0,
+        _loader_last_sequence_number=0,
+        _has_mesh_changed=lambda result: True,
+        _load_mesh_in_view=lambda mesh: gl_widget.load_mesh(mesh, "loaded mesh"),
+        _is_first_in_load=lambda result: False,
+    )
+    result = LoadResult(
+        1,
+        1,
+        payload,
+        None,
+        phase=LoadPhase.PROGRESS,
+        revision=1,
+        exportable=False,
+        debug=False,
+        generation=1,
+    )
+
+    MainFrame._handle_load_result(frame, result)
+
+    gl_widget.load_mesh.assert_called_once_with(payload, "loaded mesh")

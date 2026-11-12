@@ -60,6 +60,11 @@ But `manifold3d` is highly optimized for geometric boolean operations,
 and can be much faster than Trimesh.
 So if you are combining 100s of meshes, consider trying out `manifold3d`.
 
+Manifold meshes are displayed directly, but export converts them to Trimesh.
+That conversion can merge very close vertices and collapse extremely thin
+geometry, so an exported shape may differ from the display. Check exported
+geometry carefully when your model contains very small thicknesses.
+
 ## Toggleable Features
 
 {{ project_name }} can expose optional geometry as UI-togglable features.
@@ -208,10 +213,21 @@ def create_mesh():
     yield mesh2
 ```
 
-As this adds additional renders, 
-building incrementatlly is generally slower than a single build.
-If you yield very quickly (many times per second),
-some renders may be skipped to keep the speed up.
+Incremental builds add source-handling and rendering work. If you yield faster
+than the display payload can be prepared, only the newest pending source is
+converted and published; intermediate yields may never be rendered. Successful
+completion always publishes the final source, including changes made after the
+last yield, and export uses that final source.
+
+The final source is prepared again when the generator finishes. SCADview does
+not compare meshes to detect duplicate yields or skip that final conversion.
+Avoid yielding unchanged meshes when performance matters.
+
+You may mutate and reuse a Trimesh after `yield` resumes. SCADview copies its
+progress state before resuming your generator. Manifold operations return new
+values, so their sources can be retained without copying and converted directly
+to display payloads; they become Trimesh only when export is requested. Do not
+mutate yielded meshes from another thread during the handoff.
 
 As with `create_mesh` as a "regular" function,
 you can yield a singular mesh or a list of them.

@@ -7,3 +7,4 @@ class LoadStatus(Enum):
     COMPLETE = auto()
     ERROR = auto()
     DEBUG = auto()
+    CANCELLED = auto()

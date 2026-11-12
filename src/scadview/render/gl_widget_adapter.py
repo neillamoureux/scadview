@@ -2,9 +2,9 @@ import logging
 
 import numpy as np
 from numpy.typing import NDArray
-from trimesh import Trimesh
 
 from scadview.load_status import LoadStatus
+from scadview.mesh_payload import MeshPayload
 from scadview.observable import Observable
 from scadview.render.camera import CameraOrthogonal, CameraPerspective
 from scadview.render.renderer import RendererFactory
@@ -188,7 +188,7 @@ class GlWidgetAdapter:
     def indicate_load_status(self, status: LoadStatus):
         self._renderer.indicate_load_status(status)
 
-    def load_mesh(self, mesh: Trimesh | list[Trimesh], name: str):
+    def load_mesh(self, mesh: MeshPayload | list[MeshPayload], name: str):
         self._renderer.load_mesh(mesh, name)
 
     def frame(
