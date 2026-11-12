@@ -359,7 +359,6 @@ def test_load_result_has_one_immutable_explicit_payload_surface():
     ("phase", "payload_kind", "error", "exportable", "debug"),
     [
         (LoadPhase.ERROR, "none", None, False, False),
-        (LoadPhase.ERROR, "none", "failed", False, False),
         (
             LoadPhase.FINAL,
             "single",
@@ -422,27 +421,30 @@ def test_terminal_result_can_retain_nonexportable_prior_display_payload(
     assert not result.exportable
 
 
+@pytest.mark.parametrize("revision", [-1, True, False, 1.5, None])
+def test_load_result_rejects_invalid_revision(revision):
+    with pytest.raises(ValueError, match="revision must be a non-negative integer"):
+        LoadResult(1, 1, None, None, LoadPhase.PROGRESS, revision, False, False)
+
+
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("phase", "error", "exportable", "debug"),
     [
-        ("phase", None),
-        ("revision", -1),
-        ("revision", True),
-        ("exportable", None),
-        ("debug", None),
+        (None, None, False, False),
+        (LoadPhase.PROGRESS, None, None, False),
+        (LoadPhase.PROGRESS, None, False, None),
+        (LoadPhase.ERROR, "failed", False, False),
     ],
 )
-def test_load_result_rejects_invalid_explicit_state_field(field, value):
-    state = {
-        "phase": LoadPhase.PROGRESS,
-        "revision": 1,
-        "exportable": False,
-        "debug": False,
-    }
-    state[field] = value
+def test_load_result_does_not_validate_annotated_types(phase, error, exportable, debug):
+    result = LoadResult(1, 1, None, error, phase, 0, exportable, debug)
 
-    with pytest.raises(ValueError):
-        LoadResult(1, 1, None, None, **state)
+    assert (result.phase, result.error, result.exportable, result.debug) == (
+        phase,
+        error,
+        exportable,
+        debug,
+    )
 
 
 def test_load_mesh_command_preserves_debug_features():

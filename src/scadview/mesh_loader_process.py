@@ -215,6 +215,14 @@ class FinalMeshSnapshot:
 
 @dataclass(frozen=True)
 class LoadResult:
+    """A published load state and its identifiers.
+
+    load_number identifies the started worker; locally generated errors use 0
+    until a worker result arrives. sequence_number counts source meshes yielded.
+    revision counts published states within a load, including terminal states.
+    generation identifies the controller request for stale and export checks.
+    """
+
     load_number: int
     sequence_number: int
     payload: MeshType | None
@@ -240,21 +248,17 @@ class LoadResult:
         self._validate_exportable_state()
 
     def _validate_explicit_state(self) -> None:
-        if not isinstance(self.phase, LoadPhase):
-            raise ValueError("Load result phase must be a LoadPhase")
         if (
             not isinstance(self.revision, int)
             or isinstance(self.revision, bool)
             or self.revision < 0
         ):
             raise ValueError("Load result revision must be a non-negative integer")
-        if not isinstance(self.exportable, bool) or not isinstance(self.debug, bool):
-            raise ValueError("Load result exportable and debug state must be boolean")
 
     def _validate_error_state(self) -> None:
         if self.phase is LoadPhase.ERROR:
-            if not isinstance(self.error, LoadError):
-                raise ValueError("Error-phase load results require a LoadError")
+            if self.error is None:
+                raise ValueError("Error-phase load results require an error")
             return
         if self.error is not None:
             raise ValueError("Only error-phase load results may contain an error")
