@@ -60,10 +60,10 @@
 
 ## 10. Supplemental Review Remediation
 
-- [ ] 10.1 Make load publication and envelope state singular: route load results through a loader-owned publication seam, represent idle and stale polls as non-events, carry effective debug state explicitly, and freeze nested envelope state; verify with deterministic queue/process-seam, controller, UI, and payload immutability tests.
-- [ ] 10.2 Make final values and cancellation atomic: capture final feature state and sources after generator exhaustion, claim one terminal transition shared with cancellation, and publish exactly one FINAL, ERROR, or CANCELLED result; verify with barrier-controlled late-feature and cancellation tests.
-- [ ] 10.3 Correct non-empty mesh-list framing: exclude absent opacity partitions from aggregate bounds while preserving deterministic truly-empty framing; verify all-opaque, all-transparent, mixed, and empty lists plus a manual visual framing check.
-- [ ] 10.4 Make lifecycle ownership and typing explicit: close the controller from normal and exceptional application/UI paths, remove destructor-dependent cleanup, and annotate changed production signatures; verify idempotent shutdown, active load/export shutdown, Ruff, Ty, and the full affected suite.
+- [x] 10.1 Make load publication and envelope state singular: route load results through a loader-owned publication seam, represent idle and stale polls as non-events, carry effective debug state explicitly, and freeze nested envelope state; verify with deterministic queue/process-seam, controller, UI, and payload immutability tests.
+- [x] 10.2 Make final values and cancellation atomic: capture final feature state and sources after generator exhaustion, claim one terminal transition shared with cancellation, and publish exactly one FINAL, ERROR, or CANCELLED result; verify with barrier-controlled late-feature and cancellation tests.
+- [x] 10.3 Correct non-empty mesh-list framing: exclude absent opacity partitions from aggregate bounds while preserving deterministic truly-empty framing; verify all-opaque, all-transparent, mixed, and empty lists plus a manual visual framing check.
+- [x] 10.4 Make lifecycle ownership and typing explicit: close the controller from normal and exceptional application/UI paths, remove destructor-dependent cleanup, and annotate changed production signatures; verify idempotent shutdown, active load/export shutdown, Ruff, Ty, and the full affected suite.
 
 Whole user-module session isolation across `sys.modules`, `sys.path`, and arbitrary
 module globals is explicitly deferred to a separately reviewed follow-up change.
